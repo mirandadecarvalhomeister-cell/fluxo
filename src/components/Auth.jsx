@@ -35,6 +35,24 @@ export default function Auth() {
 
   useEffect(() => {
     document.title = 'Entrar · FluXo';
+    const raw = window.location.hash.startsWith('#')
+      ? window.location.hash.slice(1)
+      : '';
+    if (!raw) return;
+    const params = new URLSearchParams(raw);
+    const code = params.get('error_code');
+    const description = params.get('error_description');
+    if (!code && !description) return;
+    const expired =
+      code === 'otp_expired' || /expired|invalid/i.test(description || '');
+    setError(
+      expired
+        ? 'O link expirou ou já foi usado. Solicite um novo link abaixo.'
+        : 'Não foi possível validar o link. Solicite um novo link abaixo.'
+    );
+    setForgot(true);
+    setNotice('');
+    history.replaceState(null, '', window.location.pathname + window.location.search);
   }, []);
 
   async function submit(event) {
