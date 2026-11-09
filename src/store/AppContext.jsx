@@ -6,7 +6,7 @@
   useRef,
   useState,
 } from 'react';
-import { isSupabaseEnabled } from '../lib/supabase';
+import { isRecoveryLink, isSupabaseEnabled } from '../lib/supabase';
 import { isLiveKitEnabled } from '../lib/livekit';
 import * as remote from '../lib/remote';
 import { MAX_POST_MEDIA, mediaKind, parseRemoteMedia } from '../lib/media';
@@ -361,6 +361,7 @@ export function AppProvider({ children }) {
   const [ui, setUi] = useState(initialUi);
   const [ready, setReady] = useState(false);
   const [session, setSession] = useState(null);
+  const [recovery, setRecovery] = useState(isRecoveryLink);
   const [toastMsg, setToastMsg] = useState('');
   const [canInstall, setCanInstall] = useState(false);
   const [online, setOnline] = useState(() =>
@@ -371,6 +372,7 @@ export function AppProvider({ children }) {
   const toastTimer = useRef();
   const timers = useRef({});
   const lastUserId = useRef(null);
+  const recoveryRef = useRef(isRecoveryLink);
   const uiRef = useRef(ui);
   const dataRef = useRef(data);
   const sessionRef = useRef(session);
@@ -505,6 +507,10 @@ export function AppProvider({ children }) {
     let cancelled = false;
     (async () => {
       if (isSupabaseEnabled) {
+        if (isRecoveryLink) {
+          if (!cancelled) setReady(true);
+          return;
+        }
         const s = await remote.getSession();
         if (cancelled) return;
         if (s?.user) await startSupabase(s.user);
@@ -522,7 +528,14 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (!isSupabaseEnabled) return undefined;
-    return remote.onAuthChange((s) => {
+    return remote.onAuthChange((s, event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        recoveryRef.current = true;
+        setRecovery(true);
+        setReady(true);
+        return;
+      }
+      if (recoveryRef.current) return;
       if (s?.user) startSupabase(s.user);
       else {
         lastUserId.current = null;
@@ -655,6 +668,48 @@ export function AppProvider({ children }) {
     } catch (error) {
       toast(error.message || 'Não foi possível entrar com Google.');
     }
+  }
+
+  async function requestPasswordReset(email) {
+    const mail = email.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(mail)) return 'Digite um e-mail válido.';
+    if (!isSupabaseEnabled) {
+      return 'A recuperação de senha precisa do Supabase configurado.';
+    }
+    try {
+      await remote.resetPassword(mail, window.location.origin);
+      return null;
+    } catch (error) {
+      return error.message || 'Não foi possível enviar o e-mail.';
+    }
+  }
+
+  async function finishRecovery({ password, confirm }) {
+    if (password.length < 8) return 'A senha precisa ter pelo menos 8 caracteres.';
+    if (password !== confirm) return 'As senhas não coincidem.';
+    if (!isSupabaseEnabled) {
+      return 'A recuperação de senha precisa do Supabase configurado.';
+    }
+    try {
+      const result = await remote.updatePassword(password);
+      recoveryRef.current = false;
+      setRecovery(false);
+      const user = result?.user || (await remote.getSession())?.user;
+      if (user) await startSupabase(user);
+      toast('Senha atualizada. Você já está conectado.');
+      return null;
+    } catch (error) {
+      return error.message || 'Não foi possível atualizar a senha.';
+    }
+  }
+
+  async function cancelRecovery() {
+    recoveryRef.current = false;
+    setRecovery(false);
+    if (isSupabaseEnabled) await remote.signOut();
+    setSession(null);
+    setData(null);
+    setReady(true);
   }
 
   function requestConfirm({ title, text, confirmLabel = 'Confirmar', tone = 'primary', action }) {
@@ -1614,6 +1669,9 @@ export function AppProvider({ children }) {
   const actions = {
     submitAuth,
     google,
+    requestPasswordReset,
+    finishRecovery,
+    cancelRecovery,
     logout,
     notify: toast,
     setAuthTab: (authTab) => setUi((u) => ({ ...u, authTab })),
@@ -1698,6 +1756,7 @@ export function AppProvider({ children }) {
     ui,
     ready,
     session,
+    recovery,
     mode: isSupabaseEnabled ? 'supabase' : 'demo',
     online,
     canInstall,

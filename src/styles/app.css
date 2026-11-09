@@ -114,6 +114,16 @@ textarea.in{resize:vertical;min-height:44px}
 .or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px;margin:16px 0}
 .or::before,.or::after{content:"";height:1px;background:var(--line);flex:1}
 .fine{font-size:12px;color:var(--muted);margin-top:14px;text-align:center}
+.auth-title{font:800 1.5rem var(--f-display);letter-spacing:-.02em;margin:0 0 6px}
+.auth-sub{font-size:14px;color:var(--muted);margin-bottom:16px;line-height:1.4}
+.auth-links{display:flex;justify-content:flex-end;margin:-4px 0 10px}
+.link-btn{color:var(--accent);font-size:13px;font-weight:600;background:none;border:0;padding:0;cursor:pointer}
+.link-btn:hover{text-decoration:underline}
+.block-link{display:block;width:100%;text-align:center;margin-top:14px}
+.ok-msg{color:var(--ok);font-size:13px;margin-bottom:8px;line-height:1.4}
+.reset-page{max-width:420px;margin:0 auto;min-height:calc(100dvh - 40px);display:grid;align-content:center;padding-block:16px}
+.reset-page .authcard{max-width:none}
+.reset-page .logo{padding-left:0}
 
 /* composer + posts */
 .composer{padding:14px;margin-bottom:14px;display:grid;gap:10px}

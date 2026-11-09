@@ -3,11 +3,12 @@ import Auth from './components/Auth';
 import { Logo } from './components/Brand';
 import IconSprite from './components/Icon';
 import ModalHost from './components/ModalHost';
+import ResetPassword from './components/ResetPassword';
 import Shell from './components/Shell';
 import Toast from './components/Toast';
 
 export default function App() {
-  const { data, ready } = useApp();
+  const { data, ready, recovery } = useApp();
 
   return (
     <>
@@ -17,6 +18,8 @@ export default function App() {
           <Logo size={44} />
           <span className="muted sm">Entrando no fluxo…</span>
         </div>
+      ) : recovery ? (
+        <ResetPassword />
       ) : data ? (
         <>
           <Shell />

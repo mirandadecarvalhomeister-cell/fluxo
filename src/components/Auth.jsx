@@ -22,11 +22,15 @@ export default function Auth() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [forgot, setForgot] = useState(false);
+  const [notice, setNotice] = useState('');
   const up = ui.authTab === 'up';
 
   useEffect(() => {
     setError('');
     setConfirm('');
+    setForgot(false);
+    setNotice('');
   }, [ui.authTab]);
 
   useEffect(() => {
@@ -44,6 +48,18 @@ export default function Auth() {
       confirm,
     });
     setError(message || '');
+    setBusy(false);
+  }
+
+  async function sendReset(event) {
+    event.preventDefault();
+    setBusy(true);
+    setNotice('');
+    const message = await actions.requestPasswordReset(email);
+    setError(message || '');
+    if (!message) {
+      setNotice('Se o e-mail estiver cadastrado, você receberá um link para criar uma nova senha.');
+    }
     setBusy(false);
   }
 
@@ -75,7 +91,53 @@ export default function Auth() {
       </section>
 
       <section className="card authcard">
-        <div className="seg" role="group">
+        {forgot ? (
+          <div className="forgot">
+            <h2 className="auth-title">Recuperar senha</h2>
+            <p className="auth-sub">
+              Informe o e-mail da sua conta e enviaremos um link para você criar uma nova
+              senha.
+            </p>
+            <form onSubmit={sendReset} noValidate>
+              <div className="field">
+                <label htmlFor="femail">E-mail</label>
+                <input
+                  className="in"
+                  id="femail"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="voce@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <p className="err" role="alert">
+                {error}
+              </p>
+              {notice && (
+                <p className="ok-msg" role="status">
+                  {notice}
+                </p>
+              )}
+              <button className="btn primary block" type="submit" disabled={busy}>
+                {busy ? 'Enviando…' : 'Enviar link de redefinição'}
+              </button>
+            </form>
+            <button
+              className="link-btn block-link"
+              type="button"
+              onClick={() => {
+                setForgot(false);
+                setError('');
+                setNotice('');
+              }}
+            >
+              Voltar para entrar
+            </button>
+          </div>
+        ) : (
+          <>
+          <div className="seg" role="group">
           <button
             type="button"
             className={up ? '' : 'on'}
@@ -157,6 +219,21 @@ export default function Auth() {
               />
             </div>
           )}
+          {!up && (
+            <div className="auth-links">
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => {
+                  setForgot(true);
+                  setError('');
+                  setNotice('');
+                }}
+              >
+                Esqueceu sua senha?
+              </button>
+            </div>
+          )}
           <p className="err" role="alert">
             {error}
           </p>
@@ -176,6 +253,8 @@ export default function Auth() {
             ? 'Autenticação e dados salvos no Supabase.'
             : 'Versão de demonstração: contas e dados ficam apenas neste navegador.'}
         </p>
+        </>
+        )}
       </section>
     </div>
   );
