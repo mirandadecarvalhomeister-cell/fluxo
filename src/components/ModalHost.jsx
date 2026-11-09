@@ -8,6 +8,7 @@ import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
 import Post from './Post';
+import SearchModal from './SearchModal';
 
 function ProfileEditModal() {
   const { data, actions } = useApp();
@@ -1081,6 +1082,7 @@ const MODAL_LABELS = {
   share: 'Compartilhar publicação',
   newchat: 'Nova conversa',
   profilelist: 'Conexões',
+  search: 'Radar FluXo',
 };
 
 const FOCUSABLE =
@@ -1100,7 +1102,9 @@ export default function ModalHost() {
     const focusTimer = window.setTimeout(() => {
       const sheet = sheetRef.current;
       if (!sheet) return;
-      const target = sheet.querySelector('[autofocus]') || sheet.querySelector(FOCUSABLE);
+      const target =
+        sheet.querySelector('[autofocus],[data-autofocus]') ||
+        sheet.querySelector(FOCUSABLE);
       target?.focus?.();
     }, 0);
 
@@ -1178,6 +1182,9 @@ export default function ModalHost() {
     content = <NewChatModal />;
   } else if (modal.type === 'profilelist') {
     content = <ProfileConnectionsModal modal={modal} />;
+  } else if (modal.type === 'search') {
+    content = <SearchModal />;
+    wide = true;
   } else if (modal.type === 'confirm') {
     content = <ConfirmModal modal={modal} />;
   }
@@ -1192,13 +1199,15 @@ export default function ModalHost() {
         aria-label={MODAL_LABELS[modal.type] || 'Janela'}
         ref={sheetRef}
       >
-        <button
-          className="icon-btn x"
-          onClick={actions.closeModal}
-          aria-label="Fechar"
-        >
-          <Icon name="x" />
-        </button>
+        {modal.type !== 'search' ? (
+          <button
+            className="icon-btn x"
+            onClick={actions.closeModal}
+            aria-label="Fechar"
+          >
+            <Icon name="x" />
+          </button>
+        ) : null}
         {content}
       </div>
     </div>

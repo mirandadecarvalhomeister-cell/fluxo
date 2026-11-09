@@ -1675,6 +1675,7 @@ export function AppProvider({ children }) {
     logout,
     notify: toast,
     setAuthTab: (authTab) => setUi((u) => ({ ...u, authTab })),
+    openSearch: () => setUi((u) => ({ ...u, modal: { type: 'search' } })),
     toggleTheme: () =>
       setUi((u) => ({ ...u, theme: u.theme === 'dark' ? 'light' : 'dark' })),
     go,

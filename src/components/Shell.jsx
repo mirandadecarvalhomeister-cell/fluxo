@@ -32,6 +32,22 @@ export default function Shell() {
     document.title = `${TITLES[ui.route] || 'FluXo'} · FluXo`;
   }, [ui.route]);
 
+  useEffect(() => {
+    const onKey = (event) => {
+      const el = event.target;
+      const typing =
+        el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+      if (typing) return;
+      const combo = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k';
+      if (event.key === '/' || combo) {
+        event.preventDefault();
+        actions.openSearch();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [actions]);
+
   const navLink = ([key, label, icon]) => (
     <a
       key={key}
@@ -78,6 +94,15 @@ export default function Shell() {
       <div className={`app ${ui.route === 'feed' ? 'has-side' : ''}`}>
         <aside className="rail" aria-label="Navegação principal">
           <Logo size={34} />
+          <button
+            className="search-trigger"
+            onClick={actions.openSearch}
+            aria-label="Buscar no FluXo (atalho /)"
+          >
+            <Icon name="search" />
+            <span>Buscar</span>
+            <kbd>/</kbd>
+          </button>
           <nav className="nav">{NAV.map(navLink)}</nav>
           <button className="btn primary" style={{ margin: '10px 0 0' }} onClick={compose}>
             Nova publicação
@@ -118,6 +143,9 @@ export default function Shell() {
           <div className="mobtop">
             <Logo size={30} />
             <div className="row">
+              <button className="icon-btn" onClick={actions.openSearch} aria-label="Buscar">
+                <Icon name="search" />
+              </button>
               <button className="icon-btn" onClick={actions.toggleTheme} aria-label="Alternar tema">
                 <Icon name={themeIcon} />
               </button>
