@@ -354,7 +354,9 @@ export default function Post({ post, detail = false }) {
                 <div style={{ minWidth: 0 }}>
                   <b>{commentAuthor.name}</b>{' '}
                   <span className="muted sm">{ago(c.ts)}</span>
-                  <p>{c.text}</p>
+                  <p>
+                    <TagText text={c.text} />
+                  </p>
                 </div>
               </div>
             );

@@ -98,6 +98,8 @@ function Room({ channel }) {
   const kind = KINDS[channel.kind];
   const canPost = channel.kind !== 'avisos' || owner;
   const live = channel.live;
+  const liveStage = channel.kind === 'palco' && live;
+  const alertOn = (ui.settings.liveChannels || []).includes(channel.id);
 
   useEffect(() => {
     const box = boxRef.current;
@@ -152,6 +154,27 @@ function Room({ channel }) {
             participantes
           </span>
         </div>
+        {!owner && channel.kind === 'palco' ? (
+          <button
+            className={`icon-btn bell ${alertOn ? 'on' : ''}`}
+            onClick={() => actions.toggleLiveAlert(channel.id)}
+            aria-pressed={alertOn}
+            aria-label="Alerta de live"
+            title={alertOn ? 'Desativar alerta de live' : 'Avisar quando entrar ao vivo'}
+          >
+            <Icon name="bell" />
+          </button>
+        ) : null}
+        {owner && channel.kind === 'palco' ? (
+          <button
+            className="icon-btn"
+            onClick={() => actions.openObs(channel.id)}
+            aria-label="Transmitir com OBS"
+            title="Transmitir com OBS"
+          >
+            <Icon name="screen" />
+          </button>
+        ) : null}
         <button
           className="icon-btn"
           onClick={() => actions.shareChannel(channel.id)}
@@ -160,7 +183,16 @@ function Room({ channel }) {
         >
           <Icon name="share" />
         </button>
-        {!owner && (
+        {owner ? (
+          <button
+            className="icon-btn danger"
+            onClick={() => actions.deleteChannel(channel.id)}
+            aria-label="Excluir canal"
+            title="Excluir canal"
+          >
+            <Icon name="trash" />
+          </button>
+        ) : (
           <button
             className={`btn ${channel.joined ? 'ghost' : 'primary'}`}
             onClick={actions.joinRoom}
@@ -170,7 +202,7 @@ function Room({ channel }) {
         )}
       </div>
 
-      <div className="room-grid">
+      <div className={`room-grid${liveStage ? ' room-live' : ''}`}>
         <div style={{ minWidth: 0 }}>
           {channel.kind === 'palco' &&
             (!live ? (
@@ -263,7 +295,10 @@ function Room({ channel }) {
                     ))}
                   </div>
                 )}
-                <div className="row" style={{ margin: '-4px 0 14px', flexWrap: 'wrap' }}>
+                <div
+                  className="row stage-actions"
+                  style={{ margin: '-4px 0 14px', flexWrap: 'wrap' }}
+                >
                   <button className="btn tonal" onClick={support}>
                     <Icon name="heart" className="fill" /> Apoiar
                   </button>
@@ -284,6 +319,18 @@ function Room({ channel }) {
             ))}
 
           <div className="card roomchat">
+            <div className="roomchat-head">
+              <Icon name="chat" />
+              <b>
+                {live
+                  ? 'Chat ao vivo'
+                  : channel.kind === 'avisos'
+                    ? 'Comentários'
+                    : 'Conversa'}
+              </b>
+              <span className="muted sm">{fmt(channel.msgs.length)}</span>
+              {live ? <span className="livepill">AO VIVO</span> : null}
+            </div>
             <div id="roomMsgs" ref={boxRef}>
               {channel.msgs.map((message) => {
                 const person = userOf(data, message.by);

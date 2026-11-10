@@ -24,7 +24,7 @@ function RemoteVideo({ track, className = 'lk-video' }) {
   return <video ref={ref} className={className} autoPlay playsInline />;
 }
 
-function RemoteAudio({ track }) {
+function RemoteAudio({ track, muted, volume }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -33,6 +33,13 @@ function RemoteAudio({ track }) {
     track.attach(element);
     return () => track.detach(element);
   }, [track]);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    element.muted = !!muted;
+    element.volume = Math.max(0, Math.min(1, volume));
+  }, [muted, volume]);
 
   return <audio ref={ref} autoPlay />;
 }
@@ -51,9 +58,21 @@ export default function LiveStage({ channel, owner, clock, hearts }) {
   const [sharing, setSharing] = useState(false);
   const [busy, setBusy] = useState('');
   const [attempt, setAttempt] = useState(0);
+  const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [facing, setFacing] = useState('user');
+  const [fullscreen, setFullscreen] = useState(false);
   const localVideoRef = useRef(null);
   const roomRef = useRef(null);
+  const stageRef = useRef(null);
   const author = userOf(data, channel.owner);
+
+  useEffect(() => {
+    const onChange = () =>
+      setFullscreen(document.fullscreenElement === stageRef.current);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
 
   useEffect(() => {
     if (!isLiveKitEnabled) {
@@ -220,6 +239,67 @@ export default function LiveStage({ channel, owner, clock, hearts }) {
     }
   }
 
+  async function flipCamera() {
+    const room = roomRef.current;
+    if (!room || busy || !camOn) return;
+    setBusy('flip');
+    setNotice('');
+    const next = facing === 'user' ? 'environment' : 'user';
+    try {
+      await room.localParticipant.setCameraEnabled(false);
+      const publication = await room.localParticipant.setCameraEnabled(true, {
+        facingMode: next,
+      });
+      const cameraTrack =
+        publication?.track ||
+        room.localParticipant.getTrackPublication(Track.Source.Camera)?.track ||
+        null;
+      if (cameraTrack) {
+        setLocalCamera(cameraTrack);
+        setFacing(next);
+        setCamOn(true);
+      } else {
+        setLocalCamera(null);
+        setCamOn(false);
+        setNotice('Não foi possível trocar a câmera.');
+      }
+    } catch (cameraError) {
+      try {
+        const restore = await room.localParticipant.setCameraEnabled(true, {
+          facingMode: facing,
+        });
+        const cameraTrack =
+          restore?.track ||
+          room.localParticipant.getTrackPublication(Track.Source.Camera)?.track ||
+          null;
+        setLocalCamera(cameraTrack || null);
+        setCamOn(Boolean(cameraTrack));
+      } catch {
+        setLocalCamera(null);
+        setCamOn(false);
+      }
+      setNotice('Não foi possível trocar a câmera.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function toggleFullscreen() {
+    const stage = stageRef.current;
+    if (!stage) return;
+    try {
+      if (document.fullscreenElement === stage) {
+        await document.exitFullscreen?.();
+      } else if (stage.requestFullscreen) {
+        await stage.requestFullscreen();
+      } else {
+        setNotice('Tela cheia não é suportada neste navegador.');
+      }
+    } catch {
+      setNotice('Não foi possível entrar em tela cheia.');
+    }
+  }
+
   async function toggleShare() {
     const room = roomRef.current;
     if (!room || busy) return;
@@ -268,11 +348,15 @@ export default function LiveStage({ channel, owner, clock, hearts }) {
   const controlsReady = status === 'connected';
 
   return (
-    <div className="stage lk-stage">
+    <div className="stage lk-stage" ref={stageRef}>
       {mainLocal ? (
         <video
           ref={localVideoRef}
-          className={localScreen ? 'lk-video' : 'lk-video lk-local'}
+          className={
+            localScreen
+              ? 'lk-video'
+              : `lk-video lk-local${facing === 'environment' ? ' lk-rear' : ''}`
+          }
           autoPlay
           playsInline
           muted
@@ -287,7 +371,12 @@ export default function LiveStage({ channel, owner, clock, hearts }) {
         />
       ) : null}
       {remoteAudios.map((item) => (
-        <RemoteAudio key={item.sid} track={item.track} />
+        <RemoteAudio
+          key={item.sid}
+          track={item.track}
+          muted={muted}
+          volume={volume}
+        />
       ))}
 
       <span className="glowb" />
@@ -299,6 +388,44 @@ export default function LiveStage({ channel, owner, clock, hearts }) {
         <span className="vpill">
           <Icon name="eye" /> {fmt(channel.viewers)}
         </span>
+      </div>
+
+      <div className="lk-tools">
+        {remoteAudios.length ? (
+          <>
+            <button
+              type="button"
+              className={muted ? 'off' : ''}
+              onClick={() => setMuted((value) => !value)}
+              aria-pressed={muted}
+              title={muted ? 'Ativar som' : 'Silenciar'}
+            >
+              <Icon name={muted ? 'volumeoff' : 'volume'} />
+            </button>
+            <input
+              className="lk-vol"
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={muted ? 0 : volume}
+              onChange={(event) => {
+                setVolume(Number(event.target.value));
+                setMuted(false);
+                if (audioBlocked) roomRef.current?.startAudio().catch(() => {});
+              }}
+              aria-label="Volume da transmissão"
+            />
+          </>
+        ) : null}
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          title={fullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+          aria-label={fullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+        >
+          <Icon name={fullscreen ? 'compress' : 'expand'} />
+        </button>
       </div>
 
       {!hasVideo ? (
@@ -348,6 +475,15 @@ export default function LiveStage({ channel, owner, clock, hearts }) {
             title={camOn ? 'Desligar câmera' : 'Ligar câmera'}
           >
             <Icon name="video" />
+          </button>
+          <button
+            type="button"
+            onClick={flipCamera}
+            disabled={!controlsReady || busy === 'flip' || !camOn}
+            title="Trocar câmera"
+            aria-label="Trocar câmera"
+          >
+            <Icon name="camera" />
           </button>
           <button
             type="button"

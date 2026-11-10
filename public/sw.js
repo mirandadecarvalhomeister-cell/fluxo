@@ -1,10 +1,11 @@
-const CACHE = 'fluxo-v1';
+const CACHE = 'fluxo-v2';
 const CORE = [
   '/',
   '/manifest.webmanifest',
   '/assets/icon-192.png',
   '/assets/icon-512.png',
   '/assets/fluxo-icon.png',
+  '/assets/fluxo-logo.png',
 ];
 
 self.addEventListener('install', (event) => {

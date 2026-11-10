@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { MAX_POST_MEDIA } from '../lib/media';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import Empty from './Empty';
 import { Icon } from './Icon';
 import Post from './Post';
+import { StoriesBar, StoryViewer, storyGroups } from './Stories';
 
 function Composer() {
   const { data, ui, actions } = useApp();
@@ -90,8 +92,11 @@ function Composer() {
 
 export default function Feed() {
   const { data, ui, actions } = useApp();
+  const [viewer, setViewer] = useState(null);
   const tab = ui.feedTab;
+  const groups = storyGroups(data);
   const list = data.posts
+    .filter((p) => p.kind !== 'story')
     .filter((p) => tab === 'all' || p.by === 'me' || data.follows.includes(p.by))
     .sort((a, b) => b.ts - a.ts);
 
@@ -114,6 +119,11 @@ export default function Feed() {
           </button>
         </div>
       </div>
+      <StoriesBar
+        groups={groups}
+        onOpen={setViewer}
+        onAdd={actions.openStory}
+      />
       <Composer />
       <div className="posts">
         {list.length ? (
@@ -125,6 +135,13 @@ export default function Feed() {
           />
         )}
       </div>
+      {viewer ? (
+        <StoryViewer
+          groups={groups}
+          startId={viewer}
+          onClose={() => setViewer(null)}
+        />
+      ) : null}
     </>
   );
 }

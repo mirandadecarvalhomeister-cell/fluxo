@@ -37,6 +37,8 @@ const DEFAULT_SETTINGS = {
   notifications: false,
   reduceMotion: false,
   soundOnSend: false,
+  mutedChats: [],
+  liveChannels: [],
 };
 
 const readSettings = () => {
@@ -142,12 +144,14 @@ function mergeWorkspace(base, ws, user) {
       if (!media.length && (p.kind === 'photo' || p.kind === 'video')) {
         media.push({ kind: p.kind, seed: p.seed || p.id, dur: p.dur });
       }
+      const isStory =
+        p.kind === 'story' || String(p.seed || '').startsWith('story:');
       return {
         id: p.id,
         by: asPerson(p.author_id),
         ts: new Date(p.created_at).getTime(),
         text: p.text || '',
-        kind: p.kind || 'text',
+        kind: isStory ? 'story' : p.kind || 'text',
         seed: p.seed || p.id,
         src: p.media_url || media[0]?.src,
         media,
@@ -586,9 +590,11 @@ export function AppProvider({ children }) {
             ];
         return { ...cur, chats };
       });
-      if (settings.messageSound) playMessageSound();
+      const muted = (settings.mutedChats || []).includes(row.sender_id);
+      if (settings.messageSound && !muted) playMessageSound();
       if (
         settings.notifications &&
+        !muted &&
         typeof Notification !== 'undefined' &&
         Notification.permission === 'granted' &&
         document.hidden &&
@@ -602,6 +608,103 @@ export function AppProvider({ children }) {
         } catch {
           /* notification is best-effort */
         }
+      }
+    });
+  }, [session?.id]);
+
+  useEffect(() => {
+    if (!isSupabaseEnabled || !session?.id || !ui.room) return undefined;
+    return remote.subscribeChannelMessages(ui.room, (row) => {
+      if (!row || !row.id || !row.channel_id) return;
+      const message = {
+        id: row.id,
+        by: row.author_id === session.id ? 'me' : row.author_id,
+        text: row.text || '',
+        ts: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+      };
+      setData((cur) => {
+        if (!cur) return cur;
+        const channel = cur.chans.find((item) => item.id === row.channel_id);
+        if (!channel) return cur;
+        if (channel.msgs.some((item) => item.id === message.id)) return cur;
+        return {
+          ...cur,
+          chans: cur.chans.map((item) =>
+            item.id === row.channel_id
+              ? { ...item, msgs: [...item.msgs, message] }
+              : item
+          ),
+        };
+      });
+    });
+  }, [session?.id, ui.room]);
+
+  useEffect(() => {
+    if (!isSupabaseEnabled || !session?.id) return undefined;
+    return remote.subscribeChannels((payload) => {
+      const row = payload.new || payload.old;
+      if (!row?.id) return;
+      const settings = uiRef.current.settings || DEFAULT_SETTINGS;
+      const goingLive =
+        payload.eventType === 'UPDATE' && payload.new?.is_live && !payload.old?.is_live;
+      setData((cur) => {
+        if (!cur) return cur;
+        if (payload.eventType === 'DELETE') {
+          return {
+            ...cur,
+            chans: cur.chans.filter((item) => item.id !== row.id),
+          };
+        }
+        const exists = cur.chans.some((item) => item.id === row.id);
+        if (!exists) {
+          if (!row.is_live) return cur;
+          const channel = {
+            id: row.id,
+            owner: row.owner_id === session.id ? 'me' : row.owner_id,
+            name: row.name || 'Canal',
+            desc: row.description || '',
+            kind: row.kind || 'palco',
+            followers: row.followers || 0,
+            live: true,
+            livekit: !!row.livekit,
+            title: row.title || '',
+            viewers: row.viewers || 0,
+            joined: false,
+            seed: row.seed || `${row.id}-palco`,
+            msgs: [],
+          };
+          return { ...cur, chans: [channel, ...cur.chans] };
+        }
+        return {
+          ...cur,
+          chans: cur.chans.map((item) =>
+            item.id === row.id
+              ? {
+                  ...item,
+                  live: !!row.is_live,
+                  livekit: !!row.livekit,
+                  title: row.title || item.title,
+                  viewers: row.viewers ?? item.viewers,
+                }
+              : item
+          ),
+        };
+      });
+      if (!goingLive) return;
+      if (payload.new.owner_id === session.id) return;
+      const interested =
+        (dataRef.current?.follows || []).includes(payload.new.owner_id) ||
+        (settings.liveChannels || []).includes(row.id);
+      if (!settings.notifications || !interested) return;
+      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+      try {
+        new Notification('Live no ar no FluXo', {
+          body: `${payload.new.title || payload.new.name || 'Um canal'} está ao vivo agora.`,
+          icon: '/assets/icon-192.png',
+          tag: `live-${row.id}`,
+        });
+      } catch {
+        /* notification is best-effort */
       }
     });
   }, [session?.id]);
@@ -835,6 +938,104 @@ export function AppProvider({ children }) {
     toast('Publicado');
   }
 
+  async function publishStory({ text = '', file = null } = {}) {
+    let media = [];
+    if (file) {
+      try {
+        const kind = mediaKind(file);
+        let src =
+          kind === 'photo'
+            ? await fileToDataURL(file, 1080)
+            : URL.createObjectURL(file);
+        if (isSupabaseEnabled && sessionRef.current?.id) {
+          const uploaded = await remote.uploadMedia(file, sessionRef.current.id);
+          if (uploaded) src = uploaded;
+        }
+        media = [{ kind, src, name: file.name }];
+      } catch {
+        toast('Não foi possível processar a mídia do story.');
+        return false;
+      }
+    }
+    const trimmed = String(text || '').trim();
+    if (!media.length && !trimmed) {
+      toast('Adicione uma foto, vídeo ou texto ao story.');
+      return false;
+    }
+    const id = uid();
+    const story = {
+      id,
+      by: 'me',
+      ts: Date.now(),
+      text: trimmed,
+      kind: 'story',
+      media,
+      src: media[0]?.src,
+      seed: `story:${id}`,
+      likes: 0,
+      liked: false,
+      myReaction: null,
+      saved: false,
+      commentsDisabled: true,
+      comments: [],
+    };
+    setData((cur) => ({ ...cur, posts: [story, ...cur.posts] }));
+    if (sessionRef.current?.id) remote.savePost(story, sessionRef.current.id);
+    toast('Story publicado');
+    return true;
+  }
+
+  function deleteStory(id) {
+    requestConfirm({
+      title: 'Excluir story?',
+      text: 'Ele sai do ar imediatamente e não pode ser recuperado.',
+      confirmLabel: 'Excluir story',
+      tone: 'hot',
+      action: () => {
+        setData((cur) => ({
+          ...cur,
+          posts: cur.posts.filter((p) => p.id !== id),
+        }));
+        if (sessionRef.current?.id) remote.deletePost(id);
+        toast('Story excluído');
+      },
+    });
+  }
+
+  function replyStory(id, text) {
+    const story = dataRef.current?.posts.find((p) => p.id === id);
+    const trimmed = String(text || '').trim();
+    if (!story || story.by === 'me' || !trimmed) return;
+    const target = story.by;
+    ensureChat(target);
+    const message = {
+      id: uid(),
+      me: true,
+      text: trimmed,
+      ts: Date.now(),
+      st: 'sent',
+      attachment: {
+        kind: 'story',
+        storyId: story.id,
+        authorId: target,
+        text: (story.text || '').slice(0, 160),
+        media: story.media?.[0]?.src || story.src || null,
+        mediaKind: story.media?.[0]?.kind || 'photo',
+      },
+    };
+    setData((cur) => ({
+      ...cur,
+      chats: cur.chats.map((chat) =>
+        chat.with === target ? { ...chat, msgs: [...chat.msgs, message] } : chat
+      ),
+    }));
+    if (sessionRef.current?.id) {
+      remote.sendDirectMessage(message, sessionRef.current.id, target);
+    }
+    if (uiRef.current.settings?.soundOnSend) playSentSound();
+    toast('Resposta enviada no direct');
+  }
+
   function reactPost(id, emoji = '❤️') {
     const post = dataRef.current?.posts.find((p) => p.id === id);
     if (!post) return;
@@ -858,6 +1059,16 @@ export function AppProvider({ children }) {
 
   function openPost(id) {
     setUi((u) => ({ ...u, modal: { type: 'post', id } }));
+  }
+
+  function openUser(id) {
+    if (!id) return;
+    if (id === 'me') {
+      setUi((u) => ({ ...u, modal: null, route: 'perfil' }));
+      if (location.hash !== '#perfil') location.hash = '#perfil';
+      return;
+    }
+    setUi((u) => ({ ...u, modal: { type: 'user', id } }));
   }
 
   function addComment(postId, text) {
@@ -1479,6 +1690,34 @@ export function AppProvider({ children }) {
     toast('Canal criado');
   }
 
+  function deleteChannel(id) {
+    const channel = dataRef.current?.chans.find((c) => c.id === id);
+    if (!channel || channel.owner !== 'me') return;
+    requestConfirm({
+      title: 'Excluir canal?',
+      text: `O canal "${channel.name}" e todas as mensagens serão removidos para todos.`,
+      confirmLabel: 'Excluir canal',
+      tone: 'hot',
+      action: () => applyDeleteChannel(id),
+    });
+  }
+
+  function applyDeleteChannel(id) {
+    setData((cur) => ({
+      ...cur,
+      chans: cur.chans.filter((c) => c.id !== id),
+    }));
+    setUi((u) => ({
+      ...u,
+      room: u.room === id ? null : u.room,
+      myLive: u.myLive?.id === id ? null : u.myLive,
+      modal: null,
+    }));
+    if (location.hash.startsWith('#conexoes/')) location.hash = '#conexoes';
+    if (sessionRef.current?.id) remote.deleteChannel(id);
+    toast('Canal excluído');
+  }
+
   async function startLive({ chanId, title }) {
     const cur = dataRef.current;
     if (!cur) return;
@@ -1636,6 +1875,32 @@ export function AppProvider({ children }) {
     setUi((u) => ({ ...u, settings: { ...u.settings, [key]: value } }));
   }
 
+  function toggleChatMute(withId) {
+    const settings = uiRef.current.settings || DEFAULT_SETTINGS;
+    const list = settings.mutedChats || [];
+    const on = !list.includes(withId);
+    setSetting(
+      'mutedChats',
+      on ? [...list, withId] : list.filter((id) => id !== withId)
+    );
+    toast(on ? 'Conversa silenciada' : 'Conversa reativada');
+  }
+
+  function toggleLiveAlert(id) {
+    const settings = uiRef.current.settings || DEFAULT_SETTINGS;
+    const list = settings.liveChannels || [];
+    const on = !list.includes(id);
+    setSetting(
+      'liveChannels',
+      on ? [...list, id] : list.filter((item) => item !== id)
+    );
+    toast(
+      on
+        ? 'Você será avisado quando este canal entrar ao vivo'
+        : 'Alerta de live desativado'
+    );
+  }
+
   async function installApp() {
     const prompt = installPrompt.current;
     if (!prompt) {
@@ -1676,6 +1941,7 @@ export function AppProvider({ children }) {
     notify: toast,
     setAuthTab: (authTab) => setUi((u) => ({ ...u, authTab })),
     openSearch: () => setUi((u) => ({ ...u, modal: { type: 'search' } })),
+    openObs: (id) => setUi((u) => ({ ...u, modal: { type: 'obs', id } })),
     toggleTheme: () =>
       setUi((u) => ({ ...u, theme: u.theme === 'dark' ? 'light' : 'dark' })),
     go,
@@ -1686,10 +1952,15 @@ export function AppProvider({ children }) {
     removeDraftMedia,
     attachMedia,
     publish,
+    publishStory,
+    deleteStory,
+    replyStory,
+    openStory: () => setUi((u) => ({ ...u, modal: { type: 'newstory' } })),
     toggleLike,
     reactPost,
     toggleComments,
     openPost,
+    openUser,
     addComment,
     openEditPost,
     updatePost,
@@ -1742,6 +2013,9 @@ export function AppProvider({ children }) {
     },
     joinRoom,
     createChannel,
+    deleteChannel,
+    toggleLiveAlert,
+    toggleChatMute,
     startLive,
     endLive,
     sendRoomMessage,

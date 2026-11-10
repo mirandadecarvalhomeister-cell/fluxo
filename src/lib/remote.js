@@ -287,13 +287,20 @@ export async function savePost(post, uid) {
       comments_disabled: !!post.commentsDisabled,
       created_at: new Date(post.ts).toISOString(),
     };
-    let { error } = await supabase.from('posts').upsert({
-      ...payload,
-      media: media.length ? media : null,
-    });
+    let row = { ...payload, media: media.length ? media : null };
+    let { error } = await supabase.from('posts').upsert(row);
     if (error && /media|comments_disabled/i.test(error.message || '')) {
       const { media: _media, comments_disabled: _disabled, ...legacy } = payload;
-      ({ error } = await supabase.from('posts').upsert(legacy));
+      row = legacy;
+      ({ error } = await supabase.from('posts').upsert(row));
+    }
+    if (
+      error &&
+      post.kind === 'story' &&
+      /kind|check|constraint/i.test(error.message || '')
+    ) {
+      row = { ...row, kind: 'text' };
+      ({ error } = await supabase.from('posts').upsert(row));
     }
     if (error) warn(error);
   } catch (error) {
@@ -534,6 +541,26 @@ export async function setChannelMembership(channelId, uid, joined) {
   }
 }
 
+export async function deleteChannel(id) {
+  if (!enabled()) return;
+  try {
+    const messages = await supabase
+      .from('channel_messages')
+      .delete()
+      .eq('channel_id', id);
+    if (messages.error) warn(messages.error);
+    const members = await supabase
+      .from('channel_members')
+      .delete()
+      .eq('channel_id', id);
+    if (members.error) warn(members.error);
+    const { error } = await supabase.from('channels').delete().eq('id', id);
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
 export async function addChannelMessage(message, channelId, uid) {
   if (!enabled()) return;
   try {
@@ -634,6 +661,51 @@ export function subscribeDirectMessages(uid, callback) {
           filter: `recipient_id=eq.${uid}`,
         },
         (payload) => callback(payload.new)
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel).catch(() => {});
+    };
+  } catch (error) {
+    warn(error);
+    return () => {};
+  }
+}
+
+export function subscribeChannelMessages(channelId, callback) {
+  if (!enabled() || !channelId) return () => {};
+  try {
+    const channel = supabase
+      .channel(`channel-messages-${channelId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'channel_messages',
+          filter: `channel_id=eq.${channelId}`,
+        },
+        (payload) => callback(payload.new)
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel).catch(() => {});
+    };
+  } catch (error) {
+    warn(error);
+    return () => {};
+  }
+}
+
+export function subscribeChannels(callback) {
+  if (!enabled()) return () => {};
+  try {
+    const channel = supabase
+      .channel('channels-live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'channels' },
+        (payload) => callback(payload)
       )
       .subscribe();
     return () => {

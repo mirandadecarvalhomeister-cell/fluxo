@@ -5,12 +5,13 @@ import { roleOf, userOf } from '../lib/selectors';
 import { ago, fmt } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
+import { TagText } from './Brand';
 import Empty from './Empty';
 import { Icon } from './Icon';
 
 const coverBg = (me) => (me.cover.k === 'img' ? me.cover.v : art(me.cover.v, 1400, 420));
 
-function PostThumb({ post }) {
+export function PostThumb({ post }) {
   const { data, actions } = useApp();
   const author = userOf(data, post.by);
   const media = mediaOf(post);
@@ -33,7 +34,9 @@ function PostThumb({ post }) {
         <img src={picture} alt="" loading="lazy" />
       ) : (
         <div className="pgtxt">
-          <p>{post.text || 'Publicação'}</p>
+          <p>
+            <TagText text={post.text || 'Publicação'} />
+          </p>
         </div>
       )}
       {first?.kind === 'video' ? (
@@ -107,8 +110,12 @@ export default function Profile() {
   const { data, ui, actions } = useApp();
   const [scrap, setScrap] = useState('');
   const me = data.me;
-  const mine = data.posts.filter((p) => p.by === 'me').sort((a, b) => b.ts - a.ts);
-  const saved = data.posts.filter((p) => p.saved).sort((a, b) => b.ts - a.ts);
+  const mine = data.posts
+    .filter((p) => p.by === 'me' && p.kind !== 'story')
+    .sort((a, b) => b.ts - a.ts);
+  const saved = data.posts
+    .filter((p) => p.saved && p.kind !== 'story')
+    .sort((a, b) => b.ts - a.ts);
   const joined = data.comms.filter((c) => c.joined);
   const created = data.comms.filter((c) => c.owner === 'me');
   const following = joined.filter((c) => c.owner !== 'me');
@@ -354,7 +361,9 @@ export default function Profile() {
                     <div style={{ minWidth: 0 }}>
                       <b className="sm">{author.name}</b>{' '}
                       <span className="muted sm">{ago(item.ts)}</span>
-                      <p>{item.text}</p>
+                      <p>
+                        <TagText text={item.text} />
+                      </p>
                     </div>
                   </div>
                 );

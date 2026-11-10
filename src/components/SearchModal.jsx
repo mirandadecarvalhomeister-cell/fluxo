@@ -6,6 +6,7 @@ import { ago, fmt, lsGet, lsSet } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
+import { activeStories } from './Stories';
 
 const RECENT_KEY = 'fluxo.searches';
 
@@ -32,28 +33,98 @@ const STOP = new Set(
 
 function buildTrending(data) {
   const map = new Map();
-  const bump = (key, score) => {
-    const cur = map.get(key) || { key, score: 0, hits: 0 };
+  const bump = (key, score, today) => {
+    const cur = map.get(key) || { key, score: 0, hits: 0, today: 0 };
     cur.score += score;
     cur.hits += 1;
+    if (today) cur.today += 1;
     map.set(key, cur);
   };
+  const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
 
   data.posts.forEach((post) => {
+    if (post.kind === 'story') return;
     const weight = 1 + (post.likes || 0) + (post.comments?.length || 0) * 2;
     const recency = post.ts
       ? Math.max(0.2, 1 - (Date.now() - post.ts) / (1000 * 60 * 60 * 24 * 14))
       : 0.5;
+    const today = !!post.ts && post.ts >= dayAgo;
     const text = String(post.text || '');
     const tags = [...text.matchAll(/#([\p{L}\d_]+)/gu)].map((m) => norm(m[1]));
-    tags.forEach((tag) => bump(tag, weight * 3 * recency));
+    tags.forEach((tag) => bump(tag, weight * 3 * recency, today));
     const words = norm(text).match(/[a-z0-9_]{3,}/g) || [];
     words.forEach((word) => {
-      if (!STOP.has(word)) bump(word, weight * recency);
+      if (!STOP.has(word)) bump(word, weight * recency, today);
     });
   });
 
   return [...map.values()].sort((a, b) => b.score - a.score).slice(0, 8);
+}
+
+function Highlight({ text, needle }) {
+  const value = String(text || '');
+  const term = String(needle || '').trim();
+  if (!term) return value;
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = value.split(new RegExp(`(${escaped})`, 'ig'));
+  return parts.map((part, index) =>
+    part.toLowerCase() === term.toLowerCase() ? (
+      <mark key={`${part}-${index}`}>{part}</mark>
+    ) : (
+      part
+    )
+  );
+}
+
+function FollowButton({ id }) {
+  const { data, actions } = useApp();
+  const following = (data.follows || []).includes(id);
+  return (
+    <button
+      type="button"
+      className={`btn ${following ? 'ghost' : 'tonal'} sm`}
+      onClick={(event) => {
+        event.stopPropagation();
+        actions.follow(id);
+      }}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      {following ? 'Seguindo' : 'Seguir'}
+    </button>
+  );
+}
+
+function PersonRow({ person, why, needle, onOpen }) {
+  return (
+    <div
+      className="sr-row as-div person"
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(person.id)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen(person.id);
+        }
+      }}
+    >
+      <Avatar user={person} size={38} />
+      <span className="grow">
+        <b className="ell">
+          <Highlight text={person.name} needle={needle} />
+        </b>
+        <span className="muted sm ell">
+          @{person.handle} · {fmt(person.followers)} seguidores
+        </span>
+        {why ? (
+          <span className="sr-why">
+            <Icon name="orbit" /> {why}
+          </span>
+        ) : null}
+      </span>
+      <FollowButton id={person.id} />
+    </div>
+  );
 }
 
 function Section({ title, icon, children }) {
@@ -73,6 +144,7 @@ export default function SearchModal() {
   const [recent, setRecent] = useState(readRecent);
 
   const term = norm(query.replace(/^#+/, '')).trim();
+  const highlightTerm = query.replace(/^#+/, '').trim();
 
   const remember = (value) => {
     const clean = String(value || '').trim();
@@ -92,22 +164,76 @@ export default function SearchModal() {
     () => data.chans.filter((c) => c.live).sort((a, b) => (b.viewers || 0) - (a.viewers || 0)).slice(0, 4),
     [data]
   );
-  const topComms = useMemo(
-    () => [...data.comms].sort((a, b) => b.subs - a.subs).slice(0, 4),
-    [data]
+  const myInterests = useMemo(
+    () => (data.me.interests || []).map((item) => norm(item)),
+    [data.me.interests]
   );
-  const rising = useMemo(
+  const joinedCats = useMemo(
+    () => [...new Set(data.comms.filter((c) => c.joined).map((c) => c.cat))],
+    [data.comms]
+  );
+  const storiesNow = useMemo(() => activeStories(data).length, [data]);
+
+  const commRecs = useMemo(() => {
+    const affinity = (cat) =>
+      myInterests.includes(norm(cat)) || joinedCats.some((c) => norm(c) === norm(cat));
+    const pool = data.comms.filter((c) => !c.joined);
+    return (pool.length ? pool : data.comms)
+      .map((c) => {
+        const interest = (data.me.interests || []).find(
+          (item) => norm(item) === norm(c.cat)
+        );
+        const why = c.joined
+          ? `Você já está em ${c.name}`
+          : interest
+            ? `Combina com seu interesse em ${c.cat}`
+            : affinity(c.cat)
+              ? `Você já participa de ${c.cat}`
+              : `${fmt(c.subs)} inscritos em ${c.cat}`;
+        return { ...c, why, boost: affinity(c.cat) ? 1 : 0 };
+      })
+      .sort((a, b) => b.boost - a.boost || b.subs - a.subs)
+      .slice(0, 4);
+  }, [data.comms, data.me.interests, joinedCats, myInterests]);
+
+  const peopleRecs = useMemo(
     () =>
       Object.values(data.users)
-        .filter((u) => !data.follows.includes(u.id))
-        .sort((a, b) => (b.followers || 0) - (a.followers || 0))
+        .filter((u) => !data.follows.includes(u.id) && u.id !== 'me')
+        .map((u) => {
+          const shared = (u.interests || []).filter((item) =>
+            myInterests.includes(norm(item))
+          );
+          return {
+            ...u,
+            boost: shared.length,
+            why: shared.length
+              ? `Também curte ${shared.slice(0, 2).join(' e ')}`
+              : `${fmt(u.followers || 0)} seguidores`,
+          };
+        })
+        .sort((a, b) => b.boost - a.boost || (b.followers || 0) - (a.followers || 0))
         .slice(0, 4),
-    [data]
+    [data.users, data.follows, myInterests]
+  );
+
+  const chanRecs = useMemo(
+    () =>
+      data.chans
+        .filter((c) => !c.joined)
+        .sort(
+          (a, b) =>
+            Number(b.live) - Number(a.live) ||
+            (b.followers || 0) - (a.followers || 0)
+        )
+        .slice(0, 4),
+    [data.chans]
   );
 
   const postHits = term
     ? data.posts
         .filter((post) => {
+          if (post.kind === 'story') return false;
           const author = userOf(data, post.by);
           return (
             norm(post.text).includes(term) ||
@@ -124,6 +250,11 @@ export default function SearchModal() {
         .filter(
           (u) => norm(u.name).includes(term) || norm(u.handle).includes(term)
         )
+        .sort((a, b) => {
+          const exact = (u) =>
+            norm(u.handle) === term || norm(u.name) === term ? 1 : 0;
+          return exact(b) - exact(a) || (b.followers || 0) - (a.followers || 0);
+        })
         .slice(0, 5)
     : [];
   const commHits = term
@@ -134,6 +265,7 @@ export default function SearchModal() {
             norm(c.desc).includes(term) ||
             norm(c.cat).includes(term)
         )
+        .sort((a, b) => b.subs - a.subs)
         .slice(0, 5)
     : [];
   const chanHits = term
@@ -143,6 +275,11 @@ export default function SearchModal() {
             norm(c.name).includes(term) ||
             norm(c.title).includes(term) ||
             norm(c.desc).includes(term)
+        )
+        .sort(
+          (a, b) =>
+            Number(b.live) - Number(a.live) ||
+            (b.followers || 0) - (a.followers || 0)
         )
         .slice(0, 4)
     : [];
@@ -162,6 +299,10 @@ export default function SearchModal() {
     remember(query);
     actions.closeModal();
     actions.openRoom(id);
+  };
+  const openPerson = (id) => {
+    remember(query);
+    actions.openUser(id);
   };
   const pickTopic = (topic) => {
     setQuery(topic);
@@ -216,11 +357,29 @@ export default function SearchModal() {
             <div>
               <b>Radar do fluxo</b>
               <span className="muted sm">
-                {lives.length} no ar · {data.posts.length} publicações · {trending.length}{' '}
-                assuntos em alta
+                {lives.length} no ar · {storiesNow} stories ativos ·{' '}
+                {data.posts.filter((post) => post.kind !== 'story').length}{' '}
+                publicações · {trending.length} assuntos em alta
               </span>
             </div>
           </div>
+
+          {data.me.interests?.length ? (
+            <Section title="Ajustado para você" icon="orbit">
+              <div className="chips">
+                {data.me.interests.slice(0, 8).map((interest) => (
+                  <button
+                    type="button"
+                    className="chip"
+                    key={interest}
+                    onClick={() => pickTopic(interest)}
+                  >
+                    <Icon name="hash" /> {interest}
+                  </button>
+                ))}
+              </div>
+            </Section>
+          ) : null}
 
           {recent.length ? (
             <Section title="Buscas recentes" icon="search">
@@ -245,7 +404,7 @@ export default function SearchModal() {
           <Section title="Assuntos do momento" icon="hash">
             {trending.length ? (
               <div className="trendlist">
-                {trending.map((topic) => (
+                {trending.map((topic, index) => (
                   <button
                     type="button"
                     className="trend"
@@ -257,8 +416,15 @@ export default function SearchModal() {
                       style={{ '--heat': `${Math.max(12, (topic.score / maxScore) * 100)}%` }}
                       aria-hidden="true"
                     />
+                    <span className="sr-rank">{String(index + 1).padStart(2, '0')}</span>
                     <span className="trend-label">#{topic.key}</span>
-                    <span className="muted sm">{fmt(topic.hits)} posts</span>
+                    {topic.today >= 1 && topic.today === topic.hits ? (
+                      <span className="trend-new">NOVO</span>
+                    ) : null}
+                    <span className="muted sm">
+                      {topic.today ? `${fmt(topic.today)} hoje · ` : ''}
+                      {fmt(topic.hits)} posts
+                    </span>
                   </button>
                 ))}
               </div>
@@ -308,10 +474,10 @@ export default function SearchModal() {
             </Section>
           ) : null}
 
-          {topComms.length ? (
-            <Section title="Comunidades em alta" icon="users">
+          {commRecs.length ? (
+            <Section title="Comunidades para você" icon="users">
               <div className="sr-list">
-                {topComms.map((community) => (
+                {commRecs.map((community) => (
                   <button
                     type="button"
                     className="sr-row"
@@ -324,8 +490,8 @@ export default function SearchModal() {
                     />
                     <span className="grow">
                       <b className="ell">{community.name}</b>
-                      <span className="muted sm ell">
-                        {community.cat} · {fmt(community.subs)} inscritos
+                      <span className="sr-why">
+                        <Icon name="orbit" /> {community.why}
                       </span>
                     </span>
                   </button>
@@ -334,26 +500,48 @@ export default function SearchModal() {
             </Section>
           ) : null}
 
-          {rising.length ? (
-            <Section title="Vozes em ascensão" icon="user">
+          {chanRecs.length ? (
+            <Section title="Canais para acompanhar" icon="radio">
               <div className="sr-list">
-                {rising.map((person) => (
-                  <div className="sr-row as-div" key={person.id}>
-                    <Avatar user={person} size={38} />
-                    <span className="grow">
-                      <b className="ell">{person.name}</b>
-                      <span className="muted sm ell">
-                        @{person.handle} · {fmt(person.followers)} seguidores
-                      </span>
-                    </span>
+                {chanRecs.map((channel) => {
+                  const owner = userOf(data, channel.owner);
+                  return (
                     <button
                       type="button"
-                      className="btn tonal sm"
-                      onClick={() => actions.follow(person.id)}
+                      className="sr-row"
+                      key={channel.id}
+                      onClick={() => openChan(channel.id)}
                     >
-                      Seguir
+                      <span
+                        className={`cthumb${channel.live ? ' live' : ''}`}
+                        style={{ backgroundImage: `url('${art(channel.seed, 120, 120)}')` }}
+                      />
+                      <span className="grow">
+                        <b className="ell">{channel.title || channel.name}</b>
+                        <span className="muted sm ell">
+                          {owner.name} · {fmt(channel.followers)} seguidores
+                        </span>
+                      </span>
+                      {channel.live ? (
+                        <span className="tag-live">AO VIVO</span>
+                      ) : null}
                     </button>
-                  </div>
+                  );
+                })}
+              </div>
+            </Section>
+          ) : null}
+
+          {peopleRecs.length ? (
+            <Section title="Pessoas para seguir" icon="user">
+              <div className="sr-list">
+                {peopleRecs.map((person) => (
+                  <PersonRow
+                    key={person.id}
+                    person={person}
+                    why={person.why}
+                    onOpen={openPerson}
+                  />
                 ))}
               </div>
             </Section>
@@ -376,9 +564,12 @@ export default function SearchModal() {
                       <Avatar user={author} size={38} />
                       <span className="grow">
                         <b className="ell">
-                          {author.name} <span className="muted sm">· {ago(post.ts)}</span>
+                          <Highlight text={author.name} needle={highlightTerm} />{' '}
+                          <span className="muted sm">· {ago(post.ts)}</span>
                         </b>
-                        <span className="sr-snippet ell">{post.text}</span>
+                        <span className="sr-snippet ell">
+                          <Highlight text={post.text} needle={highlightTerm} />
+                        </span>
                       </span>
                       <span className="muted sm row" style={{ gap: 8 }}>
                         <Icon name="heart" /> {fmt(post.likes)}
@@ -405,13 +596,15 @@ export default function SearchModal() {
                       className="cthumb"
                       style={{ backgroundImage: `url('${art(community.seed, 120, 120)}')` }}
                     />
-                    <span className="grow">
-                      <b className="ell">{community.name}</b>
-                      <span className="muted sm ell">
-                        {community.cat} · {fmt(community.subs)} inscritos
+                      <span className="grow">
+                        <b className="ell">
+                          <Highlight text={community.name} needle={highlightTerm} />
+                        </b>
+                        <span className="muted sm ell">
+                          {community.cat} · {fmt(community.subs)} inscritos
+                        </span>
                       </span>
-                    </span>
-                  </button>
+                    </button>
                 ))}
               </div>
             </Section>
@@ -434,7 +627,9 @@ export default function SearchModal() {
                         style={{ backgroundImage: `url('${art(channel.seed, 120, 120)}')` }}
                       />
                       <span className="grow">
-                        <b className="ell">{channel.name}</b>
+                        <b className="ell">
+                          <Highlight text={channel.name} needle={highlightTerm} />
+                        </b>
                         <span className="muted sm ell">
                           {owner.name} · {fmt(channel.followers)} seguidores
                         </span>
@@ -451,31 +646,37 @@ export default function SearchModal() {
             <Section title="Pessoas" icon="user">
               <div className="sr-list">
                 {peopleHits.map((person) => (
-                  <div className="sr-row as-div" key={person.id}>
-                    <Avatar user={person} size={38} />
-                    <span className="grow">
-                      <b className="ell">{person.name}</b>
-                      <span className="muted sm ell">
-                        @{person.handle} · {fmt(person.followers)} seguidores
-                      </span>
-                    </span>
-                    <button
-                      type="button"
-                      className="btn tonal sm"
-                      onClick={() => actions.follow(person.id)}
-                    >
-                      Seguir
-                    </button>
-                  </div>
+                  <PersonRow
+                    key={person.id}
+                    person={person}
+                    needle={highlightTerm}
+                    onOpen={openPerson}
+                  />
                 ))}
               </div>
             </Section>
           ) : null}
         </>
       ) : (
-        <p className="muted sm sr-empty">
-          Nada encontrado para “{query}”. Tente outro termo ou um assunto em alta.
-        </p>
+        <div className="sr-empty">
+          <p className="muted sm">
+            Nada encontrado para “{query}”. Tente outro termo ou um assunto em alta.
+          </p>
+          {trending.length ? (
+            <div className="chips" style={{ justifyContent: 'center' }}>
+              {trending.slice(0, 4).map((topic) => (
+                <button
+                  type="button"
+                  className="chip"
+                  key={topic.key}
+                  onClick={() => pickTopic(topic.key)}
+                >
+                  <Icon name="hash" /> {topic.key}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
       )}
     </div>
   );

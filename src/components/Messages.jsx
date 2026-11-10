@@ -3,6 +3,7 @@ import { userOf } from '../lib/selectors';
 import { hm } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
+import { TagText } from './Brand';
 import { Icon } from './Icon';
 
 const EMOJIS = [
@@ -17,6 +18,7 @@ const ATTACH_LABEL = {
   audio: 'Áudio',
   file: 'Arquivo',
   post: 'Publicação compartilhada',
+  story: 'Resposta ao story',
 };
 
 const fmtTime = (seconds) =>
@@ -58,9 +60,42 @@ function PostAttachment({ attachment }) {
   );
 }
 
+function StoryAttachment({ attachment }) {
+  const { data, actions } = useApp();
+  const author = userOf(data, attachment.authorId);
+  const isVideo = attachment.mediaKind === 'video';
+
+  return (
+    <button
+      type="button"
+      className="att-post"
+      onClick={() => actions.openUser(attachment.authorId)}
+    >
+      <span className="att-post-h">
+        <Avatar user={author} size={26} />
+        <b className="ell">{author.name}</b>
+      </span>
+      {attachment.media ? (
+        isVideo ? (
+          <video className="att-story-thumb" src={attachment.media} muted playsInline />
+        ) : (
+          <img className="att-story-thumb" src={attachment.media} alt="Story" />
+        )
+      ) : null}
+      <span className="att-post-t">{attachment.text || 'Story'}</span>
+      <span className="att-post-f">
+        <Icon name="camera" /> Ver story de {author.name.split(' ')[0]}
+      </span>
+    </button>
+  );
+}
+
 function Attachment({ attachment }) {
   if (attachment.kind === 'post') {
     return <PostAttachment attachment={attachment} />;
+  }
+  if (attachment.kind === 'story') {
+    return <StoryAttachment attachment={attachment} />;
   }
   if (!attachment.src) {
     return (
@@ -113,6 +148,7 @@ function CameraCapture({ onClose, onCapture }) {
   const [ready, setReady] = useState(false);
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
+  const [facing, setFacing] = useState('user');
 
   useEffect(() => {
     let cancelled = false;
@@ -237,10 +273,48 @@ function CameraCapture({ onClose, onCapture }) {
     stopRecording();
   };
 
+  const flipCamera = async () => {
+    if (recording) return;
+    const next = facing === 'user' ? 'environment' : 'user';
+    let stream = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: next },
+        audio: true,
+      });
+    } catch {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: next },
+        });
+      } catch {
+        setError('Não foi possível trocar a câmera.');
+        return;
+      }
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+    }
+    streamRef.current = stream;
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(() => {});
+    }
+    setFacing(next);
+    setReady(true);
+    setError('');
+  };
+
   return (
     <div className="cam-overlay" role="dialog" aria-modal="true" aria-label="Câmera">
       <div className="cam-box">
-        <video ref={videoRef} className="cam-video" muted playsInline />
+        <video
+          ref={videoRef}
+          className="cam-video"
+          muted
+          playsInline
+          style={{ transform: facing === 'user' ? 'scaleX(-1)' : 'none' }}
+        />
         {!ready && !error ? <p className="muted sm">Abrindo câmera…</p> : null}
         {error ? <p className="cam-error">{error}</p> : null}
         {recording ? <span className="cam-rec">{fmtTime(seconds)}</span> : null}
@@ -259,6 +333,14 @@ function CameraCapture({ onClose, onCapture }) {
             </>
           ) : (
             <>
+              <button
+                className="btn ghost"
+                type="button"
+                onClick={flipCamera}
+                disabled={!ready}
+              >
+                <Icon name="camera" /> Virar
+              </button>
               <button className="btn ghost" type="button" onClick={takePhoto} disabled={!ready}>
                 Tirar foto
               </button>
@@ -296,6 +378,7 @@ export default function Messages() {
   const discardRef = useRef(false);
   const chat = data.chats.find((c) => c.id === ui.chat);
   const query = ui.chatQ.toLowerCase();
+  const mutedChat = (ui.settings.mutedChats || []).includes(chat?.with);
 
   const list = data.chats
     .filter((c) => userOf(data, c.with).name.toLowerCase().includes(query))
@@ -479,6 +562,16 @@ export default function Messages() {
                   </b>
                   <span className="muted sm">Conversa direta</span>
                 </div>
+                <button
+                  className={`icon-btn bell ${mutedChat ? 'on' : ''}`}
+                  type="button"
+                  onClick={() => actions.toggleChatMute(chat.with)}
+                  aria-pressed={mutedChat}
+                  aria-label="Silenciar conversa"
+                  title={mutedChat ? 'Reativar conversa' : 'Silenciar conversa'}
+                >
+                  <Icon name="bell" />
+                </button>
               </div>
 
               <div id="msgBox" ref={boxRef}>
@@ -498,7 +591,11 @@ export default function Messages() {
                       title="Toque duas vezes para reagir"
                       onDoubleClick={() => actions.likeMessage(chat.id, index)}
                     >
-                      {message.text ? <p>{message.text}</p> : null}
+                      {message.text ? (
+                        <p>
+                          <TagText text={message.text} />
+                        </p>
+                      ) : null}
                       {message.attachment ? (
                         <Attachment attachment={message.attachment} />
                       ) : null}

@@ -8,7 +8,7 @@
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0B0718",
-  "theme_color": "#5B35E8",
+  "theme_color": "#0B0718",
   "categories": ["social", "communication"],
   "icons": [
     {

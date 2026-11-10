@@ -55,6 +55,9 @@ export default function IconSprite() {
         <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16" /></symbol>
         <symbol id="i-broom" viewBox="0 0 24 24"><path d="m14 4 6 6-3 3-6-6z" /><path d="M11 7 4 14l-1 7 7-1 7-7" /><path d="m9 16 2 2" /></symbol>
         <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></symbol>
+        <symbol id="i-volumeoff" viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6L8 10z" /><path d="m17 9 5 6M22 9l-5 6" /></symbol>
+        <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M9 4H4M4 4l6 6M15 20h5M20 20l-6-6" /></symbol>
+        <symbol id="i-compress" viewBox="0 0 24 24"><path d="M9 4v5H4M15 20v-5h5M9 9H4M9 9 3 3M15 15h5M15 15l6 6" /></symbol>
       </defs>
     </svg>
   );

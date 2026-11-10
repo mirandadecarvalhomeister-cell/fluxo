@@ -130,13 +130,13 @@ export async function shareLink({ title, text, url }) {
 
 export function splitTags(text) {
   const parts = [];
-  const re = /#([\p{L}\d_]+)/gu;
+  const re = /([#@])([\p{L}\d_]+)/gu;
   let last = 0;
   let m;
   const str = String(text || '');
   while ((m = re.exec(str))) {
     if (m.index > last) parts.push({ text: str.slice(last, m.index) });
-    parts.push({ tag: m[1] });
+    parts.push(m[1] === '#' ? { tag: m[2] } : { mention: m[2] });
     last = m.index + m[0].length;
   }
   if (last < str.length) parts.push({ text: str.slice(last) });

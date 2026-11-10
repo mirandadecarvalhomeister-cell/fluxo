@@ -8,6 +8,7 @@ import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
 import Post from './Post';
+import { PostThumb } from './Profile';
 import SearchModal from './SearchModal';
 
 function ProfileEditModal() {
@@ -645,34 +646,52 @@ function ProfileConnectionsModal({ modal }) {
         const person = userOf(data, id);
         const isFollowing = following.includes(id);
         return (
-          <div className="share-person conn-row" key={id}>
-            <Avatar user={person} size={40} />
-            <span className="grow">
-              <b className="ell" style={{ display: 'block' }}>
-                {person.name}
-              </b>
-              <span className="muted sm">
-                @{person.handle} · {fmt(person.followers || 0)} seguidores
+            <div
+              className="share-person conn-row"
+              key={id}
+              role="button"
+              tabIndex={0}
+              onClick={() => actions.openUser(id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  actions.openUser(id);
+                }
+              }}
+            >
+              <Avatar user={person} size={40} />
+              <span className="grow">
+                <b className="ell" style={{ display: 'block' }}>
+                  {person.name}
+                </b>
+                <span className="muted sm">
+                  @{person.handle} · {fmt(person.followers || 0)} seguidores
+                </span>
               </span>
-            </span>
-            {isFollowing ? (
-              <button
-                type="button"
-                className="btn ghost sm"
-                onClick={() => actions.follow(id)}
-              >
-                Deixar de seguir
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn tonal sm"
-                onClick={() => actions.follow(id)}
-              >
-                Seguir de volta
-              </button>
-            )}
-          </div>
+              {isFollowing ? (
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    actions.follow(id);
+                  }}
+                >
+                  Deixar de seguir
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn tonal sm"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    actions.follow(id);
+                  }}
+                >
+                  Seguir de volta
+                </button>
+              )}
+            </div>
         );
       })
     ) : (
@@ -700,6 +719,83 @@ function ProfileConnectionsModal({ modal }) {
         ))}
       </div>
       <div className="share-list">{list}</div>
+    </div>
+  );
+}
+
+function UserModal({ modal }) {
+  const { data, actions } = useApp();
+  const person = userOf(data, modal.id);
+  const following = (data.follows || []).includes(modal.id);
+  const posts = data.posts
+    .filter((post) => post.by === modal.id && post.kind !== 'story')
+    .sort((a, b) => b.ts - a.ts);
+  const cover =
+    person.cover?.k === 'img'
+      ? person.cover.v
+      : art(person.cover?.v || person.id, 1000, 320);
+
+  return (
+    <div className="user-modal">
+      <div className="mcover" style={{ backgroundImage: `url('${cover}')` }} />
+      <div className="mbody">
+        <div className="user-hero">
+          <span className="ring">
+            <Avatar user={person} size={84} />
+          </span>
+          <div className="grow">
+            <h2>{person.name}</h2>
+            <span className="muted">
+              @{person.handle}
+              {person.city ? ` · ${person.city}` : ''}
+            </span>
+          </div>
+        </div>
+
+        {person.bio ? <p className="user-bio">{person.bio}</p> : null}
+
+        <div className="row user-actions">
+          <button
+            type="button"
+            className="btn primary"
+            onClick={() => actions.startChat(modal.id)}
+          >
+            <Icon name="chat" /> Mensagem
+          </button>
+          <button
+            type="button"
+            className={`btn ${following ? 'ghost' : 'tonal'}`}
+            onClick={() => actions.follow(modal.id)}
+          >
+            {following ? 'Seguindo' : 'Seguir'}
+          </button>
+          <span className="pill">
+            <Icon name="users" /> {fmt(person.followers || 0)} seguidores
+          </span>
+          {person.humor ? <span className="pill acc">{person.humor}</span> : null}
+        </div>
+
+        {person.interests?.length ? (
+          <div className="chips">
+            {person.interests.map((interest) => (
+              <span className="pill" key={interest}>
+                {interest}
+              </span>
+            ))}
+          </div>
+        ) : null}
+
+        <h3 className="h3">Publicações</h3>
+        {posts.length ? (
+          <div className="postgrid">
+            {posts.map((post) => (
+              <PostThumb key={post.id} post={post} />
+            ))}
+          </div>
+        ) : (
+          <p className="muted sm">Nenhuma publicação ainda.</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -1005,6 +1101,10 @@ function SettingsModal() {
           checked={settings.notifications && permission === 'granted'}
           onChange={toggleNotifications}
         />
+        <p className="muted sm">
+          Silencie conversas no botão de sino dentro do chat e ative alertas de live
+          no cabeçalho do canal. Assim você só recebe o que importa.
+        </p>
       </section>
 
       <section className="set-block">
@@ -1040,6 +1140,183 @@ function SettingsModal() {
         {new Date().getFullYear()}
       </p>
     </div>
+  );
+}
+
+function ObsModal({ modal }) {
+  const { data, actions } = useApp();
+  const channel = data.chans.find((item) => item.id === modal.id);
+  if (!channel) return <p className="muted">Canal indisponível.</p>;
+  const url =
+    location.href.split('#')[0] +
+    '#conexoes/' +
+    encodeURIComponent(channel.id);
+  const ingressHost = import.meta.env.VITE_LIVEKIT_INGRESS_URL || '';
+  const copy = async (value, message) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      actions.notify(message);
+    } catch {
+      actions.notify('Não foi possível copiar. Selecione o texto manualmente.');
+    }
+  };
+
+  return (
+    <div className="obs-modal">
+      <p className="muted">
+        Transmita pelo OBS no computador e mantenha o chat, os corações e as
+        notificações do palco funcionando no FluXo.
+      </p>
+      <span className={`obs-status${ingressHost ? ' on' : ''}`}>
+        <Icon name={ingressHost ? 'check' : 'radio'} />{' '}
+        {ingressHost ? 'Ingress RTMP configurado' : 'Ingress RTMP em preparação'}
+      </span>
+
+      <section className="set-block">
+        <h3 className="h3">1. Agora, sem OBS</h3>
+        <p className="muted sm">
+          Entre na transmissão e use <b>Compartilhar tela</b> para mostrar o
+          jogo, o navegador ou a pré-visualização do OBS. Funciona no
+          Chrome/Edge do computador e não precisa instalar nada.
+        </p>
+      </section>
+
+      <section className="set-block">
+        <h3 className="h3">2. Com OBS</h3>
+        <ol className="obs-steps">
+          <li>
+            No painel do LiveKit, crie um <b>Ingress</b> para a sala{' '}
+            <code>{channel.id}</code> e copie a URL RTMPS e a chave.
+          </li>
+          <li>
+            No OBS, abra <b>Configurações → Transmissão</b> e escolha o
+            serviço <b>Personalizado</b>.
+          </li>
+          <li>
+            Servidor:{' '}
+            <code>
+              {ingressHost || 'rtmps://SEU-INGRESS.livekit.cloud:1935/x'}
+            </code>{' '}
+            e cole a chave gerada no painel.
+          </li>
+          <li>
+            Saída 1080p a 30 fps, keyframe 2 s, áudio 48 kHz. Monte a cena com
+            o jogo ou a câmera.
+          </li>
+          <li>
+            Inicie a transmissão no OBS e abra o palco no FluXo para conferir.
+          </li>
+        </ol>
+        <p className="muted sm">
+          A URL e a chave são secretas: não compartilhe a chave com o público.
+        </p>
+      </section>
+
+      <section className="set-block">
+        <h3 className="h3">Link do palco</h3>
+        <div className="obs-copy">
+          <code>{url}</code>
+          <button
+            type="button"
+            className="btn ghost sm"
+            onClick={() => copy(url, 'Link do palco copiado')}
+          >
+            <Icon name="link" /> Copiar
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function StoryComposer() {
+  const { actions } = useApp();
+  const [text, setText] = useState('');
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [kind, setKind] = useState('photo');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!file) {
+      setPreview(null);
+      return undefined;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    setKind(file.type.startsWith('video/') ? 'video' : 'photo');
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    const ok = await actions.publishStory({ text, file });
+    setBusy(false);
+    if (ok) actions.closeModal();
+  };
+
+  return (
+    <form className="story-form" onSubmit={submit}>
+      <p className="muted sm">
+        Seu story aparece no topo do feed e some automaticamente em 24 horas.
+      </p>
+      <div className="story-pick">
+        {preview ? (
+          kind === 'video' ? (
+            <video src={preview} muted loop autoPlay playsInline />
+          ) : (
+            <img src={preview} alt="" />
+          )
+        ) : (
+          <div className="story-empty">
+            <Icon name="camera" />
+            <span>Escolha uma foto ou vídeo</span>
+          </div>
+        )}
+      </div>
+      <div className="story-actions">
+        <label className="btn ghost sm" htmlFor="storyIn">
+          <Icon name={kind === 'video' ? 'video' : 'image'} />{' '}
+          {file ? 'Trocar mídia' : 'Escolher mídia'}
+        </label>
+        <input
+          id="storyIn"
+          type="file"
+          accept="image/*,video/*"
+          hidden
+          onChange={(event) => {
+            setFile(event.target.files?.[0] || null);
+            event.target.value = '';
+          }}
+        />
+        {file ? (
+          <button
+            type="button"
+            className="btn ghost sm"
+            onClick={() => setFile(null)}
+          >
+            <Icon name="x" /> Remover mídia
+          </button>
+        ) : null}
+      </div>
+      <textarea
+        className="input"
+        rows={3}
+        maxLength={280}
+        placeholder="Escreva uma legenda para o story..."
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+      />
+      <button
+        className="btn primary"
+        type="submit"
+        disabled={busy || (!file && !text.trim())}
+      >
+        <Icon name="plus" /> {busy ? 'Publicando...' : 'Publicar story'}
+      </button>
+    </form>
   );
 }
 
@@ -1081,7 +1358,10 @@ const MODAL_LABELS = {
   editpost: 'Editar publicação',
   share: 'Compartilhar publicação',
   newchat: 'Nova conversa',
+  newstory: 'Novo story',
+  obs: 'Transmitir com OBS',
   profilelist: 'Conexões',
+  user: 'Perfil',
   search: 'Radar FluXo',
 };
 
@@ -1180,8 +1460,16 @@ export default function ModalHost() {
     content = <SharePostModal modal={modal} />;
   } else if (modal.type === 'newchat') {
     content = <NewChatModal />;
+  } else if (modal.type === 'newstory') {
+    content = <StoryComposer />;
+  } else if (modal.type === 'obs') {
+    content = <ObsModal modal={modal} />;
+    wide = true;
   } else if (modal.type === 'profilelist') {
     content = <ProfileConnectionsModal modal={modal} />;
+  } else if (modal.type === 'user') {
+    content = <UserModal modal={modal} />;
+    wide = true;
   } else if (modal.type === 'search') {
     content = <SearchModal />;
     wide = true;
