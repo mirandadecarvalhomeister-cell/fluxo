@@ -273,6 +273,7 @@ export async function savePost(post, uid) {
         src: item.src && !item.src.startsWith('blob:') ? item.src : null,
         seed: item.seed || post.seed || post.id,
         dur: durSeconds(item.dur),
+        edit: item.edit && typeof item.edit === 'object' ? item.edit : null,
       }))
       .filter((item) => item.src || item.seed);
     const payload = {

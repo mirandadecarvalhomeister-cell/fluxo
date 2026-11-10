@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { ago } from '../lib/utils';
 import { userOf } from '../lib/selectors';
+import { hasEdits, mediaDisplayStyle, wrapperAspect } from '../lib/mediaEdit';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
+import { EditOverlay } from './MediaEditor';
 
 const SEEN_KEY = 'fluxo.storiesSeen';
 const DAY = 24 * 60 * 60 * 1000;
@@ -242,31 +244,67 @@ export function StoryViewer({ groups, startId, onClose }) {
       </div>
 
       <div className="story-stage">
-        {media?.kind === 'photo' && media.src ? (
-          <img src={media.src} alt="" />
-        ) : null}
-        {isVideo ? (
-          <video
-            ref={videoRef}
-            src={media.src}
-            autoPlay
-            playsInline
-            onLoadedMetadata={(event) =>
-              setVideoDuration(event.currentTarget.duration || 0)
-            }
-            onTimeUpdate={(event) =>
-              setProgress(
-                Math.min(
-                  100,
-                  (event.currentTarget.currentTime /
-                    (event.currentTarget.duration || 1)) *
-                    100
-                )
-              )
-            }
-            onEnded={next}
-          />
-        ) : null}
+        {media?.src && media.edit && hasEdits(media.edit) ? (
+          <span
+            className="med-wrap med-fit"
+            style={{ aspectRatio: String(wrapperAspect(media.edit)) }}
+          >
+            {isVideo ? (
+              <video
+                ref={videoRef}
+                src={media.src}
+                autoPlay
+                playsInline
+                style={mediaDisplayStyle(media.edit)}
+                onLoadedMetadata={(event) =>
+                  setVideoDuration(event.currentTarget.duration || 0)
+                }
+                onTimeUpdate={(event) =>
+                  setProgress(
+                    Math.min(
+                      100,
+                      (event.currentTarget.currentTime /
+                        (event.currentTarget.duration || 1)) *
+                        100
+                    )
+                  )
+                }
+                onEnded={next}
+              />
+            ) : (
+              <img src={media.src} alt="" style={mediaDisplayStyle(media.edit)} />
+            )}
+            <EditOverlay edit={media.edit} />
+          </span>
+        ) : (
+          <>
+            {media?.kind === 'photo' && media.src ? (
+              <img src={media.src} alt="" />
+            ) : null}
+            {isVideo ? (
+              <video
+                ref={videoRef}
+                src={media.src}
+                autoPlay
+                playsInline
+                onLoadedMetadata={(event) =>
+                  setVideoDuration(event.currentTarget.duration || 0)
+                }
+                onTimeUpdate={(event) =>
+                  setProgress(
+                    Math.min(
+                      100,
+                      (event.currentTarget.currentTime /
+                        (event.currentTarget.duration || 1)) *
+                        100
+                    )
+                  )
+                }
+                onEnded={next}
+              />
+            ) : null}
+          </>
+        )}
         {!media && story.text ? (
           <div className="story-text">
             <span>{story.text}</span>

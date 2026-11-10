@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { MAX_POST_MEDIA } from '../lib/media';
+import { mediaDisplayStyle } from '../lib/mediaEdit';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import Empty from './Empty';
 import { Icon } from './Icon';
+import MediaEditor, { EditOverlay } from './MediaEditor';
 import Post from './Post';
 import { StoriesBar, StoryViewer, storyGroups } from './Stories';
 
@@ -12,6 +14,8 @@ function Composer() {
   const draft = ui.draft;
   const media = draft.media || [];
   const first = data.me.name.split(' ')[0];
+  const [editing, setEditing] = useState(null);
+  const editingItem = editing !== null ? media[editing] : null;
 
   return (
     <form
@@ -37,7 +41,22 @@ function Composer() {
         <div className="cprev-list" aria-label="Prévia das mídias selecionadas">
           {media.map((item, index) => (
             <div className="cprev-item" key={`${item.src}-${index}`}>
-              {item.kind === 'photo' ? (
+              {item.edit ? (
+                <span className="cprev-frame">
+                  {item.kind === 'photo' ? (
+                    <img src={item.src} alt="" style={mediaDisplayStyle(item.edit)} />
+                  ) : (
+                    <video
+                      src={item.src}
+                      muted
+                      playsInline
+                      preload="metadata"
+                      style={mediaDisplayStyle(item.edit)}
+                    />
+                  )}
+                  <EditOverlay edit={item.edit} />
+                </span>
+              ) : item.kind === 'photo' ? (
                 <img src={item.src} alt={`Prévia ${index + 1}`} />
               ) : (
                 <video src={item.src} muted playsInline preload="metadata" />
@@ -45,6 +64,15 @@ function Composer() {
               <span className="cprev-tag">
                 {item.kind === 'photo' ? <Icon name="image" /> : <Icon name="video" />}
               </span>
+              <button
+                type="button"
+                className="cprev-edit"
+                onClick={() => setEditing(index)}
+                aria-label="Editar mídia"
+                title="Editar mídia"
+              >
+                <Icon name="edit" />
+              </button>
               <button
                 type="button"
                 className="x"
@@ -56,6 +84,21 @@ function Composer() {
             </div>
           ))}
         </div>
+      ) : null}
+
+      {editingItem ? (
+        <MediaEditor
+          key={`${editing}-${editingItem.src}`}
+          kind={editingItem.kind}
+          src={editingItem.src}
+          fileName={editingItem.name}
+          initialEdit={editingItem.edit}
+          onDone={(result) => {
+            actions.applyMediaEdit(editing, result);
+            setEditing(null);
+          }}
+          onCancel={() => setEditing(null)}
+        />
       ) : null}
 
       <div className="comp-actions">
@@ -103,7 +146,6 @@ export default function Feed() {
   return (
     <>
       <div className="pagehead">
-        <h1>Feed</h1>
         <div className="seg">
           <button
             className={tab === 'all' ? 'on' : ''}

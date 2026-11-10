@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { art } from '../lib/art';
 import { isLiveKitEnabled } from '../lib/livekit';
+import { mediaDisplayStyle } from '../lib/mediaEdit';
 import { CATS, COVERS } from '../lib/seed';
 import { roleOf, userOf } from '../lib/selectors';
 import { ago, fmt, slug } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
+import MediaEditor, { EditOverlay } from './MediaEditor';
 import Post from './Post';
 import { PostThumb } from './Profile';
 import SearchModal from './SearchModal';
@@ -668,17 +670,34 @@ function ProfileConnectionsModal({ modal }) {
                   @{person.handle} · {fmt(person.followers || 0)} seguidores
                 </span>
               </span>
-              {isFollowing ? (
-                <button
-                  type="button"
-                  className="btn ghost sm"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    actions.follow(id);
-                  }}
-                >
-                  Deixar de seguir
-                </button>
+              {tab === 'following' ? (
+                isFollowing ? (
+                  <button
+                    type="button"
+                    className="btn ghost sm"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      actions.follow(id);
+                    }}
+                  >
+                    Deixar de seguir
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn tonal sm"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      actions.follow(id);
+                    }}
+                  >
+                    Seguir
+                  </button>
+                )
+              ) : isFollowing ? (
+                <span className="pill acc" title="Você segue esta pessoa">
+                  Seguindo
+                </span>
               ) : (
                 <button
                   type="button"
@@ -1236,10 +1255,13 @@ function StoryComposer() {
   const [preview, setPreview] = useState(null);
   const [kind, setKind] = useState('photo');
   const [busy, setBusy] = useState(false);
+  const [edit, setEdit] = useState(null);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (!file) {
       setPreview(null);
+      setEdit(null);
       return undefined;
     }
     const url = URL.createObjectURL(file);
@@ -1252,7 +1274,7 @@ function StoryComposer() {
     event.preventDefault();
     if (busy) return;
     setBusy(true);
-    const ok = await actions.publishStory({ text, file });
+    const ok = await actions.publishStory({ text, file, edit });
     setBusy(false);
     if (ok) actions.closeModal();
   };
@@ -1264,7 +1286,23 @@ function StoryComposer() {
       </p>
       <div className="story-pick">
         {preview ? (
-          kind === 'video' ? (
+          edit ? (
+            <span className="story-pick-frame">
+              {kind === 'video' ? (
+                <video
+                  src={preview}
+                  muted
+                  loop
+                  autoPlay
+                  playsInline
+                  style={mediaDisplayStyle(edit)}
+                />
+              ) : (
+                <img src={preview} alt="" style={mediaDisplayStyle(edit)} />
+              )}
+              <EditOverlay edit={edit} />
+            </span>
+          ) : kind === 'video' ? (
             <video src={preview} muted loop autoPlay playsInline />
           ) : (
             <img src={preview} alt="" />
@@ -1295,12 +1333,39 @@ function StoryComposer() {
           <button
             type="button"
             className="btn ghost sm"
+            onClick={() => setEditing(true)}
+          >
+            <Icon name="edit" /> Editar
+          </button>
+        ) : null}
+        {file ? (
+          <button
+            type="button"
+            className="btn ghost sm"
             onClick={() => setFile(null)}
           >
             <Icon name="x" /> Remover mídia
           </button>
         ) : null}
       </div>
+      {editing && file && preview ? (
+        <MediaEditor
+          kind={kind}
+          src={preview}
+          fileName={file.name}
+          initialEdit={edit}
+          onDone={(result) => {
+            setEditing(false);
+            if (result.file) {
+              setEdit(null);
+              setFile(result.file);
+            } else {
+              setEdit(result.edit || null);
+            }
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      ) : null}
       <textarea
         className="input"
         rows={3}
@@ -1390,6 +1455,8 @@ export default function ModalHost() {
 
     const onKey = (event) => {
       if (event.key === 'Escape') {
+        // Se o editor de mídia estiver aberto, só ele deve fechar.
+        if (document.querySelector('.med-screen')) return;
         actionsRef.current.closeModal();
         return;
       }

@@ -391,7 +391,7 @@ export default function LiveStage({ channel, owner, clock, hearts }) {
       </div>
 
       <div className="lk-tools">
-        {remoteAudios.length ? (
+        {controlsReady ? (
           <>
             <button
               type="button"

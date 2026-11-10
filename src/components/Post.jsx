@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { art } from '../lib/art';
 import { mediaOf } from '../lib/media';
+import { hasEdits, mediaDisplayStyle } from '../lib/mediaEdit';
 import { userOf } from '../lib/selectors';
 import { ago, fmt, fmtDur } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar, LiveAvatar } from './Avatar';
 import { TagText } from './Brand';
 import { Icon } from './Icon';
+import { EditWrap } from './MediaEditor';
 
 const REACTIONS = ['❤️', '🔥', '👏', '😂', '😮', '😢', '🎉', '💜'];
 
@@ -15,17 +17,22 @@ function MediaItem({ item, author, index }) {
   const seed = item.seed || `${author.id}-${index}`;
   const fallback = art(seed, 900, 700);
   const picture = item.src && failedSrc !== item.src ? item.src : fallback;
+  const edit = item.edit && hasEdits(item.edit) ? item.edit : null;
+  const style = mediaDisplayStyle(edit);
 
   if (item.kind === 'video') {
     if (item.src) {
       return (
-        <video
-          className="media-video"
-          src={item.src}
-          controls
-          playsInline
-          preload="metadata"
-        />
+        <EditWrap edit={edit}>
+          <video
+            className="media-video"
+            src={item.src}
+            controls
+            playsInline
+            preload="metadata"
+            style={style}
+          />
+        </EditWrap>
       );
     }
     return (
@@ -44,14 +51,17 @@ function MediaItem({ item, author, index }) {
   }
 
   return (
-    <img
-      src={picture}
-      alt={`Foto publicada por ${author.name}`}
-      loading="lazy"
-      onError={() => {
-        if (item.src && failedSrc !== item.src) setFailedSrc(item.src);
-      }}
-    />
+    <EditWrap edit={edit}>
+      <img
+        src={picture}
+        alt={`Foto publicada por ${author.name}`}
+        loading="lazy"
+        style={style}
+        onError={() => {
+          if (item.src && failedSrc !== item.src) setFailedSrc(item.src);
+        }}
+      />
+    </EditWrap>
   );
 }
 

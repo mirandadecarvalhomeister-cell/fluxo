@@ -908,6 +908,45 @@ export function AppProvider({ children }) {
     }));
   }
 
+  // Aplica o resultado do editor de mídia ao item do rascunho: fotos vêm com
+  // a edição "queimada" em um novo arquivo; vídeos (ou fotos que não puderam
+  // ser queimadas) mantêm o objeto de edição para ser aplicado na exibição.
+  async function applyMediaEdit(index, { file = null, edit = null } = {}) {
+    const current = uiRef.current.draft.media || [];
+    if (!current[index]) return;
+    if (file) {
+      try {
+        let src = await fileToDataURL(file, 1080);
+        if (isSupabaseEnabled && sessionRef.current?.id) {
+          const uploaded = await remote.uploadMedia(file, sessionRef.current.id);
+          if (uploaded) src = uploaded;
+        }
+        setUi((u) => ({
+          ...u,
+          draft: {
+            ...u.draft,
+            media: (u.draft.media || []).map((item, i) =>
+              i === index ? { ...item, src, edit: null } : item
+            ),
+          },
+        }));
+        toast('Edição aplicada à mídia.');
+      } catch {
+        toast('Não foi possível aplicar a edição à mídia.');
+      }
+      return;
+    }
+    setUi((u) => ({
+      ...u,
+      draft: {
+        ...u.draft,
+        media: (u.draft.media || []).map((item, i) =>
+          i === index ? { ...item, edit: edit || null } : item
+        ),
+      },
+    }));
+  }
+
   function publish(text) {
     const draft = uiRef.current.draft;
     const trimmed = text.trim();
@@ -938,7 +977,7 @@ export function AppProvider({ children }) {
     toast('Publicado');
   }
 
-  async function publishStory({ text = '', file = null } = {}) {
+  async function publishStory({ text = '', file = null, edit = null } = {}) {
     let media = [];
     if (file) {
       try {
@@ -951,7 +990,7 @@ export function AppProvider({ children }) {
           const uploaded = await remote.uploadMedia(file, sessionRef.current.id);
           if (uploaded) src = uploaded;
         }
-        media = [{ kind, src, name: file.name }];
+        media = [{ kind, src, name: file.name, edit: edit || undefined }];
       } catch {
         toast('Não foi possível processar a mídia do story.');
         return false;
@@ -1950,6 +1989,7 @@ export function AppProvider({ children }) {
     clearDraftMedia: () =>
       setUi((u) => ({ ...u, draft: { ...u.draft, media: [] } })),
     removeDraftMedia,
+    applyMediaEdit,
     attachMedia,
     publish,
     publishStory,
