@@ -9,13 +9,23 @@
 import { isRecoveryLink, isSupabaseEnabled } from '../lib/supabase';
 import { isLiveKitEnabled } from '../lib/livekit';
 import * as remote from '../lib/remote';
-import { MAX_POST_MEDIA, mediaKind, parseRemoteMedia } from '../lib/media';
+import {
+  MAX_MEDIA_BYTES,
+  MAX_POST_MEDIA,
+  MAX_VIDEO_SECONDS,
+  fileVideoDuration,
+  mediaKind,
+  mb,
+  parseRemoteMedia,
+} from '../lib/media';
 import { COVERS, STATE_VERSION, newState } from '../lib/seed';
+import { notificationText } from '../lib/selectors';
 import { playMessageSound, playSentSound } from '../lib/sound';
 import {
   fileToDataURL,
   fileToRawDataURL,
   fmt,
+  fmtDur,
   lsGet,
   lsSet,
   sha256,
@@ -50,6 +60,7 @@ const readSettings = () => {
 };
 
 const cacheKey = (email) => DATA_PREFIX + email;
+const notifSeenKey = (id) => `fluxo.notifs.seen.${id}`;
 const dropBlob = (_k, v) =>
   typeof v === 'string' && (v.startsWith('blob:') || v.length > 2_000_000)
     ? null
@@ -295,6 +306,45 @@ function mergeWorkspace(base, ws, user) {
     .map((row) => asPerson(row.follower_id))
     .filter((id) => id !== 'me');
 
+  // Notificações: curtidas e comentários nos meus posts e quem começou
+  // a me seguir — derivadas dos dados que já carregamos.
+  const myPostIds = new Set(
+    (ws.posts || []).filter((p) => p.author_id === uidv).map((p) => p.id)
+  );
+  const notifications = [];
+  (ws.likeRows || []).forEach((row) => {
+    if (row.user_id === uidv || !myPostIds.has(row.post_id)) return;
+    notifications.push({
+      id: `like:${row.post_id}:${row.user_id}`,
+      type: 'like',
+      actorId: row.user_id,
+      postId: row.post_id,
+      emoji: row.emoji || '❤️',
+      ts: new Date(row.created_at || Date.now()).getTime(),
+    });
+  });
+  (ws.comments || []).forEach((c) => {
+    if (c.author_id === uidv || !myPostIds.has(c.post_id)) return;
+    notifications.push({
+      id: `comment:${c.id}`,
+      type: 'comment',
+      actorId: c.author_id,
+      postId: c.post_id,
+      ts: new Date(c.created_at || Date.now()).getTime(),
+    });
+  });
+  (ws.allFollows || []).forEach((row) => {
+    if (row.following_id !== uidv || row.follower_id === uidv) return;
+    notifications.push({
+      id: `follow:${row.follower_id}`,
+      type: 'follow',
+      actorId: row.follower_id,
+      ts: new Date(row.created_at || Date.now()).getTime(),
+    });
+  });
+  notifications.sort((a, b) => b.ts - a.ts);
+  const trimmedNotifications = notifications.slice(0, 80);
+
   return {
     ...base,
     me: { ...me, scraps },
@@ -305,6 +355,7 @@ function mergeWorkspace(base, ws, user) {
     comms,
     chans,
     chats,
+    notifications: trimmedNotifications,
   };
 }
 
@@ -709,6 +760,122 @@ export function AppProvider({ children }) {
     });
   }, [session?.id]);
 
+  // Sino de notificações: curtidas nos meus posts, comentários e seguidores.
+  useEffect(() => {
+    if (!isSupabaseEnabled || !session?.id) return undefined;
+    return remote.subscribeNotifications(session.id, (kind, row) => {
+      if (!row) return;
+      const uidv = session.id;
+      const ts = row.created_at ? new Date(row.created_at).getTime() : Date.now();
+      const cur = dataRef.current;
+      if (!cur) return;
+
+      let notification = null;
+      if (kind === 'follow') {
+        if (row.following_id === uidv && row.follower_id !== uidv) {
+          notification = {
+            id: `follow:${row.follower_id}`,
+            type: 'follow',
+            actorId: row.follower_id,
+            ts,
+          };
+        }
+      } else if (kind === 'like') {
+        const post = cur.posts.find((p) => p.id === row.post_id);
+        if (row.user_id !== uidv && post && post.by === 'me') {
+          notification = {
+            id: `like:${row.post_id}:${row.user_id}`,
+            type: 'like',
+            actorId: row.user_id,
+            postId: row.post_id,
+            emoji: row.emoji || '❤️',
+            ts,
+          };
+        }
+      } else if (kind === 'comment') {
+        const post = cur.posts.find((p) => p.id === row.post_id);
+        if (row.author_id !== uidv && post && post.by === 'me') {
+          notification = {
+            id: `comment:${row.id}`,
+            type: 'comment',
+            actorId: row.author_id,
+            postId: row.post_id,
+            ts,
+          };
+        }
+      }
+      if (!notification) return;
+
+      setData((state) => {
+        if (!state) return state;
+        const notifications = state.notifications || [];
+        if (notifications.some((n) => n.id === notification.id)) return state;
+        const next = {
+          ...state,
+          notifications: [notification, ...notifications].slice(0, 80),
+        };
+        if (kind === 'follow') {
+          const followers = state.followers || [];
+          if (!followers.includes(row.follower_id)) {
+            next.followers = [row.follower_id, ...followers];
+          }
+          next.me = { ...state.me, followers: (state.me.followers || 0) + 1 };
+        } else if (kind === 'like') {
+          next.posts = state.posts.map((p) =>
+            p.id === row.post_id ? { ...p, likes: (p.likes || 0) + 1 } : p
+          );
+        } else if (kind === 'comment') {
+          const comment = { id: row.id, by: row.author_id, text: row.text || '', ts };
+          next.posts = state.posts.map((p) =>
+            p.id === row.post_id
+              ? p.comments.some((c) => c.id === comment.id)
+                ? p
+                : { ...p, comments: [...p.comments, comment] }
+              : p
+          );
+        }
+        return next;
+      });
+
+      const settings = uiRef.current.settings || DEFAULT_SETTINGS;
+      if (
+        !settings.notifications ||
+        typeof Notification === 'undefined' ||
+        Notification.permission !== 'granted' ||
+        !document.hidden
+      ) {
+        return;
+      }
+      const actor = (cur.users || {})[notification.actorId];
+      const post = notification.postId
+        ? cur.posts.find((p) => p.id === notification.postId)
+        : null;
+      try {
+        new Notification('FluXo', {
+          body: `${actor?.name || 'Alguém'} ${notificationText(notification, post)}`,
+          icon: '/assets/icon-192.png',
+          tag: notification.id,
+        });
+      } catch {
+        /* notification is best-effort */
+      }
+    });
+  }, [session?.id]);
+
+  // Guarda quando a pessoa viu as notificações pela última vez (por conta).
+  useEffect(() => {
+    if (!session?.id) return;
+    const seen = Number(lsGet(notifSeenKey(session.id))) || 0;
+    setUi((u) => (u.notifSeen === seen ? u : { ...u, notifSeen: seen }));
+  }, [session?.id]);
+
+  function markNotifsSeen() {
+    const id = sessionRef.current?.id;
+    const now = Date.now();
+    if (id) lsSet(notifSeenKey(id), String(now));
+    setUi((u) => ({ ...u, notifSeen: now }));
+  }
+
   useEffect(() => {
     return () => {
       clearTimeout(toastTimer.current);
@@ -874,13 +1041,33 @@ export function AppProvider({ children }) {
       return;
     }
     const selected = list.slice(0, room);
+    let kept = 0;
+    let cloudFailed = 0;
     try {
       for (const file of selected) {
         const kind = mediaKind(file);
+        if (kind === 'video') {
+          const seconds = await fileVideoDuration(file);
+          if (seconds != null && seconds > MAX_VIDEO_SECONDS + 1) {
+            toast(
+              `“${file.name}” tem ${fmtDur(seconds)}. Os vídeos devem ter no máximo 3 minutos.`
+            );
+            continue;
+          }
+        }
+        if (isSupabaseEnabled && file.size > MAX_MEDIA_BYTES) {
+          toast(
+            `“${file.name}” tem ${mb(file.size)}. O limite de envio é 50 MB${
+              kind === 'video' ? ' — corte o vídeo ou reduza a qualidade' : ''
+            }.`
+          );
+          continue;
+        }
         let src = kind === 'photo' ? await fileToDataURL(file, 1080) : URL.createObjectURL(file);
         if (isSupabaseEnabled && sessionRef.current?.id) {
           const uploaded = await remote.uploadMedia(file, sessionRef.current.id);
           if (uploaded) src = uploaded;
+          else cloudFailed += 1;
         }
         setUi((u) => ({
           ...u,
@@ -889,9 +1076,17 @@ export function AppProvider({ children }) {
             media: [...(u.draft.media || []), { kind, src, name: file.name }],
           },
         }));
+        kept += 1;
+      }
+      if (kept && cloudFailed) {
+        toast(
+          'Não foi possível enviar ' +
+            (cloudFailed > 1 ? `${cloudFailed} mídias` : 'uma mídia') +
+            ' para a nuvem. Ela pode não aparecer depois de recarregar.'
+        );
       }
       if (list.length > room) {
-        toast(`Adicionamos ${room} de ${list.length}. O limite é ${MAX_POST_MEDIA}.`);
+        toast(`Adicionamos ${kept} de ${list.length}. O limite é ${MAX_POST_MEDIA}.`);
       }
     } catch {
       toast('Não foi possível processar um dos arquivos.');
@@ -982,6 +1177,23 @@ export function AppProvider({ children }) {
     if (file) {
       try {
         const kind = mediaKind(file);
+        if (kind === 'video') {
+          const seconds = await fileVideoDuration(file);
+          if (seconds != null && seconds > MAX_VIDEO_SECONDS + 1) {
+            toast(
+              `Este vídeo tem ${fmtDur(seconds)}. Os vídeos devem ter no máximo 3 minutos.`
+            );
+            return false;
+          }
+        }
+        if (isSupabaseEnabled && file.size > MAX_MEDIA_BYTES) {
+          toast(
+            `Este arquivo tem ${mb(file.size)}. O limite de envio é 50 MB${
+              kind === 'video' ? ' — corte o vídeo ou reduza a qualidade' : ''
+            }.`
+          );
+          return false;
+        }
         let src =
           kind === 'photo'
             ? await fileToDataURL(file, 1080)
@@ -989,6 +1201,10 @@ export function AppProvider({ children }) {
         if (isSupabaseEnabled && sessionRef.current?.id) {
           const uploaded = await remote.uploadMedia(file, sessionRef.current.id);
           if (uploaded) src = uploaded;
+          else {
+            toast('Não foi possível enviar a mídia para a nuvem. Tente novamente.');
+            return false;
+          }
         }
         media = [{ kind, src, name: file.name, edit: edit || undefined }];
       } catch {
@@ -2013,6 +2229,8 @@ export function AppProvider({ children }) {
     sharePostTo,
     shareChannel,
     openSettings: () => setUi((u) => ({ ...u, modal: { type: 'settings' } })),
+    openNotifications: () => setUi((u) => ({ ...u, modal: { type: 'notifications' } })),
+    markNotifsSeen,
     setSetting,
     playTestSound: playMessageSound,
     installApp,

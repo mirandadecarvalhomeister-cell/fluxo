@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { unreadTotal } from '../lib/selectors';
+import { unreadNotifications, unreadTotal } from '../lib/selectors';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import { Logo } from './Brand';
@@ -27,6 +27,18 @@ const TITLES = {
 export default function Shell() {
   const { data, ui, actions, online } = useApp();
   const unread = unreadTotal(data);
+  const notifUnread = unreadNotifications(data, ui.notifSeen || 0).length;
+  const notifLabel = notifUnread
+    ? `Notificações (${notifUnread} ${notifUnread === 1 ? 'nova' : 'novas'})`
+    : 'Notificações';
+  const bellBtn = (
+    <button className="icon-btn" onClick={actions.openNotifications} aria-label={notifLabel} title={notifLabel}>
+      <Icon name="bell" />
+      {notifUnread ? (
+        <span className="bubble">{notifUnread > 9 ? '9+' : notifUnread}</span>
+      ) : null}
+    </button>
+  );
 
   useEffect(() => {
     document.title = `${TITLES[ui.route] || 'FluXo'} · FluXo`;
@@ -127,6 +139,7 @@ export default function Shell() {
             </div>
           </a>
           <div className="row" style={{ justifyContent: 'space-between', padding: '0 4px' }}>
+            {bellBtn}
             <button className="icon-btn" onClick={actions.toggleTheme} aria-label="Alternar tema">
               <Icon name={themeIcon} />
             </button>
@@ -146,6 +159,7 @@ export default function Shell() {
               <button className="icon-btn" onClick={actions.openSearch} aria-label="Buscar">
                 <Icon name="search" />
               </button>
+              {bellBtn}
               <button className="icon-btn" onClick={actions.toggleTheme} aria-label="Alternar tema">
                 <Icon name={themeIcon} />
               </button>

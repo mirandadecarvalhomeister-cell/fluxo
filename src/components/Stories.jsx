@@ -270,6 +270,7 @@ export function StoryViewer({ groups, startId, onClose }) {
                   )
                 }
                 onEnded={next}
+                onError={next}
               />
             ) : (
               <img src={media.src} alt="" style={mediaDisplayStyle(media.edit)} />
@@ -301,6 +302,7 @@ export function StoryViewer({ groups, startId, onClose }) {
                   )
                 }
                 onEnded={next}
+                onError={next}
               />
             ) : null}
           </>

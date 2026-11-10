@@ -28,10 +28,10 @@ const dedupe = (rows) => {
 async function loadPostLikes() {
   const { data, error } = await supabase
     .from('post_likes')
-    .select('post_id,user_id,emoji');
+    .select('post_id,user_id,emoji,created_at');
   if (!error) return data || [];
   warn(error);
-  return safe(supabase.from('post_likes').select('post_id,user_id'));
+  return safe(supabase.from('post_likes').select('post_id,user_id,created_at'));
 }
 
 export async function getSession() {
@@ -167,7 +167,7 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
     ),
     loadPostLikes(),
     safe(supabase.from('post_saves').select('post_id').eq('user_id', uid)),
-    safe(supabase.from('follows').select('follower_id,following_id')),
+    safe(supabase.from('follows').select('follower_id,following_id,created_at')),
     safe(supabase.from('community_members').select('community_id,user_id,role')),
     safe(supabase.from('communities').select('*')),
     safe(supabase.from('channel_members').select('channel_id,user_id')),
@@ -221,6 +221,7 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
     posts,
     comments,
     likes: { counts: likeCounts, mine: myLikes },
+    likeRows: likes,
     saves: new Set(saves.map((r) => r.post_id)),
     follows,
     allFollows,
@@ -707,6 +708,44 @@ export function subscribeChannels(callback) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'channels' },
         (payload) => callback(payload)
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel).catch(() => {});
+    };
+  } catch (error) {
+    warn(error);
+    return () => {};
+  }
+}
+
+export function subscribeNotifications(uid, callback) {
+  if (!enabled()) return () => {};
+  try {
+    const channel = supabase
+      .channel(`notifications-${uid}`)
+      // Novos seguidores: dá para filtrar no servidor.
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'follows',
+          filter: `following_id=eq.${uid}`,
+        },
+        (payload) => callback('follow', payload.new)
+      )
+      // Curtidas e comentários: sem filtro de "posts meus" no servidor,
+      // então filtramos no cliente pelos ids que a gente já conhece.
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'post_likes' },
+        (payload) => callback('like', payload.new)
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'comments' },
+        (payload) => callback('comment', payload.new)
       )
       .subscribe();
     return () => {

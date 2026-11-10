@@ -14,6 +14,7 @@ const REACTIONS = ['❤️', '🔥', '👏', '😂', '😮', '😢', '🎉', '�
 
 function MediaItem({ item, author, index }) {
   const [failedSrc, setFailedSrc] = useState(null);
+  const [videoFailed, setVideoFailed] = useState(false);
   const seed = item.seed || `${author.id}-${index}`;
   const fallback = art(seed, 900, 700);
   const picture = item.src && failedSrc !== item.src ? item.src : fallback;
@@ -21,7 +22,7 @@ function MediaItem({ item, author, index }) {
   const style = mediaDisplayStyle(edit);
 
   if (item.kind === 'video') {
-    if (item.src) {
+    if (item.src && !videoFailed) {
       return (
         <EditWrap edit={edit}>
           <video
@@ -31,6 +32,7 @@ function MediaItem({ item, author, index }) {
             playsInline
             preload="metadata"
             style={style}
+            onError={() => setVideoFailed(true)}
           />
         </EditWrap>
       );
@@ -45,7 +47,11 @@ function MediaItem({ item, author, index }) {
         <span className="playbtn">
           <Icon name="play" className="fill" />
         </span>
-        {item.dur ? <span className="dur">{fmtDur(item.dur)}</span> : null}
+        {videoFailed && item.src ? (
+          <span className="dur">Vídeo indisponível</span>
+        ) : item.dur ? (
+          <span className="dur">{fmtDur(item.dur)}</span>
+        ) : null}
       </div>
     );
   }

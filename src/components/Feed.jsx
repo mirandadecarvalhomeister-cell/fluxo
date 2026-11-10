@@ -119,7 +119,7 @@ function Composer() {
             }}
           />
           <span className="muted sm">
-            {media.length}/{MAX_POST_MEDIA}
+            {media.length}/{MAX_POST_MEDIA} · vídeos até 3 min
           </span>
         </div>
         <div className="row">

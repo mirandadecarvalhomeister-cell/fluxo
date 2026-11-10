@@ -3,7 +3,7 @@ import { art } from '../lib/art';
 import { isLiveKitEnabled } from '../lib/livekit';
 import { mediaDisplayStyle } from '../lib/mediaEdit';
 import { CATS, COVERS } from '../lib/seed';
-import { roleOf, userOf } from '../lib/selectors';
+import { notificationText, roleOf, userOf } from '../lib/selectors';
 import { ago, fmt, slug } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
@@ -1283,6 +1283,7 @@ function StoryComposer() {
     <form className="story-form" onSubmit={submit}>
       <p className="muted sm">
         Seu story aparece no topo do feed e some automaticamente em 24 horas.
+        Vídeos de até 3 minutos.
       </p>
       <div className="story-pick">
         {preview ? (
@@ -1385,6 +1386,65 @@ function StoryComposer() {
   );
 }
 
+function NotificationsModal() {
+  const { data, ui, actions } = useApp();
+  const notifications = data.notifications || [];
+  const seen = ui.notifSeen || 0;
+
+  useEffect(() => {
+    // Ao abrir a lista, tudo conta como lido.
+    actions.markNotifsSeen();
+  }, []);
+
+  if (!notifications.length) {
+    return (
+      <div>
+        <h2>Notificações</h2>
+        <p className="muted">
+          Nada por aqui ainda. Quando alguém curtir a sua foto, comentar na sua
+          publicação ou começar a seguir você, aparece aqui.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="notifications-modal">
+      <h2>Notificações</h2>
+      <div className="share-list notif-list">
+        {notifications.map((n) => {
+          const person = userOf(data, n.actorId);
+          const post = n.postId
+            ? data.posts.find((p) => p.id === n.postId)
+            : null;
+          const unread = n.ts > seen;
+          return (
+            <button
+              type="button"
+              className="share-person notif-row"
+              key={n.id}
+              onClick={() =>
+                n.postId ? actions.openPost(n.postId) : actions.openUser(n.actorId)
+              }
+            >
+              <Avatar user={person} size={40} />
+              <span className="grow">
+                <b className="ell" style={{ display: 'block' }}>
+                  @{person.handle || person.name}
+                </b>
+                <span className="muted sm ell" style={{ display: 'block' }}>
+                  {notificationText(n, post)} · {ago(n.ts)}
+                </span>
+              </span>
+              {unread ? <span className="notif-dot" title="Nova" /> : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ConfirmModal({ modal }) {
   const { actions } = useApp();
   const confirm = () => {
@@ -1424,6 +1484,7 @@ const MODAL_LABELS = {
   share: 'Compartilhar publicação',
   newchat: 'Nova conversa',
   newstory: 'Novo story',
+  notifications: 'Notificações',
   obs: 'Transmitir com OBS',
   profilelist: 'Conexões',
   user: 'Perfil',
@@ -1529,6 +1590,8 @@ export default function ModalHost() {
     content = <NewChatModal />;
   } else if (modal.type === 'newstory') {
     content = <StoryComposer />;
+  } else if (modal.type === 'notifications') {
+    content = <NotificationsModal />;
   } else if (modal.type === 'obs') {
     content = <ObsModal modal={modal} />;
     wide = true;
