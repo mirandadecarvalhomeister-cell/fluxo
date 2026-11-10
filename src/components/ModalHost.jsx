@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { art } from '../lib/art';
 import { isLiveKitEnabled } from '../lib/livekit';
+import { MAX_POST_MEDIA, mediaOf } from '../lib/media';
 import { mediaDisplayStyle } from '../lib/mediaEdit';
 import { CATS, COVERS } from '../lib/seed';
-import { notificationText, roleOf, userOf } from '../lib/selectors';
+import {
+  groupNotifications,
+  likesGroupText,
+  notificationText,
+  roleOf,
+  userOf,
+} from '../lib/selectors';
 import { ago, fmt, slug } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
@@ -826,13 +833,19 @@ function EditPostModal({ modal }) {
   const [commentsDisabled, setCommentsDisabled] = useState(
     !!post?.commentsDisabled
   );
+  const [editing, setEditing] = useState(null);
 
   if (!post) return <p className="muted">Publicação indisponível.</p>;
+
+  const media = mediaOf(post);
+  const editingItem = editing !== null ? media[editing] : null;
+  const canSave = Boolean(text.trim() || media.length);
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
+        if (!canSave) return;
         actions.updatePost(post.id, { text, commentsDisabled });
       }}
     >
@@ -846,12 +859,113 @@ function EditPostModal({ modal }) {
           maxLength={600}
           value={text}
           onChange={(event) => setText(event.target.value)}
+          placeholder="Escreva algo ou use @ para mencionar alguém..."
           autoFocus
         />
         <span className="muted sm" style={{ textAlign: 'right' }}>
           {text.length}/600
         </span>
       </div>
+
+      <div className="field">
+        <label>Mídia</label>
+        {media.length ? (
+          <div className="cprev-list" aria-label="Mídias da publicação">
+            {media.map((item, index) => (
+              <div className="cprev-item" key={`${item.src || item.seed}-${index}`}>
+                {!item.src ? (
+                  <img
+                    src={art(item.seed || `${post.id}-${index}`, 480, 480)}
+                    alt={`Mídia ${index + 1}`}
+                  />
+                ) : item.edit ? (
+                  <span className="cprev-frame">
+                    {item.kind === 'photo' ? (
+                      <img src={item.src} alt="" style={mediaDisplayStyle(item.edit)} />
+                    ) : (
+                      <video
+                        src={item.src}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        style={mediaDisplayStyle(item.edit)}
+                      />
+                    )}
+                    <EditOverlay edit={item.edit} />
+                  </span>
+                ) : item.kind === 'photo' ? (
+                  <img src={item.src} alt={`Mídia ${index + 1}`} />
+                ) : (
+                  <video src={item.src} muted playsInline preload="metadata" />
+                )}
+                <span className="cprev-tag">
+                  {item.kind === 'photo' ? <Icon name="image" /> : <Icon name="video" />}
+                </span>
+                {item.src ? (
+                  <button
+                    type="button"
+                    className="cprev-edit"
+                    onClick={() => setEditing(index)}
+                    aria-label="Editar mídia"
+                    title="Editar mídia"
+                  >
+                    <Icon name="edit" />
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="x"
+                  onClick={() => {
+                    setEditing(null);
+                    actions.removePostMedia(post.id, index);
+                  }}
+                  aria-label="Remover mídia"
+                >
+                  <Icon name="x" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="muted sm">Esta publicação está sem mídia.</p>
+        )}
+        <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          <label className="btn ghost sm" htmlFor="epMedia">
+            <Icon name="image" /> Adicionar fotos ou vídeos
+          </label>
+          <input
+            id="epMedia"
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            hidden
+            onChange={(event) => {
+              const files = event.target.files;
+              if (files?.length) actions.attachPostMedia(post.id, files);
+              event.target.value = '';
+            }}
+          />
+          <span className="muted sm">
+            {media.length}/{MAX_POST_MEDIA} · vídeos até 3 min
+          </span>
+        </div>
+      </div>
+
+      {editingItem ? (
+        <MediaEditor
+          key={`${editing}-${editingItem.src}`}
+          kind={editingItem.kind}
+          src={editingItem.src}
+          fileName={editingItem.name || 'foto'}
+          initialEdit={editingItem.edit}
+          onDone={(result) => {
+            actions.applyPostMediaEdit(post.id, editing, result);
+            setEditing(null);
+          }}
+          onCancel={() => setEditing(null)}
+        />
+      ) : null}
+
       <label className="switch-row">
         <span>
           <b>Permitir comentários</b>
@@ -863,13 +977,12 @@ function EditPostModal({ modal }) {
           onChange={(event) => setCommentsDisabled(!event.target.checked)}
         />
       </label>
-      {post.media?.length ? (
-        <p className="muted sm" style={{ marginTop: 8 }}>
-          Esta publicação tem {post.media.length} mídia(s). Para trocar as mídias, exclua e
-          publique novamente.
-        </p>
-      ) : null}
-      <button className="btn primary block" type="submit" style={{ marginTop: 14 }}>
+      <button
+        className="btn primary block"
+        type="submit"
+        disabled={!canSave}
+        style={{ marginTop: 14 }}
+      >
         Salvar alterações
       </button>
     </form>
@@ -1402,27 +1515,43 @@ function NotificationsModal() {
         <h2>Notificações</h2>
         <p className="muted">
           Nada por aqui ainda. Quando alguém curtir a sua foto, comentar na sua
-          publicação ou começar a seguir você, aparece aqui.
+          publicação, mencionar você com @ ou começar a seguir você, aparece
+          aqui.
         </p>
       </div>
     );
   }
 
+  const groups = groupNotifications(notifications);
+
   return (
     <div className="notifications-modal">
       <h2>Notificações</h2>
       <div className="share-list notif-list">
-        {notifications.map((n) => {
+        {groups.map((group) => {
+          const n = group.kind === 'likes' ? group.latest : group.notification;
           const person = userOf(data, n.actorId);
           const post = n.postId
             ? data.posts.find((p) => p.id === n.postId)
             : null;
-          const unread = n.ts > seen;
+          const unread =
+            group.kind === 'likes'
+              ? group.items.some((item) => item.ts > seen)
+              : n.ts > seen;
+          const others = group.kind === 'likes' ? group.count - 1 : 0;
+          const handle = `@${person.handle || person.name}`;
+          const label = others
+            ? `${handle} e ${others === 1 ? 'outra pessoa' : `outras ${others} pessoas`}`
+            : handle;
+          const text =
+            group.kind === 'likes' && others
+              ? likesGroupText(n, post)
+              : notificationText(n, post);
           return (
             <button
               type="button"
               className="share-person notif-row"
-              key={n.id}
+              key={group.kind === 'likes' ? `likes:${group.postId}` : n.id}
               onClick={() =>
                 n.postId ? actions.openPost(n.postId) : actions.openUser(n.actorId)
               }
@@ -1430,10 +1559,10 @@ function NotificationsModal() {
               <Avatar user={person} size={40} />
               <span className="grow">
                 <b className="ell" style={{ display: 'block' }}>
-                  @{person.handle || person.name}
+                  {label}
                 </b>
                 <span className="muted sm ell" style={{ display: 'block' }}>
-                  {notificationText(n, post)} · {ago(n.ts)}
+                  {text} · {ago(n.ts)}
                 </span>
               </span>
               {unread ? <span className="notif-dot" title="Nova" /> : null}

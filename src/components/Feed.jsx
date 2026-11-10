@@ -31,7 +31,7 @@ function Composer() {
           id="ctext"
           rows={2}
           maxLength={600}
-          placeholder={`O que está rolando no seu fluxo, ${first}?`}
+          placeholder={`O que está rolando no seu fluxo, ${first}? Use @ para mencionar alguém.`}
           value={draft.text}
           onChange={(event) => actions.setDraftText(event.target.value)}
         />

@@ -387,7 +387,7 @@ export default function Post({ post, detail = false }) {
                 className="in"
                 type="text"
                 maxLength={240}
-                placeholder="Escreva um comentário"
+                placeholder="Escreva um comentário (use @ para mencionar)"
                 aria-label="Comentário"
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}

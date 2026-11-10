@@ -15,11 +15,12 @@ import {
   MAX_VIDEO_SECONDS,
   fileVideoDuration,
   mediaKind,
+  mediaOf,
   mb,
   parseRemoteMedia,
 } from '../lib/media';
 import { COVERS, STATE_VERSION, newState } from '../lib/seed';
-import { notificationText } from '../lib/selectors';
+import { mentionsHandle, notificationText } from '../lib/selectors';
 import { playMessageSound, playSentSound } from '../lib/sound';
 import {
   fileToDataURL,
@@ -330,6 +331,7 @@ function mergeWorkspace(base, ws, user) {
       type: 'comment',
       actorId: c.author_id,
       postId: c.post_id,
+      text: c.text || '',
       ts: new Date(c.created_at || Date.now()).getTime(),
     });
   });
@@ -342,6 +344,39 @@ function mergeWorkspace(base, ws, user) {
       ts: new Date(row.created_at || Date.now()).getTime(),
     });
   });
+
+  // Menções (@handle) em publicações e comentários de outras pessoas.
+  const myHandle = String(ws.profile?.handle || '').toLowerCase();
+  if (myHandle) {
+    (ws.posts || []).forEach((p) => {
+      if (p.author_id === uidv || !mentionsHandle(p.text, myHandle)) return;
+      notifications.push({
+        id: `mention:post:${p.id}`,
+        type: 'mention',
+        source: 'post',
+        actorId: p.author_id,
+        postId: p.id,
+        ts: new Date(p.created_at || Date.now()).getTime(),
+      });
+    });
+    (ws.comments || []).forEach((c) => {
+      if (
+        c.author_id === uidv ||
+        myPostIds.has(c.post_id) || // comentário no meu post já notifica
+        !mentionsHandle(c.text, myHandle)
+      ) {
+        return;
+      }
+      notifications.push({
+        id: `mention:comment:${c.id}`,
+        type: 'mention',
+        source: 'comment',
+        actorId: c.author_id,
+        postId: c.post_id,
+        ts: new Date(c.created_at || Date.now()).getTime(),
+      });
+    });
+  }
   notifications.sort((a, b) => b.ts - a.ts);
   const trimmedNotifications = notifications.slice(0, 80);
 
@@ -794,15 +829,42 @@ export function AppProvider({ children }) {
         }
       } else if (kind === 'comment') {
         const post = cur.posts.find((p) => p.id === row.post_id);
-        if (row.author_id !== uidv && post && post.by === 'me') {
+        const mine = post?.by === 'me';
+        if (row.author_id !== uidv && mine) {
           notification = {
             id: `comment:${row.id}`,
             type: 'comment',
             actorId: row.author_id,
             postId: row.post_id,
+            text: row.text || '',
+            ts,
+          };
+        } else if (
+          row.author_id !== uidv &&
+          !mine &&
+          mentionsHandle(row.text, cur.me?.handle)
+        ) {
+          notification = {
+            id: `mention:comment:${row.id}`,
+            type: 'mention',
+            source: 'comment',
+            actorId: row.author_id,
+            postId: row.post_id,
             ts,
           };
         }
+      } else if (kind === 'post') {
+        if (row.author_id === uidv || !mentionsHandle(row.text, cur.me?.handle)) {
+          return;
+        }
+        notification = {
+          id: `mention:post:${row.id}`,
+          type: 'mention',
+          source: 'post',
+          actorId: row.author_id,
+          postId: row.id,
+          ts,
+        };
       }
       if (!notification) return;
 
@@ -833,6 +895,45 @@ export function AppProvider({ children }) {
                 : { ...p, comments: [...p.comments, comment] }
               : p
           );
+        } else if (kind === 'post') {
+          // A publicação mencionada ainda não estava no feed: entra agora,
+          // senão a notificação abriria um post inexistente.
+          if (!state.posts.some((p) => p.id === row.id)) {
+            const media = parseRemoteMedia(row.media);
+            if (!media.length && row.media_url) {
+              media.push({
+                kind: row.kind === 'video' ? 'video' : 'photo',
+                src: row.media_url,
+                seed: row.seed || row.id,
+                dur: row.dur,
+              });
+            }
+            if (!media.length && (row.kind === 'photo' || row.kind === 'video')) {
+              media.push({ kind: row.kind, seed: row.seed || row.id, dur: row.dur });
+            }
+            const isStory =
+              row.kind === 'story' || String(row.seed || '').startsWith('story:');
+            next.posts = [
+              {
+                id: row.id,
+                by: row.author_id,
+                ts,
+                text: row.text || '',
+                kind: isStory ? 'story' : row.kind || 'text',
+                seed: row.seed || row.id,
+                src: row.media_url || media[0]?.src,
+                media,
+                dur: row.dur ?? undefined,
+                likes: row.likes || 0,
+                liked: false,
+                myReaction: null,
+                saved: false,
+                commentsDisabled: !!row.comments_disabled,
+                comments: [],
+              },
+              ...state.posts,
+            ];
+          }
         }
         return next;
       });
@@ -1142,6 +1243,117 @@ export function AppProvider({ children }) {
     }));
   }
 
+  // Adiciona novas mídias a uma publicação já existente (mesmas regras do
+  // rascunho: limite de itens, 3 minutos de vídeo e 50 MB por arquivo).
+  async function attachPostMedia(postId, files) {
+    const post = dataRef.current?.posts.find((p) => p.id === postId);
+    if (!post) return;
+    const current = mediaOf(post);
+    const room = MAX_POST_MEDIA - current.length;
+    if (room <= 0) {
+      toast(`Você pode anexar até ${MAX_POST_MEDIA} itens por publicação.`);
+      return;
+    }
+    const list = Array.from(files || []).filter(Boolean).slice(0, room);
+    let added = [];
+    let cloudFailed = 0;
+    try {
+      for (const file of list) {
+        const kind = mediaKind(file);
+        if (kind === 'video') {
+          const seconds = await fileVideoDuration(file);
+          if (seconds != null && seconds > MAX_VIDEO_SECONDS + 1) {
+            toast(
+              `“${file.name}” tem ${fmtDur(seconds)}. Os vídeos devem ter no máximo 3 minutos.`
+            );
+            continue;
+          }
+        }
+        if (isSupabaseEnabled && file.size > MAX_MEDIA_BYTES) {
+          toast(
+            `“${file.name}” tem ${mb(file.size)}. O limite de envio é 50 MB${
+              kind === 'video' ? ' — corte o vídeo ou reduza a qualidade' : ''
+            }.`
+          );
+          continue;
+        }
+        let src =
+          kind === 'photo'
+            ? await fileToDataURL(file, 1080)
+            : URL.createObjectURL(file);
+        if (isSupabaseEnabled && sessionRef.current?.id) {
+          const uploaded = await remote.uploadMedia(file, sessionRef.current.id);
+          if (uploaded) src = uploaded;
+          else cloudFailed += 1;
+        }
+        added.push({ kind, src, name: file.name });
+      }
+      if (added.length) {
+        updatePost(
+          postId,
+          { media: [...current, ...added].slice(0, MAX_POST_MEDIA) },
+          { keepModal: true, message: 'Mídia adicionada' }
+        );
+      }
+      if (cloudFailed) {
+        toast(
+          'Não foi possível enviar ' +
+            (cloudFailed > 1 ? `${cloudFailed} mídias` : 'uma mídia') +
+            ' para a nuvem. Ela pode não aparecer depois de recarregar.'
+        );
+      }
+      if (list.length < Array.from(files || []).length) {
+        toast(`Adicionamos ${added.length}. O limite é ${MAX_POST_MEDIA}.`);
+      }
+    } catch {
+      toast('Não foi possível processar um dos arquivos.');
+    }
+  }
+
+  // Remove uma mídia da publicação. Sem mídia e sem texto, a publicação não
+  // pode ficar vazia.
+  function removePostMedia(postId, index) {
+    const post = dataRef.current?.posts.find((p) => p.id === postId);
+    if (!post) return;
+    const media = mediaOf(post).filter((_, i) => i !== index);
+    if (!media.length && !String(post.text || '').trim()) {
+      toast('A publicação precisa ter texto ou ao menos uma mídia.');
+      return;
+    }
+    updatePost(postId, { media }, { keepModal: true, message: 'Mídia removida' });
+  }
+
+  // Aplica o editor de mídia (ajustes, texto, desenho, giro) a um item de uma
+  // publicação existente. Fotos vêm com a edição queimada; vídeos guardam o
+  // objeto para ser aplicado na exibição.
+  async function applyPostMediaEdit(postId, index, { file = null, edit = null } = {}) {
+    const post = dataRef.current?.posts.find((p) => p.id === postId);
+    const media = mediaOf(post);
+    const item = media[index];
+    if (!post || !item) return;
+    let nextItem = { ...item, edit: edit || null };
+    if (file) {
+      try {
+        let src = await fileToDataURL(file, 1080);
+        if (isSupabaseEnabled && sessionRef.current?.id) {
+          const uploaded = await remote.uploadMedia(file, sessionRef.current.id);
+          if (uploaded) src = uploaded;
+        }
+        nextItem = { ...nextItem, src, edit: null };
+      } catch {
+        toast('Não foi possível aplicar a edição à mídia.');
+        return;
+      }
+    }
+    updatePost(
+      postId,
+      {
+        media: media.map((entry, i) => (i === index ? nextItem : entry)),
+      },
+      { keepModal: true, message: 'Mídia atualizada' }
+    );
+  }
+
   function publish(text) {
     const draft = uiRef.current.draft;
     const trimmed = text.trim();
@@ -1360,6 +1572,13 @@ export function AppProvider({ children }) {
           ? !!post.commentsDisabled
           : !!fields.commentsDisabled,
     };
+    // Mantém os campos derivados coerentes quando a mídia muda.
+    if (Array.isArray(fields.media)) {
+      const first = fields.media[0];
+      updated.src = first?.src;
+      updated.kind = first?.kind || 'text';
+      if (first?.seed) updated.seed = first.seed;
+    }
     setData((cur) => ({
       ...cur,
       posts: cur.posts.map((p) => (p.id === id ? updated : p)),
@@ -2207,6 +2426,9 @@ export function AppProvider({ children }) {
     removeDraftMedia,
     applyMediaEdit,
     attachMedia,
+    attachPostMedia,
+    removePostMedia,
+    applyPostMediaEdit,
     publish,
     publishStory,
     deleteStory,

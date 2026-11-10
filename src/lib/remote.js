@@ -323,7 +323,12 @@ export async function updatePost(post) {
         src: item.src && !item.src.startsWith('blob:') ? item.src : null,
         seed: item.seed || post.seed || post.id,
         dur: durSeconds(item.dur),
+        edit: item.edit && typeof item.edit === 'object' ? item.edit : null,
       }));
+      const first = post.media[0];
+      patch.media_url =
+        first?.src && !first.src.startsWith('blob:') ? first.src : null;
+      patch.kind = first?.kind === 'video' ? 'video' : first ? 'photo' : 'text';
     }
     let { error } = await supabase.from('posts').update(patch).eq('id', post.id);
     if (error && /media|comments_disabled/i.test(error.message || '')) {
@@ -746,6 +751,12 @@ export function subscribeNotifications(uid, callback) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'comments' },
         (payload) => callback('comment', payload.new)
+      )
+      // Novas publicações: usadas para avisar quem foi mencionado com @.
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'posts' },
+        (payload) => callback('post', payload.new)
       )
       .subscribe();
     return () => {
