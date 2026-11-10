@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.fluxosocial.app",
+      "sha256_cert_fingerprints": [
+        "64:BD:C9:4D:77:1F:94:2B:6F:59:9E:F8:51:BD:84:23:D1:BA:B0:C5:C2:C1:A2:4F:78:AE:0C:BE:F6:9B:4D:E9"
+      ]
+    }
+  }
+]
