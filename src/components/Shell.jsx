@@ -286,10 +286,11 @@ export default function Shell() {
             <kbd>/</kbd>
           </button>
           <nav className="nav">{NAV.map(navLink)}</nav>
-          <button className="btn primary" style={{ margin: '10px 0 0' }} onClick={compose}>
+          <div className="spacer" />
+          <button className="btn compose-btn" onClick={compose}>
+            <Icon name="plus" />
             Nova publicação
           </button>
-          <div className="spacer" />
           <a
             className="me-mini"
             href="#perfil"
