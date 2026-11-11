@@ -530,6 +530,8 @@ export function AppProvider({ children }) {
   const [online, setOnline] = useState(() =>
     typeof navigator === 'undefined' ? true : navigator.onLine
   );
+  const [onlinePeople, setOnlinePeople] = useState([]);
+  const [typingPeople, setTypingPeople] = useState({});
 
   const installPrompt = useRef(null);
   const toastTimer = useRef();
@@ -539,6 +541,9 @@ export function AppProvider({ children }) {
   const uiRef = useRef(ui);
   const dataRef = useRef(data);
   const sessionRef = useRef(session);
+  const presenceRef = useRef(null);
+  const typingTimersRef = useRef({});
+  const lastTypingRef = useRef({});
   uiRef.current = ui;
   dataRef.current = data;
   sessionRef.current = session;
@@ -788,6 +793,39 @@ export function AppProvider({ children }) {
     });
   }, [session?.id]);
 
+  // Presença online e "digitando…" via Realtime (presence + broadcast).
+  useEffect(() => {
+    if (!isSupabaseEnabled || !session?.id) return undefined;
+    const client = remote.joinPresence(session.id, {
+      onSync: (ids) => setOnlinePeople(ids),
+      onTyping: (payload) => {
+        const from = payload?.from;
+        if (!from || !payload?.to || payload.to !== session.id) return;
+        setTypingPeople((current) => ({ ...current, [from]: payload.to }));
+        clearTimeout(typingTimersRef.current[from]);
+        typingTimersRef.current[from] = window.setTimeout(() => {
+          delete typingTimersRef.current[from];
+          setTypingPeople((current) => {
+            if (!(from in current)) return current;
+            const next = { ...current };
+            delete next[from];
+            return next;
+          });
+        }, 4200);
+      },
+    });
+    presenceRef.current = client;
+    return () => {
+      presenceRef.current = null;
+      Object.values(typingTimersRef.current).forEach((id) => clearTimeout(id));
+      typingTimersRef.current = {};
+      lastTypingRef.current = {};
+      setTypingPeople({});
+      setOnlinePeople([]);
+      client?.leave();
+    };
+  }, [session?.id]);
+
   useEffect(() => {
     if (!isSupabaseEnabled || !session?.id || !ui.room) return undefined;
     return remote.subscribeChannelMessages(ui.room, (row) => {
@@ -894,6 +932,24 @@ export function AppProvider({ children }) {
       const ts = row.created_at ? new Date(row.created_at).getTime() : Date.now();
       const cur = dataRef.current;
       if (!cur) return;
+
+      if (kind === 'comment-delete') {
+        if (!row?.id) return;
+        setData((state) =>
+          state
+            ? {
+                ...state,
+                posts: state.posts.map((post) => ({
+                  ...post,
+                  comments: (post.comments || []).filter(
+                    (comment) => comment.id !== row.id
+                  ),
+                })),
+              }
+            : state
+        );
+        return;
+      }
 
       let notification = null;
       const rowInteractive = normalizeInteractive(row.interactive);
@@ -1839,6 +1895,23 @@ export function AppProvider({ children }) {
     if (sessionRef.current?.id) remote.addComment(comment, postId, sessionRef.current.id);
   }
 
+  function deleteComment(postId, commentId) {
+    if (!postId || !commentId) return;
+    const post = dataRef.current?.posts.find((p) => p.id === postId);
+    const comment = post?.comments?.find((c) => c.id === commentId);
+    if (!comment || comment.by !== 'me') return;
+    setData((cur) => ({
+      ...cur,
+      posts: cur.posts.map((p) =>
+        p.id === postId
+          ? { ...p, comments: (p.comments || []).filter((c) => c.id !== commentId) }
+          : p
+      ),
+    }));
+    remote.deleteComment(commentId);
+    toast('Comentário apagado');
+  }
+
   function openEditPost(id) {
     setUi((u) => ({ ...u, modal: { type: 'editpost', id } }));
   }
@@ -2281,6 +2354,14 @@ export function AppProvider({ children }) {
       remote.sendDirectMessage(message, sessionRef.current.id, chat.with);
     }
     if (uiRef.current.settings?.soundOnSend) playSentSound();
+  }
+
+  function sendTyping(to) {
+    if (!to) return;
+    const now = Date.now();
+    if (now - (lastTypingRef.current[to] || 0) < 2200) return;
+    lastTypingRef.current[to] = now;
+    presenceRef.current?.sendTyping(to);
   }
 
   async function sendChatFile(file, kind) {
@@ -2800,6 +2881,7 @@ export function AppProvider({ children }) {
     openPost,
     openUser,
     addComment,
+    deleteComment,
     openEditPost,
     updatePost,
     toggleCommentsDisabled,
@@ -2841,6 +2923,7 @@ export function AppProvider({ children }) {
     backChat: () => setUi((u) => ({ ...u, chatOpen: false })),
     setChatQuery: (chatQ) => setUi((u) => ({ ...u, chatQ })),
     sendMessage,
+    sendTyping,
     sendChatFile,
     sendChatBlob,
     likeMessage,
@@ -2878,6 +2961,8 @@ export function AppProvider({ children }) {
     recovery,
     mode: isSupabaseEnabled ? 'supabase' : 'demo',
     online,
+    onlinePeople,
+    typingPeople,
     canInstall,
     toast: toastMsg,
     actions,

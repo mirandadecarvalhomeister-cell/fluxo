@@ -14,6 +14,7 @@ import { Avatar } from './Avatar';
 import Empty from './Empty';
 import { Icon } from './Icon';
 import MediaEditor, { EditOverlay } from './MediaEditor';
+import MentionField from './MentionField';
 import Post from './Post';
 
 function Composer() {
@@ -52,13 +53,14 @@ function Composer() {
     >
       <div className="row" style={{ alignItems: 'flex-start' }}>
         <Avatar user={data.me} size={44} />
-        <textarea
+        <MentionField
+          multiline
           id="ctext"
           rows={2}
           maxLength={600}
           placeholder={placeholder}
           value={draft.text}
-          onChange={(event) => actions.setDraftText(event.target.value)}
+          onChange={(next) => actions.setDraftText(next)}
         />
       </div>
 

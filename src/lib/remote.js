@@ -455,6 +455,16 @@ export async function addComment(comment, postId, uid) {
   }
 }
 
+export async function deleteComment(id) {
+  if (!enabled() || !id) return;
+  try {
+    const { error } = await supabase.from('comments').delete().eq('id', id);
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
 export async function setFollow(followerId, followingId, following) {
   if (!enabled()) return;
   try {
@@ -834,6 +844,11 @@ export function subscribeNotifications(uid, callback) {
         { event: 'INSERT', schema: 'public', table: 'comments' },
         (payload) => callback('comment', payload.new)
       )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'comments' },
+        (payload) => callback('comment-delete', payload.old)
+      )
       // Participações em enquetes, perguntas, votações e desafios.
       .on(
         'postgres_changes',
@@ -864,6 +879,46 @@ export function subscribeNotifications(uid, callback) {
   } catch (error) {
     warn(error);
     return () => {};
+  }
+}
+
+export function joinPresence(uid, handlers = {}) {
+  if (!enabled() || !uid) return null;
+  try {
+    const channel = supabase.channel('fluxo-online', {
+      config: { presence: { key: uid } },
+    });
+    channel.on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState() || {};
+      handlers.onSync?.(Object.keys(state));
+    });
+    channel.on('broadcast', { event: 'typing' }, ({ payload }) => {
+      if (!payload?.from || payload.from === uid) return;
+      handlers.onTyping?.(payload);
+    });
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        channel.track({ online_at: new Date().toISOString() }).catch(() => {});
+      }
+    });
+    return {
+      sendTyping(to) {
+        if (!to) return;
+        channel
+          .send({
+            type: 'broadcast',
+            event: 'typing',
+            payload: { from: uid, to },
+          })
+          .catch(() => {});
+      },
+      leave() {
+        supabase.removeChannel(channel).catch(() => {});
+      },
+    };
+  } catch (error) {
+    warn(error);
+    return null;
   }
 }
 

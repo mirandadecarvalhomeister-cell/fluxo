@@ -11,6 +11,7 @@ import { TagText } from './Brand';
 import { Icon } from './Icon';
 import Interactive from './Interactive';
 import { EditWrap } from './MediaEditor';
+import MentionField from './MentionField';
 
 const REACTIONS = ['❤️', '🔥', '👏', '😂', '😮', '😢', '🎉', '💜'];
 
@@ -383,6 +384,20 @@ export default function Post({ post, detail = false }) {
                     <TagText text={c.text} />
                   </p>
                 </div>
+                {c.by === 'me' ? (
+                  <button
+                    type="button"
+                    className="cm-del"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      actions.deleteComment(post.id, c.id);
+                    }}
+                    aria-label="Apagar comentário"
+                    title="Apagar comentário"
+                  >
+                    <Icon name="trash" />
+                  </button>
+                ) : null}
               </div>
             );
           })}
@@ -392,14 +407,14 @@ export default function Post({ post, detail = false }) {
             </p>
           ) : (
             <form className="cmform" onSubmit={submitComment}>
-              <input
+              <MentionField
                 className="in"
                 type="text"
                 maxLength={240}
                 placeholder="Escreva um comentário (use @ para mencionar)"
                 aria-label="Comentário"
                 value={comment}
-                onChange={(event) => setComment(event.target.value)}
+                onChange={(next) => setComment(next)}
               />
               <button className="btn primary sm" type="submit">
                 Enviar

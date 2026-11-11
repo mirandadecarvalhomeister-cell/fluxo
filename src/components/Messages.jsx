@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { art } from '../lib/art';
 import { userOf } from '../lib/selectors';
-import { hm } from '../lib/utils';
+import { fileToDataURL, hm } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import { TagText } from './Brand';
@@ -627,7 +627,7 @@ function CameraCapture({ onClose, onCapture }) {
 }
 
 export default function Messages() {
-  const { data, ui, actions } = useApp();
+  const { data, ui, actions, onlinePeople, typingPeople } = useApp();
   const [text, setText] = useState('');
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
@@ -644,6 +644,7 @@ export default function Messages() {
   const inputRef = useRef(null);
   const mediaInputRef = useRef(null);
   const fileInputRef = useRef(null);
+  const wallInputRef = useRef(null);
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
   const timerRef = useRef(null);
@@ -658,6 +659,8 @@ export default function Messages() {
   const query = ui.chatQ.toLowerCase();
   const mutedChat = (ui.settings.mutedChats || []).includes(chat?.with);
   const wall = chat ? (ui.settings.chatWalls || {})[chat.with] : null;
+  const onlineChat = chat ? onlinePeople.includes(chat.with) : false;
+  const typingChat = chat ? !!typingPeople[chat.with] : false;
 
   const list = data.chats
     .filter((c) => userOf(data, c.with).name.toLowerCase().includes(query))
@@ -668,7 +671,7 @@ export default function Messages() {
   useEffect(() => {
     const box = boxRef.current;
     if (box) box.scrollTop = box.scrollHeight;
-  }, [chat?.id, chat?.msgs.length]);
+  }, [chat?.id, chat?.msgs.length, typingChat]);
 
   useEffect(() => {
     setHeadMenu(false);
@@ -719,6 +722,18 @@ export default function Messages() {
     event.target.value = '';
     setAttachOpen(false);
     if (file) actions.sendChatFile(file, 'file');
+  };
+
+  const pickWall = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !chat) return;
+    try {
+      const src = await fileToDataURL(file, 960);
+      actions.setChatWallpaper(chat.with, { src });
+    } catch {
+      actions.notify('Não foi possível usar essa imagem.');
+    }
   };
 
   const startAudio = async () => {
@@ -887,13 +902,10 @@ export default function Messages() {
     actions.notify(ok ? 'Mensagem copiada' : 'Não foi possível copiar');
   };
 
-  const wallStyle = wall
+  const wallSrc = wall && typeof wall === 'object' ? wall.src : wall ? art(wall, 900, 1400) : null;
+  const wallStyle = wallSrc
     ? {
-        backgroundImage: `linear-gradient(180deg,rgba(10,7,24,.42),rgba(10,7,24,.6)),url('${art(
-          wall,
-          900,
-          1400
-        )}')`,
+        backgroundImage: `linear-gradient(180deg,rgba(10,7,24,.42),rgba(10,7,24,.6)),url('${wallSrc}')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }
@@ -952,7 +964,11 @@ export default function Messages() {
                     key={c.id}
                     onClick={() => actions.openChat(c.id)}
                   >
-                    <Avatar user={item} size={46} />
+                    <Avatar
+                      user={item}
+                      size={46}
+                      online={onlinePeople.includes(c.with)}
+                    />
                     <div className="grow">
                       <div className="t">
                         <b className="ell">
@@ -962,8 +978,11 @@ export default function Messages() {
                         <span>{last ? hm(last.ts) : ''}</span>
                       </div>
                       <div className="t">
-                        <span className="pv ell" style={{ fontSize: 13, color: 'var(--muted)' }}>
-                          {lastOf(c)}
+                        <span
+                          className={`pv ell${typingPeople[c.with] ? ' typing-text' : ''}`}
+                          style={{ fontSize: 13, color: 'var(--muted)' }}
+                        >
+                          {typingPeople[c.with] ? 'digitando…' : lastOf(c)}
                         </span>
                         {c.unread ? (
                           <span className="badge" style={{ margin: 0 }}>
@@ -996,10 +1015,12 @@ export default function Messages() {
                   onClick={() => actions.openUser(chat.with)}
                   title={`Ver perfil de ${person.name}`}
                 >
-                  <Avatar user={person} size={42} />
+                  <Avatar user={person} size={42} online={onlineChat} />
                   <span>
                     <b className="ell">{person.name}</b>
-                    <span className="muted sm">Conversa direta</span>
+                    <span className={onlineChat ? 'online-label sm' : 'muted sm'}>
+                      {onlineChat ? 'Online agora' : 'Conversa direta'}
+                    </span>
                   </span>
                 </button>
                 <button
@@ -1081,7 +1102,7 @@ export default function Messages() {
               <div
                 id="msgBox"
                 ref={boxRef}
-                className={wall ? 'has-wall' : ''}
+                className={wallSrc ? 'has-wall' : ''}
                 style={wallStyle}
               >
                 <div className="dayline">Hoje</div>
@@ -1107,6 +1128,22 @@ export default function Messages() {
                     </p>
                   </div>
                 )}
+                {typingChat ? (
+                  <div className="msg-wrap them typing-row" aria-live="polite">
+                    <div className="msg-shell them">
+                      <Avatar user={person} size={28} />
+                      <div
+                        className="b them typing"
+                        title={`${person.name} está digitando`}
+                        aria-label={`${person.name} está digitando`}
+                      >
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <form className="cform" ref={formRef} onSubmit={submit}>
@@ -1199,6 +1236,7 @@ export default function Messages() {
                       onChange={(event) => {
                         setText(event.target.value);
                         growInput(event.currentTarget);
+                        actions.sendTyping(chat.with);
                       }}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' && !event.shiftKey) {
@@ -1296,6 +1334,21 @@ export default function Messages() {
                 <span className="wall-default" />
                 <i>Padrão</i>
               </button>
+              <button
+                type="button"
+                className={`wall-chip ${wall && typeof wall === 'object' ? 'on' : ''}`}
+                onClick={() => wallInputRef.current?.click()}
+                title="Escolher uma foto da galeria"
+              >
+                {wall && typeof wall === 'object' ? (
+                  <span style={{ backgroundImage: `url('${wall.src}')` }} />
+                ) : (
+                  <span className="wall-gallery">
+                    <Icon name="image" />
+                  </span>
+                )}
+                <i>Galeria</i>
+              </button>
               {WALLS.map((item) => (
                 <button
                   key={item.id}
@@ -1310,6 +1363,13 @@ export default function Messages() {
                 </button>
               ))}
             </div>
+            <input
+              ref={wallInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={pickWall}
+            />
           </div>
         </div>
       ) : null}

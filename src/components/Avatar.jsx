@@ -3,12 +3,16 @@ import { pal } from '../lib/art';
 import { isLive } from '../lib/selectors';
 import { initials } from '../lib/utils';
 
-export function Avatar({ user, size = 40 }) {
+export function Avatar({ user, size = 40, online = false }) {
   const [failedSrc, setFailedSrc] = useState(null);
   const [a, b] = pal(user?.id || 'fluxo');
   const showImage = user?.avatar && failedSrc !== user.avatar;
   return (
-    <span className="av" style={{ '--s': `${size}px`, '--a': a, '--b': b }}>
+    <span
+      className={`av${online ? ' online' : ''}`}
+      title={online ? 'Online agora' : undefined}
+      style={{ '--s': `${size}px`, '--a': a, '--b': b }}
+    >
       {showImage ? (
         <img
           src={user.avatar}
