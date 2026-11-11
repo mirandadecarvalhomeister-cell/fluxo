@@ -374,7 +374,7 @@ create policy direct_messages_update on public.direct_messages for update to aut
 );
 drop policy if exists direct_messages_delete on public.direct_messages;
 create policy direct_messages_delete on public.direct_messages for delete to authenticated using (
-  sender_id = auth.uid()::text
+  sender_id = auth.uid()::text or recipient_id = auth.uid()::text
 );
 
 drop policy if exists scraps_read on public.scraps;

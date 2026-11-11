@@ -57,6 +57,7 @@ const DEFAULT_SETTINGS = {
   soundOnSend: false,
   mutedChats: [],
   liveChannels: [],
+  chatWalls: {},
 };
 
 const readSettings = () => {
@@ -709,8 +710,25 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (!isSupabaseEnabled || !session?.id) return undefined;
-    return remote.subscribeDirectMessages(session.id, (row) => {
-      if (!row || !row.sender_id) return;
+    return remote.subscribeDirectMessages(session.id, (row, event) => {
+      if (!row) return;
+      if (event === 'DELETE') {
+        if (!row.id) return;
+        setData((cur) =>
+          cur
+            ? {
+                ...cur,
+                chats: cur.chats.map((chat) =>
+                  chat.msgs.some((item) => item.id === row.id)
+                    ? { ...chat, msgs: chat.msgs.filter((item) => item.id !== row.id) }
+                    : chat
+                ),
+              }
+            : cur
+        );
+        return;
+      }
+      if (!row.sender_id) return;
       const settings = uiRef.current.settings || DEFAULT_SETTINGS;
       const viewing =
         uiRef.current.route === 'mensagens' && uiRef.current.chat === row.sender_id;
@@ -2320,6 +2338,78 @@ export function AppProvider({ children }) {
     }));
   }
 
+  function deleteMessage(chatId, index) {
+    const chat = dataRef.current?.chats.find((c) => c.id === chatId);
+    const message = chat?.msgs?.[index];
+    if (!chat || !message) return;
+    setData((cur) => ({
+      ...cur,
+      chats: cur.chats.map((c) =>
+        c.id === chatId
+          ? { ...c, msgs: c.msgs.filter((_item, i) => i !== index) }
+          : c
+      ),
+    }));
+    if (sessionRef.current?.id && message.id) {
+      remote.deleteDirectMessage(message.id);
+    }
+    toast('Mensagem apagada');
+  }
+
+  function clearChat(chatId) {
+    const chat = dataRef.current?.chats.find((c) => c.id === chatId);
+    if (!chat) return;
+    requestConfirm({
+      title: 'Limpar histórico?',
+      text: 'As mensagens desta conversa serão apagadas para as duas pessoas.',
+      confirmLabel: 'Limpar',
+      tone: 'hot',
+      action: () => {
+        setData((cur) => ({
+          ...cur,
+          chats: cur.chats.map((c) => (c.id === chatId ? { ...c, msgs: [] } : c)),
+        }));
+        if (sessionRef.current?.id) {
+          remote.deleteDirectMessagesWith(sessionRef.current.id, chat.with);
+        }
+        toast('Histórico limpo');
+      },
+    });
+  }
+
+  function deleteChat(chatId) {
+    const chat = dataRef.current?.chats.find((c) => c.id === chatId);
+    if (!chat) return;
+    requestConfirm({
+      title: 'Apagar conversa?',
+      text: 'A conversa sai da sua lista e as mensagens são apagadas para as duas pessoas.',
+      confirmLabel: 'Apagar',
+      tone: 'hot',
+      action: () => {
+        setData((cur) => ({
+          ...cur,
+          chats: cur.chats.filter((c) => c.id !== chatId),
+        }));
+        setUi((u) =>
+          u.chat === chatId ? { ...u, chat: null, chatOpen: false } : u
+        );
+        if (sessionRef.current?.id) {
+          remote.deleteDirectMessagesWith(sessionRef.current.id, chat.with);
+        }
+        toast('Conversa apagada');
+      },
+    });
+  }
+
+  function setChatWallpaper(withId, seed) {
+    if (!withId) return;
+    const walls = { ...(uiRef.current.settings?.chatWalls || {}) };
+    if (seed) walls[withId] = seed;
+    else delete walls[withId];
+    setSetting('chatWalls', walls);
+    toast(seed ? 'Papel de parede atualizado' : 'Papel de parede padrão restaurado');
+  }
+
   function openRoom(id) {
     const live = liveChannelOfMine();
     if (live && live.id !== id) {
@@ -2754,6 +2844,10 @@ export function AppProvider({ children }) {
     sendChatFile,
     sendChatBlob,
     likeMessage,
+    deleteMessage,
+    clearChat,
+    deleteChat,
+    setChatWallpaper,
     setChanFilter: (chanFilter) => setUi((u) => ({ ...u, chanFilter })),
     openRoom,
     backRoom,

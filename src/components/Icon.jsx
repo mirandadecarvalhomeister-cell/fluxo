@@ -33,6 +33,7 @@ export default function IconSprite() {
         <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" /></symbol>
         <symbol id="i-dcheck" viewBox="0 0 24 24"><path d="m2 12.5 4.5 4.5L15 8M10 15.5l1.5 1.5L21 8" /></symbol>
         <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z" /></symbol>
+        <symbol id="i-pause" viewBox="0 0 24 24"><rect x="7" y="5" width="3.5" height="14" rx="1.2" /><rect x="13.5" y="5" width="3.5" height="14" rx="1.2" /></symbol>
         <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z" /></symbol>
         <symbol id="i-hash" viewBox="0 0 24 24"><path d="M5 9h15M4 15h15M10 3 8 21M16 3l-2 18" /></symbol>
         <symbol id="i-mega" viewBox="0 0 24 24"><path d="M3 11v3a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z" /><path d="M15 9a4 4 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11" /></symbol>

@@ -1542,6 +1542,67 @@ export default function ModalHost() {
     };
   }, [modal]);
 
+  // No mobile, arrastar a folha para baixo fecha (quando o conteúdo já está
+  // no topo). Vale para perfil de outra pessoa, listas, publicações etc.
+  useEffect(() => {
+    const sheet = sheetRef.current;
+    if (!sheet || !modal) return undefined;
+    let start = null;
+
+    const reset = () => {
+      sheet.style.transform = '';
+      sheet.style.opacity = '';
+    };
+
+    const onStart = (event) => {
+      start = null;
+      if (event.touches.length !== 1 || sheet.scrollTop > 0) return;
+      const touch = event.touches[0];
+      start = { x: touch.clientX, y: touch.clientY, at: Date.now() };
+    };
+
+    const onMove = (event) => {
+      if (!start) return;
+      const touch = event.touches[0];
+      const dy = touch.clientY - start.y;
+      const dx = touch.clientX - start.x;
+      if (dy > 0 && dy > Math.abs(dx)) {
+        sheet.style.transform = `translateY(${dy}px)`;
+        sheet.style.opacity = String(Math.max(0.35, 1 - dy / 460));
+      }
+    };
+
+    const onEnd = (event) => {
+      if (!start) return;
+      const touch = event.changedTouches[0];
+      const dy = touch.clientY - start.y;
+      const dx = touch.clientX - start.x;
+      const fast = Date.now() - start.at < 320;
+      start = null;
+      reset();
+      if ((dy > 120 || (fast && dy > 64)) && dy > Math.abs(dx) * 1.4) {
+        actionsRef.current.closeModal();
+      }
+    };
+
+    const onCancel = () => {
+      start = null;
+      reset();
+    };
+
+    sheet.addEventListener('touchstart', onStart, { passive: true });
+    sheet.addEventListener('touchmove', onMove, { passive: true });
+    sheet.addEventListener('touchend', onEnd, { passive: true });
+    sheet.addEventListener('touchcancel', onCancel, { passive: true });
+    return () => {
+      reset();
+      sheet.removeEventListener('touchstart', onStart);
+      sheet.removeEventListener('touchmove', onMove);
+      sheet.removeEventListener('touchend', onEnd);
+      sheet.removeEventListener('touchcancel', onCancel);
+    };
+  }, [modal]);
+
   if (!data || !modal) return null;
 
   let content = null;

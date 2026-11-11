@@ -683,6 +683,36 @@ export async function sendDirectMessage(message, senderId, recipientId) {
   }
 }
 
+export async function deleteDirectMessage(id) {
+  if (!enabled() || !id) return;
+  try {
+    const { error } = await supabase.from('direct_messages').delete().eq('id', id);
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function deleteDirectMessagesWith(uid, otherId) {
+  if (!enabled() || !uid || !otherId) return;
+  try {
+    const first = await supabase
+      .from('direct_messages')
+      .delete()
+      .eq('sender_id', uid)
+      .eq('recipient_id', otherId);
+    if (first.error) warn(first.error);
+    const second = await supabase
+      .from('direct_messages')
+      .delete()
+      .eq('sender_id', otherId)
+      .eq('recipient_id', uid);
+    if (second.error) warn(second.error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
 export async function markDirectMessagesRead(uid, otherId) {
   if (!enabled()) return;
   try {
@@ -710,7 +740,16 @@ export function subscribeDirectMessages(uid, callback) {
           table: 'direct_messages',
           filter: `recipient_id=eq.${uid}`,
         },
-        (payload) => callback(payload.new)
+        (payload) => callback(payload.new, 'INSERT')
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'direct_messages',
+        },
+        (payload) => callback(payload.old, 'DELETE')
       )
       .subscribe();
     return () => {

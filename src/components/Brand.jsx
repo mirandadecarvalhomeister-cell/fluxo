@@ -3,7 +3,7 @@ import { logo } from '../lib/art';
 import { splitTags } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 
-const ASSET_VERSION = '3';
+const ASSET_VERSION = '4';
 
 export function LogoMark({ size = 32 }) {
   const [failed, setFailed] = useState(false);
@@ -32,7 +32,15 @@ export function Logo({ size = 32, className = 'logo' }) {
         <img
           src={`/assets/fluxo-logo.png?v=${ASSET_VERSION}`}
           alt="FluXo"
-          className="fluxo-logo"
+          className="fluxo-logo logo-for-dark"
+          width={width}
+          style={{ width }}
+          onError={() => setFailed(true)}
+        />
+        <img
+          src={`/assets/fluxo-logo-dark.png?v=${ASSET_VERSION}`}
+          alt="FluXo"
+          className="fluxo-logo logo-for-light"
           width={width}
           style={{ width }}
           onError={() => setFailed(true)}
