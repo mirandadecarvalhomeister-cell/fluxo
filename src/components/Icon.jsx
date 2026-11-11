@@ -10,10 +10,10 @@ export default function IconSprite() {
   return (
     <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
       <defs>
-        <symbol id="i-feed" viewBox="0 0 24 24"><path d="M4 10.3 12 3.7l8 6.6V19a2 2 0 0 1-2 2h-3.6v-5.4H9.6V21H6a2 2 0 0 1-2-2z" /><path d="M9.3 8.9h5.4" /></symbol>
-        <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.2" r="3.9" /><path d="M4.6 20.4c.5-3.8 3.7-6.5 7.4-6.5s6.9 2.7 7.4 6.5" /></symbol>
-        <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.6a8.2 8.2 0 0 1-8.2 8.2c-1.4 0-2.7-.4-3.9-1L4 20l1.1-4.5A8.2 8.2 0 1 1 21 11.6z" /><path d="M8.4 11.6h.01M12 11.6h.01M15.6 11.6h.01" /></symbol>
-        <symbol id="i-orbit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.6" /><ellipse cx="12" cy="12" rx="9" ry="4.8" transform="rotate(-28 12 12)" /><circle cx="19.4" cy="7" r="1.5" /><circle cx="4.6" cy="17" r="1.5" /></symbol>
+        <symbol id="i-feed" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></symbol>
+        <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" /></symbol>
+        <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /></symbol>
+        <symbol id="i-orbit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5" /><circle cx="12" cy="4" r="1.6" /><circle cx="19" cy="16" r="1.6" /><circle cx="5" cy="16" r="1.6" /><path d="M12 6v3.5M17.6 15l-3.2-1.7M6.4 15l3.2-1.7" /></symbol>
         <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-9-9.2C1.6 7.4 3.7 4 7 4c2 0 3.5 1.1 5 3 1.5-1.9 3-3 5-3 3.3 0 5.4 3.4 4 6.8-2 4.8-9 9.2-9 9.2z" /></symbol>
         <symbol id="i-comment" viewBox="0 0 24 24"><path d="M20 15a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" /></symbol>
         <symbol id="i-share" viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13" /></symbol>
@@ -23,7 +23,7 @@ export default function IconSprite() {
         <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" /><circle cx="12" cy="13.5" r="3.5" /></symbol>
         <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z" /><path d="m13.5 6.5 4 4" /></symbol>
         <symbol id="i-send" viewBox="0 0 24 24"><path d="m21 3-9.5 18-2.2-7.8L2 11z" /><path d="m21 3-11.7 10.2" /></symbol>
-        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.4" /><path d="m19.6 19.6-3.9-3.9" /><path d="M20.5 3.4v2.1M19.5 4.4h2.1" /></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></symbol>
         <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7" /></symbol>
         <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></symbol>
         <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z" /></symbol>
@@ -53,7 +53,7 @@ export default function IconSprite() {
         <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></symbol>
         <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a4.5 4.5 0 0 0 6.4 0l2.4-2.4a4.5 4.5 0 1 0-6.4-6.4L11 5.6" /><path d="M14 11a4.5 4.5 0 0 0-6.4 0l-2.4 2.4a4.5 4.5 0 1 0 6.4 6.4L13 18.4" /></symbol>
         <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21h-4v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3v-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6V3h4v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1v4H21a1.7 1.7 0 0 0-1.6 1z" /></symbol>
-        <symbol id="i-bell" viewBox="0 0 24 24"><path d="M17.6 9.3c0-3.1-2.5-5.6-5.6-5.6S6.4 6.2 6.4 9.3c0 4.7-1.9 6.1-1.9 6.1h15s-1.9-1.4-1.9-6.1z" /><path d="M9.8 19.1a2.3 2.3 0 0 0 4.4 0" /><path d="M19.9 3.1v2.2M18.8 4.2h2.2" /></symbol>
+        <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z" /><path d="M10 20a2 2 0 0 0 4 0" /></symbol>
         <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16" /></symbol>
         <symbol id="i-broom" viewBox="0 0 24 24"><path d="m14 4 6 6-3 3-6-6z" /><path d="M11 7 4 14l-1 7 7-1 7-7" /><path d="m9 16 2 2" /></symbol>
         <symbol id="i-brush" viewBox="0 0 24 24"><path d="M20.7 6.3a2.4 2.4 0 0 0-3.4-3.4L9 11.2l3.8 3.8 7.9-8.7z" /><path d="M10 14 4.5 19.5l-1.4 1.4" /><path d="M9 11.2 12.8 15" /></symbol>

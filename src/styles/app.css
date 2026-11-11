@@ -96,13 +96,7 @@ textarea.in{resize:vertical;min-height:44px}
 .nav a{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;font-weight:600;color:var(--muted);position:relative}
 .nav a:hover{background:var(--surface2);color:var(--fg)}
 .nav a.on{background:var(--accent-soft);color:var(--accent)}
-.nav .ic{width:1.4em;height:1.4em;transition:transform .18s ease,filter .18s ease}
-.nav a:hover .ic{transform:translateY(-1px) scale(1.07)}
-.nav a.on .ic{filter:drop-shadow(0 0 6px color-mix(in srgb,var(--accent) 55%,transparent))}
-.icon-btn .ic{transition:transform .16s ease,filter .16s ease}
-.icon-btn:hover .ic{transform:scale(1.1)}
-.icon-btn:active .ic{transform:scale(.94)}
-.icon-btn .bubble{box-shadow:0 0 0 2px var(--surface),0 4px 12px color-mix(in srgb,var(--hot) 55%,transparent)}
+.nav .ic{width:1.4em;height:1.4em}
 .badge{margin-left:auto;min-width:20px;height:20px;border-radius:10px;background:var(--hot);color:#fff;font:700 11px/20px var(--f-body);text-align:center;padding:0 6px}
 .rail .spacer{flex:1}
 .me-mini{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;border:1px solid var(--line);background:var(--surface)}
@@ -678,8 +672,7 @@ body.lock{overflow:hidden}
   .mobtop .logo{padding:4px 8px}
   .tabbar{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding:8px max(8px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
   .tabbar a{display:grid;justify-items:center;gap:2px;font-size:11px;font-weight:600;color:var(--muted);padding:4px;position:relative}
-  .tabbar a.on{color:var(--accent)}.tabbar .ic{width:1.5em;height:1.5em;transition:transform .18s ease,filter .18s ease}
-  .tabbar a.on .ic{transform:translateY(-1px) scale(1.05);filter:drop-shadow(0 0 7px color-mix(in srgb,var(--accent) 55%,transparent))}
+  .tabbar a.on{color:var(--accent)}.tabbar .ic{width:1.5em;height:1.5em}
   .tabbar .badge{position:absolute;top:0;left:calc(50% + 6px);margin:0}
   #toast{bottom:calc(88px + env(safe-area-inset-bottom,0px))}
   .auth{grid-template-columns:minmax(0,1fr);gap:24px}
