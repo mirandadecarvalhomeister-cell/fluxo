@@ -4,6 +4,7 @@ import { normalizeInteractive } from '../lib/interactive';
 import { mediaOf } from '../lib/media';
 import { hasEdits, mediaDisplayStyle } from '../lib/mediaEdit';
 import { userOf } from '../lib/selectors';
+import { useCompact } from '../lib/useCompact';
 import { ago, fmt, fmtDur } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { LiveAvatar } from './Avatar';
@@ -267,6 +268,7 @@ function PostMenu({ post, onEdit, onShare }) {
 
 export default function Post({ post, detail = false }) {
   const { data, ui, actions } = useApp();
+  const compact = useCompact();
   const detailCommentsRef = useRef(null);
   const author = userOf(data, post.by);
   const open = !!ui.open[post.id];
@@ -420,10 +422,23 @@ export default function Post({ post, detail = false }) {
       </footer>
 
       {open && !detail ? (
-        <CommentSheet
-          post={post}
-          onClose={() => actions.toggleComments(post.id)}
-        />
+        compact ? (
+          <CommentSheet
+            post={post}
+            onClose={() => actions.toggleComments(post.id)}
+          />
+        ) : (
+          <div className="cmts cmts-inline">
+            <div className="cmts-head">
+              <span className="cmts-title">
+                <Icon name="comment" />
+                <b>Comentários</b>
+                <i>{post.comments.length}</i>
+              </span>
+            </div>
+            <Comments post={post} />
+          </div>
+        )
       ) : null}
 
       {detail ? (
