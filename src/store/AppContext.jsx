@@ -1864,7 +1864,11 @@ export function AppProvider({ children }) {
   }
 
   function openPost(id) {
-    setUi((u) => ({ ...u, modal: { type: 'post', id } }));
+    setUi((u) => ({
+      ...u,
+      open: { ...u.open, [id]: false },
+      modal: { type: 'post', id },
+    }));
   }
 
   function openUser(id) {

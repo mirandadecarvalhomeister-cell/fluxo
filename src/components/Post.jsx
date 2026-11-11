@@ -6,14 +6,54 @@ import { hasEdits, mediaDisplayStyle } from '../lib/mediaEdit';
 import { userOf } from '../lib/selectors';
 import { ago, fmt, fmtDur } from '../lib/utils';
 import { useApp } from '../store/AppContext';
-import { Avatar, LiveAvatar } from './Avatar';
+import { LiveAvatar } from './Avatar';
 import { TagText } from './Brand';
+import CommentSheet, { Comments } from './Comments';
 import { Icon } from './Icon';
 import Interactive from './Interactive';
 import { EditWrap } from './MediaEditor';
-import MentionField from './MentionField';
 
 const REACTIONS = ['❤️', '🔥', '👏', '😂', '😮', '😢', '🎉', '💜'];
+
+// Vídeo publicado: toca sozinho (mudo) quando aparece na tela e pausa ao sair.
+function AutoVideo({ src, style, onError }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || !('IntersectionObserver' in window)) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            element.play?.().catch(() => {});
+          } else {
+            element.pause?.();
+          }
+        });
+      },
+      { threshold: 0.2 }
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <video
+      ref={ref}
+      className="media-video"
+      src={src}
+      controls
+      muted
+      loop
+      autoPlay
+      playsInline
+      preload="metadata"
+      style={style}
+      onError={onError}
+    />
+  );
+}
 
 function MediaItem({ item, author, index }) {
   const [failedSrc, setFailedSrc] = useState(null);
@@ -28,12 +68,8 @@ function MediaItem({ item, author, index }) {
     if (item.src && !videoFailed) {
       return (
         <EditWrap edit={edit}>
-          <video
-            className="media-video"
+          <AutoVideo
             src={item.src}
-            controls
-            playsInline
-            preload="metadata"
             style={style}
             onError={() => setVideoFailed(true)}
           />
@@ -231,9 +267,9 @@ function PostMenu({ post, onEdit, onShare }) {
 
 export default function Post({ post, detail = false }) {
   const { data, ui, actions } = useApp();
-  const [comment, setComment] = useState('');
+  const detailCommentsRef = useRef(null);
   const author = userOf(data, post.by);
-  const open = detail || !!ui.open[post.id];
+  const open = !!ui.open[post.id];
   const following = data.follows.includes(post.by);
   const totalLikes = post.likes || 0;
   const interactive = normalizeInteractive(post.interactive);
@@ -242,11 +278,15 @@ export default function Post({ post, detail = false }) {
       ? interactive.reactions
       : REACTIONS;
 
-  function submitComment(event) {
-    event.preventDefault();
-    if (post.commentsDisabled) return;
-    actions.addComment(post.id, comment);
-    setComment('');
+  function openComments() {
+    if (detail) {
+      detailCommentsRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
+      return;
+    }
+    actions.toggleComments(post.id);
   }
 
   function openDetail(event) {
@@ -277,7 +317,7 @@ export default function Post({ post, detail = false }) {
       onKeyDown={openDetailKey}
       tabIndex={detail ? undefined : 0}
       aria-label={detail ? undefined : `Abrir publicação de ${author.name}`}
-      title={detail ? undefined : 'Abrir comentários'}
+      title={detail ? undefined : 'Abrir publicação'}
     >
       <header className="post-h">
         <LiveAvatar user={author} size={44} data={data} />
@@ -315,17 +355,21 @@ export default function Post({ post, detail = false }) {
       <footer className="acts">
         <div className="reaction-wrap">
           <button
-            className={post.myReaction ? 'on' : ''}
+            type="button"
+            className={`act-btn act-like ${post.myReaction ? 'on' : ''}`}
             aria-pressed={!!post.myReaction}
             onClick={() => actions.reactPost(post.id, post.myReaction || '❤️')}
-            title="Reagir"
+            title="Curtir ou escolher uma reação"
           >
             {post.myReaction ? (
               <span className="reaction-emoji">{post.myReaction}</span>
             ) : (
               <Icon name="heart" />
-            )}{' '}
-            {fmt(totalLikes)}
+            )}
+            <span className="act-label">
+              {post.myReaction ? 'Reagido' : 'Curtir'}
+            </span>
+            <span className="act-count">{fmt(totalLikes)}</span>
           </button>
           <div className="react-picker" role="menu" aria-label="Escolher reação">
             {reactionChoices.map((emoji) => (
@@ -341,88 +385,60 @@ export default function Post({ post, detail = false }) {
             ))}
           </div>
         </div>
-        <button onClick={() => actions.toggleComments(post.id)}>
-          <Icon name="comment" /> {post.comments.length}
+        <button
+          type="button"
+          className={`act-btn act-comment ${!detail && open ? 'on' : ''}`}
+          onClick={openComments}
+          aria-expanded={detail ? true : open}
+          aria-label="Abrir comentários"
+        >
+          <Icon name="comment" />
+          <span className="act-label">Comentar</span>
+          <span className="act-count">{post.comments.length}</span>
         </button>
         <span className="sp" />
         <button
-          className={`sv ${post.saved ? 'on' : ''}`}
+          type="button"
+          className={`act-btn act-save ${post.saved ? 'on' : ''}`}
           onClick={() => actions.toggleSave(post.id)}
-          aria-label="Salvar"
+          aria-label={post.saved ? 'Remover dos salvos' : 'Salvar'}
+          title={post.saved ? 'Remover dos salvos' : 'Salvar'}
         >
-          <Icon name="bookmark" className={post.saved ? 'fill' : ''} />
+          <Icon name="bookmark" />
+          <span className="act-label">{post.saved ? 'Salvo' : 'Salvar'}</span>
         </button>
         <button
+          type="button"
+          className="act-btn act-share"
           onClick={() => actions.openSharePost(post.id)}
           aria-label="Compartilhar com alguém"
           title="Compartilhar"
         >
           <Icon name="share" />
+          <span className="act-label">Compartilhar</span>
         </button>
       </footer>
 
-      {open && (
-        <div className="cmts">
-          {detail ? (
-            <div className="cmts-head">
+      {open && !detail ? (
+        <CommentSheet
+          post={post}
+          onClose={() => actions.toggleComments(post.id)}
+        />
+      ) : null}
+
+      {detail ? (
+        <div className="cmts cmts-detail" ref={detailCommentsRef}>
+          <div className="cmts-head">
+            <span className="cmts-title">
+              <Icon name="comment" />
               <b>Comentários</b>
-              <span className="muted sm">{post.comments.length}</span>
-            </div>
-          ) : null}
-          {detail && !post.comments.length ? (
-            <p className="muted sm">Nenhum comentário ainda.</p>
-          ) : null}
-          {post.comments.map((c, index) => {
-            const commentAuthor = userOf(data, c.by);
-            return (
-              <div className="cm" key={c.id || index}>
-                <Avatar user={commentAuthor} size={30} />
-                <div style={{ minWidth: 0 }}>
-                  <b>{commentAuthor.name}</b>{' '}
-                  <span className="muted sm">{ago(c.ts)}</span>
-                  <p>
-                    <TagText text={c.text} />
-                  </p>
-                </div>
-                {c.by === 'me' ? (
-                  <button
-                    type="button"
-                    className="cm-del"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      actions.deleteComment(post.id, c.id);
-                    }}
-                    aria-label="Apagar comentário"
-                    title="Apagar comentário"
-                  >
-                    <Icon name="trash" />
-                  </button>
-                ) : null}
-              </div>
-            );
-          })}
-          {post.commentsDisabled ? (
-            <p className="muted sm cmts-off">
-              <Icon name="shield" /> Comentários desativados pelo autor.
-            </p>
-          ) : (
-            <form className="cmform" onSubmit={submitComment}>
-              <MentionField
-                className="in"
-                type="text"
-                maxLength={240}
-                placeholder="Escreva um comentário (use @ para mencionar)"
-                aria-label="Comentário"
-                value={comment}
-                onChange={(next) => setComment(next)}
-              />
-              <button className="btn primary sm" type="submit">
-                Enviar
-              </button>
-            </form>
-          )}
+              <i>{post.comments.length}</i>
+            </span>
+            <span className="cmts-grab" aria-hidden="true" />
+          </div>
+          <Comments post={post} />
         </div>
-      )}
+      ) : null}
     </article>
   );
 }

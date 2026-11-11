@@ -70,13 +70,16 @@ function Composer() {
             type="button"
             role="tab"
             key={item.id}
+            data-format={item.id}
             className={format === item.id ? 'on' : ''}
             aria-selected={format === item.id}
             onClick={() => actions.setDraftFormat(item.id)}
             title={item.hint}
           >
-            <Icon name={item.icon} />
-            <span>{item.short}</span>
+            <span className="fmt-ic">
+              <Icon name={item.icon} />
+            </span>
+            <span className="fmt-name">{item.short}</span>
           </button>
         ))}
       </div>
