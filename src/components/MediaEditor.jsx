@@ -32,7 +32,7 @@ const TOOLS = [
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 // Camada de sobreposição (textos e traços) exibida sobre mídias editadas.
-// Usada no feed, nos stories e nas prévias. As coordenadas ficam em fração
+// Usada no feed e nas prévias. As coordenadas ficam em fração
 // (0-1) da caixa final; o viewBox usa o aspecto pós-rotação para manter os
 // traços com espessura uniforme.
 export function EditOverlay({ edit }) {

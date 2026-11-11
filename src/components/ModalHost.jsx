@@ -1361,143 +1361,6 @@ function ObsModal({ modal }) {
   );
 }
 
-function StoryComposer() {
-  const { actions } = useApp();
-  const [text, setText] = useState('');
-  const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const [kind, setKind] = useState('photo');
-  const [busy, setBusy] = useState(false);
-  const [edit, setEdit] = useState(null);
-  const [editing, setEditing] = useState(false);
-
-  useEffect(() => {
-    if (!file) {
-      setPreview(null);
-      setEdit(null);
-      return undefined;
-    }
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    setKind(file.type.startsWith('video/') ? 'video' : 'photo');
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
-
-  const submit = async (event) => {
-    event.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    const ok = await actions.publishStory({ text, file, edit });
-    setBusy(false);
-    if (ok) actions.closeModal();
-  };
-
-  return (
-    <form className="story-form" onSubmit={submit}>
-      <p className="muted sm">
-        Seu story aparece no topo do feed e some automaticamente em 24 horas.
-        Vídeos de até 3 minutos.
-      </p>
-      <div className="story-pick">
-        {preview ? (
-          edit ? (
-            <span className="story-pick-frame">
-              {kind === 'video' ? (
-                <video
-                  src={preview}
-                  muted
-                  loop
-                  autoPlay
-                  playsInline
-                  style={mediaDisplayStyle(edit)}
-                />
-              ) : (
-                <img src={preview} alt="" style={mediaDisplayStyle(edit)} />
-              )}
-              <EditOverlay edit={edit} />
-            </span>
-          ) : kind === 'video' ? (
-            <video src={preview} muted loop autoPlay playsInline />
-          ) : (
-            <img src={preview} alt="" />
-          )
-        ) : (
-          <div className="story-empty">
-            <Icon name="camera" />
-            <span>Escolha uma foto ou vídeo</span>
-          </div>
-        )}
-      </div>
-      <div className="story-actions">
-        <label className="btn ghost sm" htmlFor="storyIn">
-          <Icon name={kind === 'video' ? 'video' : 'image'} />{' '}
-          {file ? 'Trocar mídia' : 'Escolher mídia'}
-        </label>
-        <input
-          id="storyIn"
-          type="file"
-          accept="image/*,video/*"
-          hidden
-          onChange={(event) => {
-            setFile(event.target.files?.[0] || null);
-            event.target.value = '';
-          }}
-        />
-        {file ? (
-          <button
-            type="button"
-            className="btn ghost sm"
-            onClick={() => setEditing(true)}
-          >
-            <Icon name="edit" /> Editar
-          </button>
-        ) : null}
-        {file ? (
-          <button
-            type="button"
-            className="btn ghost sm"
-            onClick={() => setFile(null)}
-          >
-            <Icon name="x" /> Remover mídia
-          </button>
-        ) : null}
-      </div>
-      {editing && file && preview ? (
-        <MediaEditor
-          kind={kind}
-          src={preview}
-          fileName={file.name}
-          initialEdit={edit}
-          onDone={(result) => {
-            setEditing(false);
-            if (result.file) {
-              setEdit(null);
-              setFile(result.file);
-            } else {
-              setEdit(result.edit || null);
-            }
-          }}
-          onCancel={() => setEditing(false)}
-        />
-      ) : null}
-      <textarea
-        className="input"
-        rows={3}
-        maxLength={280}
-        placeholder="Escreva uma legenda para o story..."
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-      />
-      <button
-        className="btn primary"
-        type="submit"
-        disabled={busy || (!file && !text.trim())}
-      >
-        <Icon name="plus" /> {busy ? 'Publicando...' : 'Publicar story'}
-      </button>
-    </form>
-  );
-}
 
 function NotificationsModal() {
   const { data, ui, actions } = useApp();
@@ -1515,7 +1378,8 @@ function NotificationsModal() {
         <h2>Notificações</h2>
         <p className="muted">
           Nada por aqui ainda. Quando alguém curtir a sua foto, comentar na sua
-          publicação, mencionar você com @ ou começar a seguir você, aparece
+          publicação, votar em uma enquete, responder a uma pergunta, participar
+          do seu desafio, mencionar você com @ ou começar a seguir você, aparece
           aqui.
         </p>
       </div>
@@ -1612,7 +1476,6 @@ const MODAL_LABELS = {
   editpost: 'Editar publicação',
   share: 'Compartilhar publicação',
   newchat: 'Nova conversa',
-  newstory: 'Novo story',
   notifications: 'Notificações',
   obs: 'Transmitir com OBS',
   profilelist: 'Conexões',
@@ -1717,8 +1580,6 @@ export default function ModalHost() {
     content = <SharePostModal modal={modal} />;
   } else if (modal.type === 'newchat') {
     content = <NewChatModal />;
-  } else if (modal.type === 'newstory') {
-    content = <StoryComposer />;
   } else if (modal.type === 'notifications') {
     content = <NotificationsModal />;
   } else if (modal.type === 'obs') {

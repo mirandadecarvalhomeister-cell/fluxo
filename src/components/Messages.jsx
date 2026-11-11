@@ -84,7 +84,7 @@ function StoryAttachment({ attachment }) {
       ) : null}
       <span className="att-post-t">{attachment.text || 'Story'}</span>
       <span className="att-post-f">
-        <Icon name="camera" /> Ver story de {author.name.split(' ')[0]}
+        <Icon name="user" /> Ver perfil de {author.name.split(' ')[0]}
       </span>
     </button>
   );

@@ -158,6 +158,7 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
     chanMsgs,
     reactions,
     directMessages,
+    postInteractions,
   ] = await Promise.all([
     safe(
       supabase
@@ -196,6 +197,7 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
         .or(`sender_id.eq.${uid},recipient_id.eq.${uid}`)
         .order('created_at', { ascending: true })
     ),
+    safe(supabase.from('post_interactions').select('*')),
   ]);
 
   const follows = allFollows
@@ -238,6 +240,7 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
     reactions,
     scraps,
     directMessages,
+    postInteractions,
     localPostIds,
     localChanIds,
   };
@@ -287,12 +290,18 @@ export async function savePost(post, uid) {
       dur: durSeconds(post.dur),
       likes: post.likes || 0,
       comments_disabled: !!post.commentsDisabled,
+      interactive: post.interactive || null,
       created_at: new Date(post.ts).toISOString(),
     };
     let row = { ...payload, media: media.length ? media : null };
     let { error } = await supabase.from('posts').upsert(row);
-    if (error && /media|comments_disabled/i.test(error.message || '')) {
-      const { media: _media, comments_disabled: _disabled, ...legacy } = payload;
+    if (error && /media|comments_disabled|interactive|column/i.test(error.message || '')) {
+      const {
+        media: _media,
+        comments_disabled: _disabled,
+        interactive: _interactive,
+        ...legacy
+      } = payload;
       row = legacy;
       ({ error } = await supabase.from('posts').upsert(row));
     }
@@ -317,6 +326,9 @@ export async function updatePost(post) {
       text: post.text,
       comments_disabled: !!post.commentsDisabled,
     };
+    if (post.interactive !== undefined) {
+      patch.interactive = post.interactive || null;
+    }
     if (Array.isArray(post.media)) {
       patch.media = post.media.map((item) => ({
         kind: item.kind === 'video' ? 'video' : 'photo',
@@ -331,8 +343,13 @@ export async function updatePost(post) {
       patch.kind = first?.kind === 'video' ? 'video' : first ? 'photo' : 'text';
     }
     let { error } = await supabase.from('posts').update(patch).eq('id', post.id);
-    if (error && /media|comments_disabled/i.test(error.message || '')) {
-      const { media: _media, comments_disabled: _disabled, ...legacy } = patch;
+    if (error && /media|comments_disabled|interactive|column/i.test(error.message || '')) {
+      const {
+        media: _media,
+        comments_disabled: _disabled,
+        interactive: _interactive,
+        ...legacy
+      } = patch;
       ({ error } = await supabase.from('posts').update(legacy).eq('id', post.id));
     }
     if (error) warn(error);
@@ -344,7 +361,33 @@ export async function updatePost(post) {
 export async function deletePost(id) {
   if (!enabled()) return;
   try {
+    const interactions = await supabase
+      .from('post_interactions')
+      .delete()
+      .eq('post_id', id);
+    if (interactions.error) warn(interactions.error);
     const { error } = await supabase.from('posts').delete().eq('id', id);
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function saveInteraction({ id, postId, userId, kind, optionId, text }) {
+  if (!enabled()) return;
+  try {
+    const { error } = await supabase.from('post_interactions').upsert(
+      {
+        id,
+        post_id: postId,
+        user_id: userId,
+        kind,
+        option_id: optionId || null,
+        text: text || '',
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: 'post_id,user_id,kind' }
+    );
     if (error) warn(error);
   } catch (error) {
     warn(error);
@@ -752,10 +795,27 @@ export function subscribeNotifications(uid, callback) {
         { event: 'INSERT', schema: 'public', table: 'comments' },
         (payload) => callback('comment', payload.new)
       )
-      // Novas publicações: usadas para avisar quem foi mencionado com @.
+      // Participações em enquetes, perguntas, votações e desafios.
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'post_interactions' },
+        (payload) => callback('interaction', payload.new)
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'post_interactions' },
+        (payload) => callback('interaction', payload.new)
+      )
+      // Novas publicações: usadas para avisar quem foi mencionado com @ ou
+      // convidado para um desafio. Updates cobrem convites feitos depois.
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'posts' },
+        (payload) => callback('post', payload.new)
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'posts' },
         (payload) => callback('post', payload.new)
       )
       .subscribe();

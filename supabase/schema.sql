@@ -29,6 +29,24 @@ create table if not exists public.posts (
 
 alter table public.posts add column if not exists media jsonb default '[]'::jsonb;
 alter table public.posts add column if not exists comments_disabled boolean default false;
+alter table public.posts add column if not exists interactive jsonb;
+
+create table if not exists public.post_interactions (
+  id text primary key,
+  post_id text not null,
+  user_id text not null,
+  kind text not null,
+  option_id text,
+  text text default '',
+  created_at timestamptz default now()
+);
+
+create unique index if not exists post_interactions_unique
+  on public.post_interactions (post_id, user_id, kind);
+create index if not exists post_interactions_post_idx
+  on public.post_interactions (post_id);
+create index if not exists post_interactions_user_idx
+  on public.post_interactions (user_id);
 
 create table if not exists public.post_likes (
   post_id text not null,
@@ -196,6 +214,17 @@ drop policy if exists posts_update on public.posts;
 create policy posts_update on public.posts for update to authenticated using (author_id = auth.uid()::text) with check (author_id = auth.uid()::text);
 drop policy if exists posts_delete on public.posts;
 create policy posts_delete on public.posts for delete to authenticated using (author_id = auth.uid()::text);
+
+alter table public.post_interactions enable row level security;
+
+drop policy if exists post_interactions_read on public.post_interactions;
+create policy post_interactions_read on public.post_interactions for select to authenticated using (true);
+drop policy if exists post_interactions_insert on public.post_interactions;
+create policy post_interactions_insert on public.post_interactions for insert to authenticated with check (user_id = auth.uid()::text);
+drop policy if exists post_interactions_update on public.post_interactions;
+create policy post_interactions_update on public.post_interactions for update to authenticated using (user_id = auth.uid()::text) with check (user_id = auth.uid()::text);
+drop policy if exists post_interactions_delete on public.post_interactions;
+create policy post_interactions_delete on public.post_interactions for delete to authenticated using (user_id = auth.uid()::text);
 
 drop policy if exists post_likes_read on public.post_likes;
 create policy post_likes_read on public.post_likes for select to authenticated using (true);
@@ -381,5 +410,18 @@ begin
       and tablename = 'direct_messages'
   ) then
     alter publication supabase_realtime add table public.direct_messages;
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'post_interactions'
+  ) then
+    alter publication supabase_realtime add table public.post_interactions;
   end if;
 end $$;

@@ -51,6 +51,13 @@ export function mentionsHandle(text, handle) {
 export function notificationText(notification, post) {
   if (!notification) return '';
   if (notification.type === 'follow') return 'começou a seguir você';
+  if (notification.type === 'challenge') return 'te convidou para um desafio';
+  if (notification.type === 'interaction') {
+    if (notification.interactionKind === 'answer') return 'respondeu à sua pergunta';
+    if (notification.interactionKind === 'join') return 'participou do seu desafio';
+    if (post?.interactive?.format === 'imageVote') return 'votou na sua votação';
+    return 'votou na sua enquete';
+  }
   if (notification.type === 'mention') {
     if (notification.source === 'comment') return 'mencionou você em um comentário';
     if (post?.kind === 'story') return 'mencionou você em um story';

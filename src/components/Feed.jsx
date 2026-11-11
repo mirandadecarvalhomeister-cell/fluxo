@@ -1,21 +1,46 @@
 import { useState } from 'react';
+import {
+  DEFAULT_REACTIONS,
+  INTERACTIVE_FORMATS,
+  MAX_OPTIONS,
+  REACTION_CHOICES,
+  formatMeta,
+} from '../lib/interactive';
 import { MAX_POST_MEDIA } from '../lib/media';
 import { mediaDisplayStyle } from '../lib/mediaEdit';
+import { userOf } from '../lib/selectors';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import Empty from './Empty';
 import { Icon } from './Icon';
 import MediaEditor, { EditOverlay } from './MediaEditor';
 import Post from './Post';
-import { StoriesBar, StoryViewer, storyGroups } from './Stories';
 
 function Composer() {
   const { data, ui, actions } = useApp();
   const draft = ui.draft;
   const media = draft.media || [];
+  const format = draft.format || 'classic';
+  const meta = formatMeta(format);
   const first = data.me.name.split(' ')[0];
   const [editing, setEditing] = useState(null);
   const editingItem = editing !== null ? media[editing] : null;
+  const options = draft.options || [];
+  const invited = draft.invited || [];
+  const friends = (data.follows || []).filter((id) => id !== 'me');
+
+  const placeholder =
+    format === 'poll'
+      ? `Faça uma pergunta para a galera votar, ${first}…`
+      : format === 'question'
+        ? `Qual pergunta você quer fazer, ${first}?`
+        : format === 'imageVote'
+          ? 'Qual é a melhor? Descreva a votação…'
+          : format === 'challenge'
+            ? `Qual desafio você propõe, ${first}?`
+            : format === 'reactions'
+              ? 'O que está rolando? Escolha as reações ideais…'
+              : `O que está rolando no seu fluxo, ${first}? Use @ para mencionar alguém.`;
 
   return (
     <form
@@ -31,11 +56,158 @@ function Composer() {
           id="ctext"
           rows={2}
           maxLength={600}
-          placeholder={`O que está rolando no seu fluxo, ${first}? Use @ para mencionar alguém.`}
+          placeholder={placeholder}
           value={draft.text}
           onChange={(event) => actions.setDraftText(event.target.value)}
         />
       </div>
+
+      <div className="fmt-tabs" role="tablist" aria-label="Formato da publicação">
+        {INTERACTIVE_FORMATS.map((item) => (
+          <button
+            type="button"
+            role="tab"
+            key={item.id}
+            className={format === item.id ? 'on' : ''}
+            aria-selected={format === item.id}
+            onClick={() => actions.setDraftFormat(item.id)}
+            title={item.hint}
+          >
+            <Icon name={item.icon} />
+            <span>{item.short}</span>
+          </button>
+        ))}
+      </div>
+      <p className="fmt-hint">{meta.hint}</p>
+
+      {format === 'poll' ? (
+        <div className="fmt-fields">
+          {options.map((option, index) => (
+            <div className="opt-row" key={option.id || index}>
+              <span className={`opt-num${option.label.trim() ? ' filled' : ''}`}>
+                {index + 1}
+              </span>
+              <input
+                className="in"
+                type="text"
+                maxLength={90}
+                placeholder={`Alternativa ${index + 1}`}
+                value={option.label}
+                onChange={(event) => actions.setDraftOption(index, event.target.value)}
+              />
+              <button
+                type="button"
+                className="icon-btn sm"
+                onClick={() => actions.removeDraftOption(index)}
+                aria-label={`Remover alternativa ${index + 1}`}
+                disabled={options.length <= 2}
+              >
+                <Icon name="x" />
+              </button>
+            </div>
+          ))}
+          {options.length < MAX_OPTIONS ? (
+            <button
+              type="button"
+              className="btn ghost sm opt-add"
+              onClick={actions.addDraftOption}
+            >
+              <Icon name="plus" /> Adicionar alternativa
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {format === 'imageVote' ? (
+        <div className="fmt-fields">
+          {media.length < 2 ? (
+            <p className="fmt-alert">
+              <Icon name="image" /> Anexe pelo menos duas mídias para comparar.
+            </p>
+          ) : null}
+          {media.map((item, index) => {
+            const option =
+              options.find((entry) => entry?.mediaIndex === index) || options[index] || {};
+            return (
+              <div className="imgopt-row" key={`${item.src}-${index}`}>
+                <span className="imgopt-thumb">
+                  {item.kind === 'photo' ? (
+                    <img src={item.src} alt="" style={mediaDisplayStyle(item.edit)} />
+                  ) : (
+                    <video src={item.src} muted playsInline preload="metadata" />
+                  )}
+                </span>
+                <input
+                  className="in"
+                  type="text"
+                  maxLength={60}
+                  placeholder={`Legenda da opção ${index + 1}`}
+                  value={option.label || ''}
+                  onChange={(event) => actions.setDraftOption(index, event.target.value)}
+                />
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {format === 'challenge' ? (
+        <div className="fmt-fields">
+          <p className="fmt-alert">
+            <Icon name="users" /> Convide amigos para acompanhar e participar do desafio.
+          </p>
+          {friends.length ? (
+            <div className="invite-chips">
+              {friends.map((id) => {
+                const person = userOf(data, id);
+                const on = invited.includes(id);
+                return (
+                  <button
+                    type="button"
+                    className={`invite-chip${on ? ' on' : ''}`}
+                    key={id}
+                    onClick={() => actions.toggleDraftInvite(id)}
+                    aria-pressed={on}
+                  >
+                    <Avatar user={person} size={22} />
+                    <span>{person.name.split(' ')[0]}</span>
+                    {on ? <Icon name="check" /> : <Icon name="plus" />}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="muted sm">
+              Siga pessoas para poder convidá-las para os seus desafios.
+            </p>
+          )}
+        </div>
+      ) : null}
+
+      {format === 'reactions' ? (
+        <div className="fmt-fields">
+          <div className="react-choice">
+            {REACTION_CHOICES.map((emoji) => {
+              const on = (draft.reactions || DEFAULT_REACTIONS).includes(emoji);
+              return (
+                <button
+                  type="button"
+                  key={emoji}
+                  className={on ? 'on' : ''}
+                  onClick={() => actions.toggleDraftReaction(emoji)}
+                  aria-pressed={on}
+                  aria-label={`${on ? 'Remover' : 'Adicionar'} reação ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              );
+            })}
+          </div>
+          <p className="muted sm">
+            {(draft.reactions || DEFAULT_REACTIONS).length} de 8 reações escolhidas.
+          </p>
+        </div>
+      ) : null}
 
       {media.length ? (
         <div className="cprev-list" aria-label="Prévia das mídias selecionadas">
@@ -134,38 +306,13 @@ function Composer() {
 }
 
 export default function Feed() {
-  const { data, ui, actions } = useApp();
-  const [viewer, setViewer] = useState(null);
-  const tab = ui.feedTab;
-  const groups = storyGroups(data);
+  const { data } = useApp();
   const list = data.posts
     .filter((p) => p.kind !== 'story')
-    .filter((p) => tab === 'all' || p.by === 'me' || data.follows.includes(p.by))
     .sort((a, b) => b.ts - a.ts);
 
   return (
     <>
-      <div className="pagehead">
-        <div className="seg">
-          <button
-            className={tab === 'all' ? 'on' : ''}
-            onClick={() => actions.setFeedTab('all')}
-          >
-            Para você
-          </button>
-          <button
-            className={tab === 'fol' ? 'on' : ''}
-            onClick={() => actions.setFeedTab('fol')}
-          >
-            Seguindo
-          </button>
-        </div>
-      </div>
-      <StoriesBar
-        groups={groups}
-        onOpen={setViewer}
-        onAdd={actions.openStory}
-      />
       <Composer />
       <div className="posts">
         {list.length ? (
@@ -177,13 +324,6 @@ export default function Feed() {
           />
         )}
       </div>
-      {viewer ? (
-        <StoryViewer
-          groups={groups}
-          startId={viewer}
-          onClose={() => setViewer(null)}
-        />
-      ) : null}
     </>
   );
 }

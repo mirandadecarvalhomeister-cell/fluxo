@@ -19,6 +19,13 @@ import {
   mb,
   parseRemoteMedia,
 } from '../lib/media';
+import {
+  DEFAULT_REACTIONS,
+  buildInteractive,
+  normalizeInteractive,
+  optionsForFormat,
+  syncImageVoteOptions,
+} from '../lib/interactive';
 import { COVERS, STATE_VERSION, newState } from '../lib/seed';
 import { mentionsHandle, notificationText } from '../lib/selectors';
 import { playMessageSound, playSentSound } from '../lib/sound';
@@ -141,6 +148,27 @@ function mergeWorkspace(base, ws, user) {
     (commentsByPost[c.post_id] ||= []).push(entry);
   });
 
+  const interactionsByPost = {};
+  (ws.postInteractions || []).forEach((row) => {
+    if (!row?.post_id) return;
+    (interactionsByPost[row.post_id] ||= []).push({
+      id: row.id,
+      by: asPerson(row.user_id),
+      kind: row.kind,
+      optionId: row.option_id || null,
+      text: row.text || '',
+      ts: new Date(row.created_at || Date.now()).getTime(),
+    });
+  });
+
+  const reactionCountsByPost = {};
+  (ws.likeRows || []).forEach((row) => {
+    if (!row?.post_id) return;
+    const emoji = row.emoji || '❤️';
+    (reactionCountsByPost[row.post_id] ||= {})[emoji] =
+      (reactionCountsByPost[row.post_id][emoji] || 0) + 1;
+  });
+
   const posts = (ws.posts || [])
     .map((p) => {
       const myReaction = ws.likes.mine.get(p.id) || null;
@@ -158,6 +186,7 @@ function mergeWorkspace(base, ws, user) {
       }
       const isStory =
         p.kind === 'story' || String(p.seed || '').startsWith('story:');
+      const normalizedInteractive = normalizeInteractive(p.interactive);
       return {
         id: p.id,
         by: asPerson(p.author_id),
@@ -171,9 +200,17 @@ function mergeWorkspace(base, ws, user) {
         likes: ws.likes.counts.get(p.id) || 0,
         liked: !!myReaction,
         myReaction,
+        reactionCounts: reactionCountsByPost[p.id] || {},
         saved: ws.saves.has(p.id),
         commentsDisabled: !!p.comments_disabled,
         comments: (commentsByPost[p.id] || []).sort((a, b) => a.ts - b.ts),
+        interactive: normalizedInteractive
+          ? {
+              ...normalizedInteractive,
+              invited: normalizedInteractive.invited.map(asPerson),
+            }
+          : null,
+        interactions: (interactionsByPost[p.id] || []).sort((a, b) => a.ts - b.ts),
       };
     })
     .sort((a, b) => b.ts - a.ts);
@@ -335,6 +372,35 @@ function mergeWorkspace(base, ws, user) {
       ts: new Date(c.created_at || Date.now()).getTime(),
     });
   });
+  // Participações nas minhas publicações interativas (voto, resposta ou
+  // entrada em desafio) e convites recebidos em desafios.
+  const postsById = new Map(posts.map((post) => [post.id, post]));
+  (ws.postInteractions || []).forEach((row) => {
+    if (!row?.post_id || row.user_id === uidv) return;
+    const post = postsById.get(row.post_id);
+    if (!post || post.by !== 'me') return;
+    notifications.push({
+      id: `interaction:${row.id}`,
+      type: 'interaction',
+      actorId: row.user_id,
+      postId: row.post_id,
+      interactionKind: row.kind,
+      optionId: row.option_id || null,
+      ts: new Date(row.created_at || Date.now()).getTime(),
+    });
+  });
+  (ws.posts || []).forEach((post) => {
+    const interactive = normalizeInteractive(post.interactive);
+    if (post.author_id === uidv || interactive?.format !== 'challenge') return;
+    if (!interactive.invited?.includes(uidv)) return;
+    notifications.push({
+      id: `challenge:${post.id}`,
+      type: 'challenge',
+      actorId: post.author_id,
+      postId: post.id,
+      ts: new Date(post.created_at || Date.now()).getTime(),
+    });
+  });
   (ws.allFollows || []).forEach((row) => {
     if (row.following_id !== uidv || row.follower_id === uidv) return;
     notifications.push({
@@ -423,8 +489,14 @@ const initialUi = () => {
   const { route, room } = readHash();
   return {
     route,
-    feedTab: 'all',
-    draft: { text: '', media: [] },
+    draft: {
+      text: '',
+      media: [],
+      format: 'classic',
+      options: [],
+      reactions: DEFAULT_REACTIONS,
+      invited: [],
+    },
     open: {},
     profTab: 'posts',
     chat: null,
@@ -806,7 +878,48 @@ export function AppProvider({ children }) {
       if (!cur) return;
 
       let notification = null;
-      if (kind === 'follow') {
+      const rowInteractive = normalizeInteractive(row.interactive);
+      if (kind === 'interaction') {
+        const post = cur.posts.find((p) => p.id === row.post_id);
+        if (!post || !row.id) return;
+        const entry = {
+          id: row.id,
+          by: row.user_id === uidv ? 'me' : row.user_id,
+          kind: row.kind,
+          optionId: row.option_id || null,
+          text: row.text || '',
+          ts,
+        };
+        setData((state) => {
+          if (!state) return state;
+          return {
+            ...state,
+            posts: state.posts.map((p) => {
+              if (p.id !== row.post_id) return p;
+              const kept = (p.interactions || []).filter(
+                (item) =>
+                  item.id !== entry.id &&
+                  !(item.by === entry.by && item.kind === entry.kind)
+              );
+              return {
+                ...p,
+                interactions: [...kept, entry].sort((a, b) => a.ts - b.ts),
+              };
+            }),
+          };
+        });
+        if (row.user_id !== uidv && post.by === 'me') {
+          notification = {
+            id: `interaction:${row.id}`,
+            type: 'interaction',
+            actorId: row.user_id,
+            postId: row.post_id,
+            interactionKind: row.kind,
+            optionId: row.option_id || null,
+            ts,
+          };
+        }
+      } else if (kind === 'follow') {
         if (row.following_id === uidv && row.follower_id !== uidv) {
           notification = {
             id: `follow:${row.follower_id}`,
@@ -854,17 +967,30 @@ export function AppProvider({ children }) {
           };
         }
       } else if (kind === 'post') {
-        if (row.author_id === uidv || !mentionsHandle(row.text, cur.me?.handle)) {
+        const interactive = rowInteractive;
+        const challenged =
+          interactive?.format === 'challenge' &&
+          interactive.invited?.includes(uidv);
+        const mentioned = mentionsHandle(row.text, cur.me?.handle);
+        if (row.author_id === uidv || (!mentioned && !challenged)) {
           return;
         }
-        notification = {
-          id: `mention:post:${row.id}`,
-          type: 'mention',
-          source: 'post',
-          actorId: row.author_id,
-          postId: row.id,
-          ts,
-        };
+        notification = challenged
+          ? {
+              id: `challenge:${row.id}`,
+              type: 'challenge',
+              actorId: row.author_id,
+              postId: row.id,
+              ts,
+            }
+          : {
+              id: `mention:post:${row.id}`,
+              type: 'mention',
+              source: 'post',
+              actorId: row.author_id,
+              postId: row.id,
+              ts,
+            };
       }
       if (!notification) return;
 
@@ -883,9 +1009,17 @@ export function AppProvider({ children }) {
           }
           next.me = { ...state.me, followers: (state.me.followers || 0) + 1 };
         } else if (kind === 'like') {
-          next.posts = state.posts.map((p) =>
-            p.id === row.post_id ? { ...p, likes: (p.likes || 0) + 1 } : p
-          );
+          next.posts = state.posts.map((p) => {
+            if (p.id !== row.post_id) return p;
+            const emoji = row.emoji || '❤️';
+            const counts = { ...(p.reactionCounts || {}) };
+            counts[emoji] = (counts[emoji] || 0) + 1;
+            return {
+              ...p,
+              likes: (p.likes || 0) + 1,
+              reactionCounts: counts,
+            };
+          });
         } else if (kind === 'comment') {
           const comment = { id: row.id, by: row.author_id, text: row.text || '', ts };
           next.posts = state.posts.map((p) =>
@@ -896,6 +1030,29 @@ export function AppProvider({ children }) {
               : p
           );
         } else if (kind === 'post') {
+          // Convites e edições chegam por UPDATE. Se o post já está no feed,
+          // atualiza o formato interativo (convites) e o texto.
+          const existing = state.posts.find((p) => p.id === row.id);
+          if (existing) {
+            next.posts = state.posts.map((p) =>
+              p.id === row.id
+                ? {
+                    ...p,
+                    text: row.text ?? p.text,
+                    commentsDisabled: !!row.comments_disabled,
+                    interactive: rowInteractive
+                      ? {
+                          ...rowInteractive,
+                          invited: rowInteractive.invited.map((id) =>
+                            id === uidv ? 'me' : id
+                          ),
+                        }
+                      : p.interactive,
+                  }
+                : p
+            );
+            return next;
+          }
           // A publicação mencionada ainda não estava no feed: entra agora,
           // senão a notificação abriria um post inexistente.
           if (!state.posts.some((p) => p.id === row.id)) {
@@ -927,9 +1084,19 @@ export function AppProvider({ children }) {
                 likes: row.likes || 0,
                 liked: false,
                 myReaction: null,
+                reactionCounts: {},
                 saved: false,
                 commentsDisabled: !!row.comments_disabled,
                 comments: [],
+                interactive: rowInteractive
+                  ? {
+                      ...rowInteractive,
+                      invited: rowInteractive.invited.map((id) =>
+                        id === uidv ? 'me' : id
+                      ),
+                    }
+                  : null,
+                interactions: [],
               },
               ...state.posts,
             ];
@@ -1170,13 +1337,19 @@ export function AppProvider({ children }) {
           if (uploaded) src = uploaded;
           else cloudFailed += 1;
         }
-        setUi((u) => ({
-          ...u,
-          draft: {
-            ...u.draft,
-            media: [...(u.draft.media || []), { kind, src, name: file.name }],
-          },
-        }));
+        setUi((u) => {
+          const nextMedia = [...(u.draft.media || []), { kind, src, name: file.name }];
+          return {
+            ...u,
+            draft: {
+              ...u.draft,
+              media: nextMedia,
+              ...(u.draft.format === 'imageVote'
+                ? { options: syncImageVoteOptions(nextMedia, u.draft.options) }
+                : {}),
+            },
+          };
+        });
         kept += 1;
       }
       if (kept && cloudFailed) {
@@ -1195,13 +1368,109 @@ export function AppProvider({ children }) {
   }
 
   function removeDraftMedia(index) {
+    setUi((u) => {
+      const nextMedia = (u.draft.media || []).filter((_, i) => i !== index);
+      return {
+        ...u,
+        draft: {
+          ...u.draft,
+          media: nextMedia,
+          ...(u.draft.format === 'imageVote'
+            ? { options: syncImageVoteOptions(nextMedia, u.draft.options) }
+            : {}),
+        },
+      };
+    });
+  }
+
+  function setDraftFormat(format) {
+    setUi((u) => {
+      const media = u.draft.media || [];
+      let options = optionsForFormat(format, media, u.draft.options);
+      if (format === 'imageVote' && media.length < 2) {
+        options = syncImageVoteOptions(media, u.draft.options);
+      }
+      return {
+        ...u,
+        draft: {
+          ...u.draft,
+          format,
+          options,
+          invited: format === 'challenge' ? u.draft.invited || [] : [],
+        },
+      };
+    });
+  }
+
+  function setDraftOption(index, label) {
     setUi((u) => ({
       ...u,
       draft: {
         ...u.draft,
-        media: (u.draft.media || []).filter((_, i) => i !== index),
+        options: (u.draft.options || []).map((option, i) =>
+          i === index ? { ...option, label } : option
+        ),
       },
     }));
+  }
+
+  function addDraftOption() {
+    setUi((u) => {
+      const options = u.draft.options || [];
+      if (options.length >= 6) return u;
+      return {
+        ...u,
+        draft: { ...u.draft, options: [...options, { id: uid(), label: '' }] },
+      };
+    });
+  }
+
+  function removeDraftOption(index) {
+    setUi((u) => {
+      const options = u.draft.options || [];
+      if (options.length <= 2) return u;
+      return {
+        ...u,
+        draft: {
+          ...u.draft,
+          options: options.filter((_, i) => i !== index),
+        },
+      };
+    });
+  }
+
+  function toggleDraftReaction(emoji) {
+    setUi((u) => {
+      const current = u.draft.reactions || DEFAULT_REACTIONS;
+      const has = current.includes(emoji);
+      const next = has ? current.filter((item) => item !== emoji) : [...current, emoji];
+      if (!next.length) {
+        toast('Mantenha ao menos uma reação disponível.');
+        return u;
+      }
+      return {
+        ...u,
+        draft: { ...u.draft, reactions: next.slice(0, 8) },
+      };
+    });
+  }
+
+  function toggleDraftInvite(id) {
+    setUi((u) => {
+      const current = u.draft.invited || [];
+      const has = current.includes(id);
+      if (!has && current.length >= 20) {
+        toast('Você pode convidar até 20 pessoas por desafio.');
+        return u;
+      }
+      return {
+        ...u,
+        draft: {
+          ...u.draft,
+          invited: has ? current.filter((item) => item !== id) : [...current, id],
+        },
+      };
+    });
   }
 
   // Aplica o resultado do editor de mídia ao item do rascunho: fotos vêm com
@@ -1358,7 +1627,18 @@ export function AppProvider({ children }) {
     const draft = uiRef.current.draft;
     const trimmed = text.trim();
     const media = draft.media || [];
-    if (!trimmed && !media.length) {
+    const format = draft.format || 'classic';
+    const interactive = buildInteractive(format, draft, media);
+
+    if (format === 'poll' && (interactive?.options?.length || 0) < 2) {
+      toast('Escreva pelo menos duas alternativas para a enquete.');
+      return;
+    }
+    if (format === 'imageVote' && media.length < 2) {
+      toast('A votação com imagens precisa de pelo menos duas mídias.');
+      return;
+    }
+    if (!trimmed && !media.length && format !== 'poll') {
       toast('Escreva algo ou adicione uma foto ou vídeo.');
       return;
     }
@@ -1374,144 +1654,129 @@ export function AppProvider({ children }) {
       likes: 0,
       liked: false,
       myReaction: null,
+      reactionCounts: {},
       saved: false,
       commentsDisabled: false,
       comments: [],
+      interactive: interactive || null,
+      interactions: [],
     };
     setData((cur) => ({ ...cur, posts: [post, ...cur.posts] }));
-    setUi((u) => ({ ...u, draft: { text: '', media: [] } }));
+    setUi((u) => ({
+      ...u,
+      draft: {
+        text: '',
+        media: [],
+        format: 'classic',
+        options: [],
+        reactions: DEFAULT_REACTIONS,
+        invited: [],
+      },
+    }));
     if (sessionRef.current?.id) remote.savePost(post, sessionRef.current.id);
     toast('Publicado');
   }
 
-  async function publishStory({ text = '', file = null, edit = null } = {}) {
-    let media = [];
-    if (file) {
-      try {
-        const kind = mediaKind(file);
-        if (kind === 'video') {
-          const seconds = await fileVideoDuration(file);
-          if (seconds != null && seconds > MAX_VIDEO_SECONDS + 1) {
-            toast(
-              `Este vídeo tem ${fmtDur(seconds)}. Os vídeos devem ter no máximo 3 minutos.`
-            );
-            return false;
-          }
-        }
-        if (isSupabaseEnabled && file.size > MAX_MEDIA_BYTES) {
-          toast(
-            `Este arquivo tem ${mb(file.size)}. O limite de envio é 50 MB${
-              kind === 'video' ? ' — corte o vídeo ou reduza a qualidade' : ''
-            }.`
-          );
-          return false;
-        }
-        let src =
-          kind === 'photo'
-            ? await fileToDataURL(file, 1080)
-            : URL.createObjectURL(file);
-        if (isSupabaseEnabled && sessionRef.current?.id) {
-          const uploaded = await remote.uploadMedia(file, sessionRef.current.id);
-          if (uploaded) src = uploaded;
-          else {
-            toast('Não foi possível enviar a mídia para a nuvem. Tente novamente.');
-            return false;
-          }
-        }
-        media = [{ kind, src, name: file.name, edit: edit || undefined }];
-      } catch {
-        toast('Não foi possível processar a mídia do story.');
-        return false;
-      }
-    }
-    const trimmed = String(text || '').trim();
-    if (!media.length && !trimmed) {
-      toast('Adicione uma foto, vídeo ou texto ao story.');
-      return false;
-    }
-    const id = uid();
-    const story = {
+  function saveInteraction(postId, kind, fields = {}) {
+    const post = dataRef.current?.posts.find((p) => p.id === postId);
+    if (!post) return null;
+    const uidv = sessionRef.current?.id || null;
+    const id = uidv ? `${postId}:${uidv}:${kind}` : `local:${postId}:${kind}`;
+    const entry = {
       id,
       by: 'me',
+      kind,
+      optionId: fields.optionId || null,
+      text: fields.text || '',
       ts: Date.now(),
-      text: trimmed,
-      kind: 'story',
-      media,
-      src: media[0]?.src,
-      seed: `story:${id}`,
-      likes: 0,
-      liked: false,
-      myReaction: null,
-      saved: false,
-      commentsDisabled: true,
-      comments: [],
-    };
-    setData((cur) => ({ ...cur, posts: [story, ...cur.posts] }));
-    if (sessionRef.current?.id) remote.savePost(story, sessionRef.current.id);
-    toast('Story publicado');
-    return true;
-  }
-
-  function deleteStory(id) {
-    requestConfirm({
-      title: 'Excluir story?',
-      text: 'Ele sai do ar imediatamente e não pode ser recuperado.',
-      confirmLabel: 'Excluir story',
-      tone: 'hot',
-      action: () => {
-        setData((cur) => ({
-          ...cur,
-          posts: cur.posts.filter((p) => p.id !== id),
-        }));
-        if (sessionRef.current?.id) remote.deletePost(id);
-        toast('Story excluído');
-      },
-    });
-  }
-
-  function replyStory(id, text) {
-    const story = dataRef.current?.posts.find((p) => p.id === id);
-    const trimmed = String(text || '').trim();
-    if (!story || story.by === 'me' || !trimmed) return;
-    const target = story.by;
-    ensureChat(target);
-    const message = {
-      id: uid(),
-      me: true,
-      text: trimmed,
-      ts: Date.now(),
-      st: 'sent',
-      attachment: {
-        kind: 'story',
-        storyId: story.id,
-        authorId: target,
-        text: (story.text || '').slice(0, 160),
-        media: story.media?.[0]?.src || story.src || null,
-        mediaKind: story.media?.[0]?.kind || 'photo',
-      },
     };
     setData((cur) => ({
       ...cur,
-      chats: cur.chats.map((chat) =>
-        chat.with === target ? { ...chat, msgs: [...chat.msgs, message] } : chat
-      ),
+      posts: cur.posts.map((p) => {
+        if (p.id !== postId) return p;
+        const kept = (p.interactions || []).filter(
+          (row) => row.id !== id && !(row.by === 'me' && row.kind === kind)
+        );
+        return { ...p, interactions: [...kept, entry].sort((a, b) => a.ts - b.ts) };
+      }),
     }));
-    if (sessionRef.current?.id) {
-      remote.sendDirectMessage(message, sessionRef.current.id, target);
+    if (uidv) {
+      remote.saveInteraction({
+        id,
+        postId,
+        userId: uidv,
+        kind,
+        optionId: entry.optionId,
+        text: entry.text,
+      });
     }
-    if (uiRef.current.settings?.soundOnSend) playSentSound();
-    toast('Resposta enviada no direct');
+    return entry;
+  }
+
+  function votePost(postId, optionId) {
+    const post = dataRef.current?.posts.find((p) => p.id === postId);
+    const interactive = normalizeInteractive(post?.interactive);
+    if (!interactive || !interactive.options.some((option) => option.id === optionId)) {
+      toast('Essa alternativa não está mais disponível.');
+      return;
+    }
+    saveInteraction(postId, 'vote', { optionId });
+    toast('Voto registrado');
+  }
+
+  function answerPost(postId, text) {
+    const trimmed = String(text || '').trim();
+    if (!trimmed) {
+      toast('Escreva a sua resposta.');
+      return;
+    }
+    saveInteraction(postId, 'answer', { text: trimmed.slice(0, 280) });
+    toast('Resposta enviada');
+  }
+
+  function joinChallenge(postId) {
+    saveInteraction(postId, 'join');
+    toast('Você entrou no desafio');
+  }
+
+  function inviteToChallenge(postId, ids) {
+    const post = dataRef.current?.posts.find((p) => p.id === postId);
+    if (!post || post.interactive?.format !== 'challenge') return;
+    const list = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
+    if (!list.length) return;
+    const uidv = sessionRef.current?.id;
+    const current = (post.interactive.invited || []).map((id) =>
+      id === 'me' && uidv ? uidv : id
+    );
+    const next = [...new Set([...current, ...list])].slice(0, 20);
+    if (next.length === current.length) return;
+    updatePost(
+      postId,
+      { interactive: { ...post.interactive, invited: next } },
+      { keepModal: true, message: 'Convite enviado' }
+    );
   }
 
   function reactPost(id, emoji = '❤️') {
     const post = dataRef.current?.posts.find((p) => p.id === id);
     if (!post) return;
-    const next = post.myReaction === emoji ? null : emoji;
+    const previous = post.myReaction;
+    const next = previous === emoji ? null : emoji;
     setData((cur) => ({
       ...cur,
-      posts: cur.posts.map((p) =>
-        p.id === id ? { ...p, myReaction: next, liked: !!next } : p
-      ),
+      posts: cur.posts.map((p) => {
+        if (p.id !== id) return p;
+        const counts = { ...(p.reactionCounts || {}) };
+        if (previous) counts[previous] = Math.max(0, (counts[previous] || 0) - 1);
+        if (next) counts[next] = (counts[next] || 0) + 1;
+        return {
+          ...p,
+          myReaction: next,
+          liked: !!next,
+          likes: Math.max(0, (p.likes || 0) + (next ? 1 : 0) - (previous ? 1 : 0)),
+          reactionCounts: counts,
+        };
+      }),
     }));
     if (sessionRef.current?.id) remote.setLike(id, sessionRef.current.id, next);
   }
@@ -2419,8 +2684,13 @@ export function AppProvider({ children }) {
     toggleTheme: () =>
       setUi((u) => ({ ...u, theme: u.theme === 'dark' ? 'light' : 'dark' })),
     go,
-    setFeedTab: (feedTab) => setUi((u) => ({ ...u, feedTab })),
     setDraftText: (text) => setUi((u) => ({ ...u, draft: { ...u.draft, text } })),
+    setDraftFormat,
+    setDraftOption,
+    addDraftOption,
+    removeDraftOption,
+    toggleDraftReaction,
+    toggleDraftInvite,
     clearDraftMedia: () =>
       setUi((u) => ({ ...u, draft: { ...u.draft, media: [] } })),
     removeDraftMedia,
@@ -2430,10 +2700,10 @@ export function AppProvider({ children }) {
     removePostMedia,
     applyPostMediaEdit,
     publish,
-    publishStory,
-    deleteStory,
-    replyStory,
-    openStory: () => setUi((u) => ({ ...u, modal: { type: 'newstory' } })),
+    votePost,
+    answerPost,
+    joinChallenge,
+    inviteToChallenge,
     toggleLike,
     reactPost,
     toggleComments,

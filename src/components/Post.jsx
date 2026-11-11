@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { art } from '../lib/art';
+import { normalizeInteractive } from '../lib/interactive';
 import { mediaOf } from '../lib/media';
 import { hasEdits, mediaDisplayStyle } from '../lib/mediaEdit';
 import { userOf } from '../lib/selectors';
@@ -8,6 +9,7 @@ import { useApp } from '../store/AppContext';
 import { Avatar, LiveAvatar } from './Avatar';
 import { TagText } from './Brand';
 import { Icon } from './Icon';
+import Interactive from './Interactive';
 import { EditWrap } from './MediaEditor';
 
 const REACTIONS = ['❤️', '🔥', '👏', '😂', '😮', '😢', '🎉', '💜'];
@@ -233,6 +235,11 @@ export default function Post({ post, detail = false }) {
   const open = detail || !!ui.open[post.id];
   const following = data.follows.includes(post.by);
   const totalLikes = post.likes || 0;
+  const interactive = normalizeInteractive(post.interactive);
+  const reactionChoices =
+    interactive?.format === 'reactions' && interactive.reactions.length
+      ? interactive.reactions
+      : REACTIONS;
 
   function submitComment(event) {
     event.preventDefault();
@@ -245,7 +252,7 @@ export default function Post({ post, detail = false }) {
     if (detail) return;
     if (
       event.target.closest(
-        'button, a, input, textarea, select, label, video, .vid, .acts, .cmts, .reaction-wrap, .carousel, .post-menu'
+        'button, a, input, textarea, select, label, video, .vid, .acts, .cmts, .interactive, .reaction-wrap, .carousel, .post-menu'
       )
     ) {
       return;
@@ -300,7 +307,9 @@ export default function Post({ post, detail = false }) {
         </p>
       ) : null}
 
-      <Media post={post} author={author} />
+      {interactive?.format !== 'imageVote' ? <Media post={post} author={author} /> : null}
+
+      <Interactive post={post} />
 
       <footer className="acts">
         <div className="reaction-wrap">
@@ -318,7 +327,7 @@ export default function Post({ post, detail = false }) {
             {fmt(totalLikes)}
           </button>
           <div className="react-picker" role="menu" aria-label="Escolher reação">
-            {REACTIONS.map((emoji) => (
+            {reactionChoices.map((emoji) => (
               <button
                 key={emoji}
                 type="button"

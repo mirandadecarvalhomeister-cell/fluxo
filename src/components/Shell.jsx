@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { unreadNotifications, unreadTotal } from '../lib/selectors';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
@@ -23,6 +23,86 @@ const TITLES = {
   mensagens: 'Mensagens',
   conexoes: 'Conexões',
 };
+
+function AccountMenu({ compact = false }) {
+  const { data, ui, actions } = useApp();
+  const ref = useRef(null);
+  const dark = ui.theme === 'dark';
+  const close = () => {
+    if (ref.current) ref.current.open = false;
+  };
+
+  useEffect(() => {
+    const onDocClick = (event) => {
+      if (ref.current?.open && !ref.current.contains(event.target)) close();
+    };
+    const onKey = (event) => {
+      if (event.key === 'Escape') close();
+    };
+    document.addEventListener('click', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  return (
+    <details
+      className={`post-menu account-menu${compact ? ' compact' : ''}`}
+      ref={ref}
+    >
+      <summary
+        className="account-trigger"
+        aria-label="Conta, tema e configurações"
+        title="Conta e preferências"
+      >
+        <Avatar user={data.me} size={compact ? 32 : 34} />
+        <span className="account-gear">
+          <Icon name="settings" />
+        </span>
+      </summary>
+      <div className="menu-pop">
+        <div className="account-head">
+          <Avatar user={data.me} size={36} />
+          <div>
+            <b className="ell">{data.me.name}</b>
+            <span className="muted sm ell">@{data.me.handle}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            actions.toggleTheme();
+            close();
+          }}
+        >
+          <Icon name={dark ? 'sun' : 'moon'} />
+          {dark ? 'Mudar para o modo claro' : 'Mudar para o modo escuro'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            close();
+            actions.openSettings();
+          }}
+        >
+          <Icon name="settings" /> Configurações
+        </button>
+        <button
+          type="button"
+          className="danger"
+          onClick={() => {
+            close();
+            actions.logout();
+          }}
+        >
+          <Icon name="logout" /> Sair
+        </button>
+      </div>
+    </details>
+  );
+}
 
 export default function Shell() {
   const { data, ui, actions, online } = useApp();
@@ -82,8 +162,6 @@ export default function Shell() {
     setTimeout(() => document.getElementById('ctext')?.focus(), 60);
   };
 
-  const themeIcon = ui.theme === 'dark' ? 'sun' : 'moon';
-
   return (
     <>
       <a
@@ -140,15 +218,7 @@ export default function Shell() {
           </a>
           <div className="row" style={{ justifyContent: 'space-between', padding: '0 4px' }}>
             {bellBtn}
-            <button className="icon-btn" onClick={actions.toggleTheme} aria-label="Alternar tema">
-              <Icon name={themeIcon} />
-            </button>
-            <button className="icon-btn" onClick={actions.openSettings} aria-label="Configurações">
-              <Icon name="settings" />
-            </button>
-            <button className="icon-btn" onClick={actions.logout} aria-label="Sair">
-              <Icon name="logout" />
-            </button>
+            <AccountMenu />
           </div>
         </aside>
 
@@ -160,15 +230,7 @@ export default function Shell() {
                 <Icon name="search" />
               </button>
               {bellBtn}
-              <button className="icon-btn" onClick={actions.toggleTheme} aria-label="Alternar tema">
-                <Icon name={themeIcon} />
-              </button>
-              <button className="icon-btn" onClick={actions.openSettings} aria-label="Configurações">
-                <Icon name="settings" />
-              </button>
-              <button className="icon-btn" onClick={actions.logout} aria-label="Sair">
-                <Icon name="logout" />
-              </button>
+              <AccountMenu compact />
             </div>
           </div>
           <main id="view" tabIndex={-1}>

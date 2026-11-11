@@ -6,7 +6,6 @@ import { ago, fmt, lsGet, lsSet } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
-import { activeStories } from './Stories';
 
 const RECENT_KEY = 'fluxo.searches';
 
@@ -172,7 +171,6 @@ export default function SearchModal() {
     () => [...new Set(data.comms.filter((c) => c.joined).map((c) => c.cat))],
     [data.comms]
   );
-  const storiesNow = useMemo(() => activeStories(data).length, [data]);
 
   const commRecs = useMemo(() => {
     const affinity = (cat) =>
@@ -357,7 +355,7 @@ export default function SearchModal() {
             <div>
               <b>Radar do fluxo</b>
               <span className="muted sm">
-                {lives.length} no ar · {storiesNow} stories ativos ·{' '}
+                {lives.length} no ar ·{' '}
                 {data.posts.filter((post) => post.kind !== 'story').length}{' '}
                 publicações · {trending.length} assuntos em alta
               </span>
