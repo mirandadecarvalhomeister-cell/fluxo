@@ -24,6 +24,12 @@ const TITLES = {
   conexoes: 'Conexões',
 };
 
+// Ordem das abas para a navegação por deslize horizontal no mobile.
+const SWIPE_ORDER = NAV.map(([key]) => key);
+// Não inicia o gesto em campos de digitação, vídeos ou áreas marcadas.
+const SWIPE_IGNORE =
+  'input, textarea, select, video, [contenteditable]:not([contenteditable="false"]), [data-swipe="ignore"]';
+
 function AccountMenu({ compact = false }) {
   const { data, ui, actions } = useApp();
   const ref = useRef(null);
@@ -139,6 +145,92 @@ export default function Shell() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [actions]);
+
+  // Deslizar para o lado troca de aba (Feed ⇄ Perfil ⇄ Mensagens ⇄ Conexões).
+  // O gesto fica desativado sobre carrosséis, listas horizontais e campos.
+  const swipeStart = useRef(null);
+  const routeRef = useRef(ui.route);
+  const goRef = useRef(actions.go);
+  routeRef.current = ui.route;
+  goRef.current = actions.go;
+
+  useEffect(() => {
+    const view = document.getElementById('view');
+    if (!view) return undefined;
+
+    const scrollsHorizontally = (target) => {
+      for (let el = target; el && el !== view; el = el.parentElement) {
+        const style = getComputedStyle(el);
+        if (
+          (style.overflowX === 'auto' || style.overflowX === 'scroll') &&
+          el.scrollWidth > el.clientWidth + 4
+        ) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const onStart = (event) => {
+      swipeStart.current = null;
+      if (event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      // Deixa as bordas para os gestos do sistema (voltar/avançar).
+      if (touch.clientX < 20 || touch.clientX > window.innerWidth - 20) return;
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        (target.closest(SWIPE_IGNORE) || scrollsHorizontally(target))
+      ) {
+        return;
+      }
+      swipeStart.current = { x: touch.clientX, y: touch.clientY, at: Date.now() };
+    };
+
+    const onEnd = (event) => {
+      const start = swipeStart.current;
+      swipeStart.current = null;
+      if (!start || event.touches.length || event.changedTouches.length !== 1) return;
+      const touch = event.changedTouches[0];
+      const dx = touch.clientX - start.x;
+      const dy = touch.clientY - start.y;
+      if (
+        Date.now() - start.at > 800 ||
+        Math.abs(dx) < 64 ||
+        Math.abs(dx) < Math.abs(dy) * 1.4
+      ) {
+        return;
+      }
+      const index = SWIPE_ORDER.indexOf(routeRef.current);
+      if (index === -1) return;
+      const next = SWIPE_ORDER[index + (dx < 0 ? 1 : -1)];
+      if (!next) return;
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      if (!reduce && typeof view.animate === 'function') {
+        view.animate(
+          [
+            { opacity: 0.4, transform: `translateX(${dx < 0 ? 26 : -26}px)` },
+            { opacity: 1, transform: 'translateX(0)' },
+          ],
+          { duration: 240, easing: 'cubic-bezier(.22,.61,.36,1)' }
+        );
+      }
+      goRef.current(next);
+    };
+
+    const onCancel = () => {
+      swipeStart.current = null;
+    };
+
+    view.addEventListener('touchstart', onStart, { passive: true });
+    view.addEventListener('touchend', onEnd, { passive: true });
+    view.addEventListener('touchcancel', onCancel, { passive: true });
+    return () => {
+      view.removeEventListener('touchstart', onStart);
+      view.removeEventListener('touchend', onEnd);
+      view.removeEventListener('touchcancel', onCancel);
+    };
+  }, []);
 
   const navLink = ([key, label, icon]) => (
     <a
