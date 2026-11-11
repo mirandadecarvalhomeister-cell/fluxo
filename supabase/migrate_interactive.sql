@@ -41,6 +41,19 @@ drop policy if exists post_interactions_delete on public.post_interactions;
 create policy post_interactions_delete on public.post_interactions
   for delete to authenticated using (user_id = auth.uid()::text);
 
+-- O autor da publicação também pode limpar as participações dela (usado ao
+-- excluir o post, mesmo que as participações sejam de outras pessoas).
+drop policy if exists post_interactions_post_author_delete on public.post_interactions;
+create policy post_interactions_post_author_delete on public.post_interactions
+  for delete to authenticated using (
+    exists (
+      select 1
+      from public.posts p
+      where p.id = post_interactions.post_id
+        and p.author_id = auth.uid()::text
+    )
+  );
+
 -- Resultados ao vivo: publica INSERTs/UPDATEs das participações no realtime.
 do $$
 begin

@@ -225,6 +225,13 @@ drop policy if exists post_interactions_update on public.post_interactions;
 create policy post_interactions_update on public.post_interactions for update to authenticated using (user_id = auth.uid()::text) with check (user_id = auth.uid()::text);
 drop policy if exists post_interactions_delete on public.post_interactions;
 create policy post_interactions_delete on public.post_interactions for delete to authenticated using (user_id = auth.uid()::text);
+drop policy if exists post_interactions_post_author_delete on public.post_interactions;
+create policy post_interactions_post_author_delete on public.post_interactions for delete to authenticated using (
+  exists (
+    select 1 from public.posts p
+    where p.id = post_interactions.post_id and p.author_id = auth.uid()::text
+  )
+);
 
 drop policy if exists post_likes_read on public.post_likes;
 create policy post_likes_read on public.post_likes for select to authenticated using (true);
