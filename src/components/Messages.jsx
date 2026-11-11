@@ -1173,9 +1173,9 @@ export default function Messages() {
                     </span>
                   </div>
                 ) : (
-                  <div className="composer">
+                  <div className="msg-composer">
                     <button
-                      className="icon-btn composer-btn"
+                      className="icon-btn msg-composer-btn"
                       type="button"
                       onClick={() => {
                         setAttachOpen((value) => !value);
@@ -1187,7 +1187,7 @@ export default function Messages() {
                       <Icon name="paperclip" />
                     </button>
                     <textarea
-                      className="composer-in"
+                      className="msg-composer-in"
                       id="msgIn"
                       ref={inputRef}
                       rows={1}
@@ -1213,7 +1213,7 @@ export default function Messages() {
                       onPointerLeave={endInputHold}
                     />
                     <button
-                      className={`icon-btn composer-btn ${emojiOpen ? 'on' : ''}`}
+                      className={`icon-btn msg-composer-btn ${emojiOpen ? 'on' : ''}`}
                       type="button"
                       onClick={() => {
                         setEmojiOpen((value) => !value);

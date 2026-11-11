@@ -582,13 +582,13 @@ body.lock{overflow:hidden}
 .cform{position:relative;display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);align-items:flex-end;background:var(--surface)}
 .cform .in{flex:1;min-width:0}
 .cform .icon-btn{flex:none}
-.composer{flex:1;min-width:0;display:flex;align-items:flex-end;gap:3px;background:var(--surface2);border:1px solid var(--line);border-radius:22px;padding:3px 4px;min-height:46px;transition:border-color .15s,box-shadow .15s}
-.composer:focus-within{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
-.composer-in{flex:1;min-width:0;border:0;background:transparent;padding:10px 5px;font-size:15px;line-height:1.35;resize:none;max-height:118px;color:var(--fg);outline:none;overflow-y:auto}
-.composer-in::placeholder{color:var(--muted)}
-.composer-btn{width:36px;height:36px;color:var(--muted);align-self:flex-end;margin-bottom:2px}
-.composer-btn:hover{background:color-mix(in srgb,var(--fg) 8%,transparent)}
-.composer-btn.on{color:var(--accent);background:var(--accent-soft)}
+.msg-composer{flex:1;min-width:0;display:flex;align-items:flex-end;gap:3px;background:var(--surface2);border:1px solid var(--line);border-radius:22px;padding:3px 4px;min-height:46px;transition:border-color .15s,box-shadow .15s}
+.msg-composer:focus-within{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
+.msg-composer-in{flex:1;min-width:0;border:0;background:transparent;padding:10px 5px;font-size:15px;line-height:1.35;resize:none;max-height:118px;color:var(--fg);outline:none;overflow-y:auto}
+.msg-composer-in::placeholder{color:var(--muted)}
+.msg-composer-btn{width:36px;height:36px;color:var(--muted);align-self:flex-end;margin-bottom:2px}
+.msg-composer-btn:hover{background:color-mix(in srgb,var(--fg) 8%,transparent)}
+.msg-composer-btn.on{color:var(--accent);background:var(--accent-soft)}
 .send-btn,.mic-btn{width:46px;height:46px;min-height:46px;border-radius:50%;padding:0;flex:none;align-self:flex-end}
 .mic-btn{background:var(--accent);color:var(--accent-fg)}
 .mic-btn:hover{background:var(--accent);color:var(--accent-fg);filter:brightness(1.08)}
