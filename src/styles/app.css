@@ -49,6 +49,8 @@ input,textarea,select{font:inherit;color:inherit}
 .btn.tonal{background:var(--accent-soft);color:var(--accent)}
 .btn.ghost{border-color:var(--line)}
 .btn.ghost:hover{background:var(--surface2)}
+.btn.ghost.danger{color:var(--hot);border-color:color-mix(in srgb,var(--hot) 45%,var(--line))}
+.btn.ghost.danger:hover{background:color-mix(in srgb,var(--hot) 12%,transparent)}
 .btn.hot{background:var(--hot);color:#fff}
 .btn.sm{min-height:34px;padding:0 14px;font-size:13px}
 .btn.block{width:100%}
@@ -285,6 +287,7 @@ video.media-video{display:block;width:auto;height:auto;max-width:100%;max-height
 .pgitem:hover .pgov,.pgitem:focus-visible .pgov{opacity:1}
 .settings{display:grid;gap:18px;padding:4px 2px 6px}
 .set-block{border-top:1px solid var(--line);padding-top:14px;display:grid;gap:10px}
+.account-actions{display:flex;flex-wrap:wrap;gap:8px}
 .set-block:first-of-type{border-top:0;padding-top:0}
 .h3{font-size:.95rem;font-weight:800;letter-spacing:.02em}
 .switch-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 0;cursor:pointer}

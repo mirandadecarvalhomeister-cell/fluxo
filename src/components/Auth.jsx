@@ -38,21 +38,45 @@ export default function Auth() {
     const raw = window.location.hash.startsWith('#')
       ? window.location.hash.slice(1)
       : '';
-    if (!raw) return;
     const params = new URLSearchParams(raw);
+    new URLSearchParams(window.location.search).forEach((value, key) => {
+      if (!params.has(key)) params.set(key, value);
+    });
+    const type = params.get('type');
     const code = params.get('error_code');
     const description = params.get('error_description');
-    if (!code && !description) return;
-    const expired =
-      code === 'otp_expired' || /expired|invalid/i.test(description || '');
-    setError(
-      expired
-        ? 'O link expirou ou já foi usado. Solicite um novo link abaixo.'
-        : 'Não foi possível validar o link. Solicite um novo link abaixo.'
-    );
-    setForgot(true);
+    const oauthError = params.get('error');
+    if (!code && !description && !oauthError) return;
+
+    // Só entra no fluxo de recuperação quando o retorno é realmente do link
+    // de senha. Erros do Google/OAuth não podem abrir a tela de recuperação.
+    const recovery =
+      type === 'recovery' ||
+      code === 'otp_expired' ||
+      /recovery/i.test(params.get('error_uri') || '');
+
+    if (recovery) {
+      const expired =
+        code === 'otp_expired' || /expired|invalid/i.test(description || '');
+      setError(
+        expired
+          ? 'O link expirou ou já foi usado. Solicite um novo link abaixo.'
+          : 'Não foi possível validar o link. Solicite um novo link abaixo.'
+      );
+      setForgot(true);
+    } else {
+      const reason = `${code || ''} ${description || ''} ${oauthError || ''}`;
+      setError(
+        /access_denied|cancel/i.test(reason)
+          ? 'Login com Google cancelado.'
+          : /client secret|external code|invalid_client/i.test(reason)
+            ? 'O login com Google está indisponível no momento. Tente novamente mais tarde.'
+            : 'Não foi possível concluir o login. Tente novamente.'
+      );
+      setForgot(false);
+    }
     setNotice('');
-    history.replaceState(null, '', window.location.pathname + window.location.search);
+    history.replaceState(null, '', window.location.pathname);
   }, []);
 
   async function submit(event) {

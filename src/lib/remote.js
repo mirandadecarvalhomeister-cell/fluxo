@@ -104,6 +104,40 @@ export async function signInWithGoogle() {
   if (error) throw error;
 }
 
+async function removeUserStorage(uid) {
+  if (!uid) return;
+  for (const bucket of ['media', 'avatars', 'covers']) {
+    try {
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .list(uid, { limit: 1000 });
+      if (error || !data?.length) continue;
+      const paths = data
+        .filter((item) => item?.name)
+        .map((item) => `${uid}/${item.name}`);
+      if (paths.length) {
+        const removed = await supabase.storage.from(bucket).remove(paths);
+        if (removed.error) warn(removed.error);
+      }
+    } catch (error) {
+      warn(error);
+    }
+  }
+}
+
+export async function deleteAccount() {
+  if (!enabled()) throw new Error('Supabase não configurado.');
+  const { data } = await supabase.auth.getUser();
+  await removeUserStorage(data?.user?.id);
+  const { error } = await supabase.rpc('delete_account');
+  if (error) throw error;
+  try {
+    await supabase.auth.signOut({ scope: 'local' });
+  } catch (signOutError) {
+    warn(signOutError);
+  }
+}
+
 export async function ensureProfile(user) {
   if (!enabled()) throw new Error('Supabase não configurado.');
   const { data, error } = await supabase

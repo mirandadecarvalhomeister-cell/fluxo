@@ -1821,9 +1821,29 @@ function SettingsModal() {
           {session?.email || data.email} ·{' '}
           {mode === 'supabase' ? 'sincronizado na nuvem' : 'dados neste dispositivo'}
         </p>
-        <button className="btn hot sm" type="button" onClick={actions.logout}>
-          <Icon name="logout" /> Sair da conta
-        </button>
+        <div className="account-actions">
+          <button className="btn hot sm" type="button" onClick={actions.logout}>
+            <Icon name="logout" /> Sair da conta
+          </button>
+          <button
+            className="btn ghost sm danger"
+            type="button"
+            onClick={() =>
+              actions.requestConfirm({
+                title: 'Excluir sua conta?',
+                text: 'Isso apaga permanentemente seu perfil, publicações, mensagens, comunidades e mídias. Não dá para desfazer.',
+                confirmLabel: 'Excluir conta',
+                tone: 'hot',
+                action: async () => {
+                  const error = await actions.deleteAccount();
+                  if (error) actions.notify(error);
+                },
+              })
+            }
+          >
+            <Icon name="trash" /> Excluir conta
+          </button>
+        </div>
       </section>
 
       <p className="muted sm settings-foot">

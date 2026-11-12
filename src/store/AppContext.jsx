@@ -1498,6 +1498,7 @@ export function AppProvider({ children }) {
     setSession(null);
     setData(null);
     setReady(true);
+    if (location.hash) history.replaceState(null, '', location.pathname);
   }
 
   function requestConfirm({ title, text, confirmLabel = 'Confirmar', tone = 'primary', action }) {
@@ -1526,6 +1527,53 @@ export function AppProvider({ children }) {
       typing: {},
     }));
     if (location.hash) history.replaceState(null, '', location.pathname);
+  }
+
+  async function deleteAccount() {
+    const email = session?.email || data?.email || '';
+    if (liveChannelOfMine()) finishLive({ silent: true });
+
+    try {
+      if (isSupabaseEnabled) {
+        await remote.deleteAccount();
+      } else {
+        const accounts = demoAccounts();
+        if (email && accounts[email]) {
+          delete accounts[email];
+          lsSet(ACCOUNTS_KEY, JSON.stringify(accounts));
+        }
+        lsSet(SESSION_KEY, '');
+      }
+    } catch (error) {
+      return error.message || 'Não foi possível excluir a conta.';
+    }
+
+    if (email) {
+      try {
+        localStorage.removeItem(cacheKey(email));
+        localStorage.removeItem(notifSeenKey(session?.id || email));
+      } catch {
+        /* cache é melhor esforço */
+      }
+    }
+
+    lastUserId.current = null;
+    Object.values(timers.current).forEach(clearTimeout);
+    timers.current = {};
+    setData(null);
+    setSession(null);
+    setUi((u) => ({
+      ...u,
+      chat: null,
+      chatOpen: false,
+      room: null,
+      myLive: null,
+      modal: null,
+      typing: {},
+    }));
+    if (location.hash) history.replaceState(null, '', location.pathname);
+    toast('Sua conta foi excluída.');
+    return null;
   }
 
   const go = (route, skipLiveGuard = false) => {
@@ -3430,6 +3478,7 @@ export function AppProvider({ children }) {
     finishRecovery,
     cancelRecovery,
     logout,
+    deleteAccount,
     notify: toast,
     setAuthTab: (authTab) => setUi((u) => ({ ...u, authTab })),
     openSearch: () => setUi((u) => ({ ...u, modal: { type: 'search' } })),
