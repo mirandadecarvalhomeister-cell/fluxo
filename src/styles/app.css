@@ -109,6 +109,9 @@ textarea.in{resize:vertical;min-height:44px}
 .nav a.on[href="#feed"]::before{content:"";position:absolute;right:14px;width:8px;height:8px;border-radius:50%;background:var(--neon);box-shadow:0 0 14px 3px var(--neon)}
 .nav .badge{min-width:22px;height:22px;font:700 11.5px/22px var(--f-body);background:linear-gradient(135deg,#2F7BE8,#22D3EE);box-shadow:0 0 16px -2px var(--grad-a)}
 .nav .ic{width:1.4em;height:1.4em}
+.nav-art{display:block;width:36px;height:36px;flex:none;overflow:visible;transition:transform .22s cubic-bezier(.34,1.4,.64,1)}
+.nav a:hover .nav-art{transform:scale(1.15)}
+.nav a.on .nav-art{transform:scale(1.06)}
 .badge{margin-left:auto;min-width:20px;height:20px;border-radius:10px;background:var(--hot);color:#fff;font:700 11px/20px var(--f-body);text-align:center;padding:0 6px}
 .rail .spacer{flex:1}
 .me-mini{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;border:1px solid var(--line);background:var(--surface)}
@@ -751,7 +754,8 @@ body.lock{overflow:hidden}
   .tabbar a{display:grid;justify-items:center;gap:2px;font-size:11px;font-weight:600;color:var(--muted);padding:4px;position:relative}
   .tabbar a.on{color:var(--fg)}
   .tabbar .ic{width:1.5em;height:1.5em}
-  .tabbar a.on .ic{width:2.7em;height:2.7em;padding:8px;border-radius:12px;color:#fff;background:linear-gradient(135deg,var(--grad-a),var(--grad-b) 55%,var(--grad-c));box-shadow:0 8px 18px -10px var(--grad-b),inset 0 1px 0 rgba(255,255,255,.3);transition:width .15s ease,height .15s ease,padding .15s ease}
+  .tabbar .nav-art{width:27px;height:27px}
+  .tabbar a.on .nav-art{transform:translateY(-1px) scale(1.08)}
   .tabbar .badge{position:absolute;top:0;left:calc(50% + 6px);margin:0}
   #toast{bottom:calc(88px + env(safe-area-inset-bottom,0px))}
   .auth{grid-template-columns:minmax(0,1fr);gap:24px}

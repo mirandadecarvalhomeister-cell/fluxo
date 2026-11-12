@@ -7,6 +7,7 @@ import Connections from './Connections';
 import Feed from './Feed';
 import { Icon } from './Icon';
 import Messages from './Messages';
+import NavArt from './NavArt';
 import Profile from './Profile';
 import SidePanel from './SidePanel';
 
@@ -243,7 +244,7 @@ export default function Shell() {
         actions.go(key);
       }}
     >
-      <Icon name={icon} />
+      <NavArt name={icon} />
       <span>{label}</span>
       {key === 'mensagens' && unread ? <span className="badge">{unread}</span> : null}
     </a>
