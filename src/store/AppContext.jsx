@@ -1869,6 +1869,8 @@ export function AppProvider({ children }) {
   function viewPost(postId) {
     const post = dataRef.current?.posts.find((p) => p.id === postId);
     if (!post) return;
+    // O autor não conta a própria visualização.
+    if (post.by === 'me') return;
     if (viewedRef.current.has(postId)) return;
     if ((post.interactions || []).some((row) => row.kind === 'view' && row.by === 'me')) {
       viewedRef.current.add(postId);

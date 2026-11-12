@@ -1146,3 +1146,57 @@ mark{background:color-mix(in srgb,var(--accent) 30%,transparent);color:inherit;b
 }
 
 
+
+/* ============================================================
+   Player de vídeo (feed + chat) e ajustes finais de layout.
+   ============================================================ */
+
+/* Feed: repete as regras responsivas no fim do arquivo para que o
+   grid de 3 colunas nao "venca" no celular/APK. */
+@media (max-width:1100px){
+  .app.has-side{grid-template-columns:232px minmax(0,1fr)}
+  #side{display:none}
+}
+@media (max-width:820px){
+  .app,.app.has-side{grid-template-columns:minmax(0,1fr);gap:0}
+  .rail{display:none}
+}
+
+/* Mensagens enviadas: borda e espacamento menores. */
+.b.me{padding:5px 9px 3px;border-radius:12px 3px 12px 12px}
+.b.me .meta{margin-top:1px}
+
+/* Rolagem travada enquanto um video esta expandido. */
+html.video-open,body.video-open{overflow:hidden!important}
+
+/* Video no feed (previa + tela cheia sem recriar o elemento). */
+.fv{position:relative;display:block;line-height:0;background:#000;border-radius:inherit;overflow:hidden;cursor:pointer}
+.fv .fv-video{display:block;margin-inline:auto;background:#000;object-fit:cover}
+.fv-open{position:fixed;inset:0;z-index:160;display:grid;place-items:center;width:100vw;height:100dvh;margin:0;border-radius:0;background:#000;touch-action:none;transition:transform .18s ease}
+.fv-open .fv-video{width:100%;height:100%;max-width:none;max-height:none;object-fit:contain;margin:0}
+.fv-open .fv-mute{display:none}
+.fv-mute{position:absolute;top:10px;right:10px;z-index:2;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.18);color:#fff;backdrop-filter:blur(8px)}
+.fv-mute .ic{width:17px;height:17px}
+
+/* Player do chat em tela cheia. */
+.vv{position:fixed;inset:0;z-index:160;display:grid;place-items:center;background:#000;touch-action:none;transition:transform .18s ease}
+.vv-video{display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;background:#000}
+
+/* Camada de controles do player. */
+.fv-ui{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;justify-content:space-between;opacity:0;pointer-events:none;transition:opacity .24s ease;touch-action:none}
+.fv-ui.on{opacity:1;pointer-events:auto}
+.fv-top{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 34px;background:linear-gradient(180deg,rgba(0,0,0,.74),transparent);color:#fff}
+.fv-status{margin-left:auto;font:700 10.5px var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.66)}
+.fv-btn{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);color:#fff;backdrop-filter:blur(10px);transition:background .15s ease,transform .15s ease}
+.fv-btn:hover{background:rgba(255,255,255,.26);transform:scale(1.04)}
+.fv-btn .ic{width:19px;height:19px}
+.fv-play{position:absolute;inset:0;margin:auto;z-index:4;width:74px;height:74px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.24);color:#fff;backdrop-filter:blur(6px);transition:transform .15s ease,background .15s ease}
+.fv-play:hover{background:rgba(0,0,0,.66);transform:scale(1.05)}
+.fv-play .ic{width:30px;height:30px}
+.fv-bottom{display:grid;gap:4px;padding:34px 16px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(0deg,rgba(0,0,0,.8),transparent);color:#fff}
+.fv-range{width:100%;height:26px;accent-color:#fff;cursor:pointer;background:transparent}
+.fv-meta{display:flex;align-items:center;justify-content:space-between;gap:14px;font:600 12px var(--f-body);color:rgba(255,255,255,.88)}
+.fv-vol{display:flex;align-items:center;gap:8px}
+.fv-vol .ic{width:16px;height:16px}
+.fv-vol input{width:92px;accent-color:#fff}
+@media (max-width:520px){.fv-vol input{display:none}}

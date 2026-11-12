@@ -8,6 +8,7 @@ import { TagText } from './Brand';
 import EmojiPicker from './EmojiPicker';
 import { Icon } from './Icon';
 import StickerPicker from './StickerPicker';
+import { VideoViewer } from './VideoPlayer';
 
 const ATTACH_LABEL = {
   photo: 'Foto',
@@ -441,7 +442,7 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia }) {
   );
 }
 
-function MediaViewer({ media, onClose }) {
+function PhotoViewer({ media, onClose }) {
   useEffect(() => {
     const onKey = (event) => {
       if (event.key === 'Escape') onClose();
@@ -462,11 +463,7 @@ function MediaViewer({ media, onClose }) {
         <button className="mv-close" type="button" onClick={onClose} aria-label="Fechar">
           <Icon name="x" />
         </button>
-        {media.kind === 'video' ? (
-          <video src={media.src} controls autoPlay playsInline />
-        ) : (
-          <img src={media.src} alt={media.name || 'Foto'} />
-        )}
+        <img src={media.src} alt={media.name || 'Foto'} />
         <a
           className="mv-download"
           href={media.src}
@@ -479,6 +476,13 @@ function MediaViewer({ media, onClose }) {
       </div>
     </div>
   );
+}
+
+function MediaViewer({ media, onClose }) {
+  if (media.kind === 'video') {
+    return <VideoViewer src={media.src} onClose={onClose} />;
+  }
+  return <PhotoViewer media={media} onClose={onClose} />;
 }
 
 const ZOOM_MAX = 4;
@@ -948,6 +952,8 @@ export default function Messages() {
   const caretRef = useRef({ start: 0, end: 0 });
   const backRef = useRef(actions.backChat);
   backRef.current = actions.backChat;
+  const viewerRef = useRef(null);
+  viewerRef.current = viewer;
 
   const chat = data.chats.find((c) => c.id === ui.chat);
   const person = chat ? userOf(data, chat.with) : null;
@@ -989,7 +995,14 @@ export default function Messages() {
         /* histórico indisponível */
       }
     }
-    const onPop = () => backRef.current();
+    const onPop = () => {
+      // O voltar fecha primeiro a mídia/vídeo aberto e só depois a conversa.
+      if (viewerRef.current) {
+        setViewer(null);
+        return;
+      }
+      backRef.current();
+    };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, [ui.chatOpen]);

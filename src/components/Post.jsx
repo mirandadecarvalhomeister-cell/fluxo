@@ -13,48 +13,9 @@ import CommentSheet, { Comments } from './Comments';
 import { Icon } from './Icon';
 import Interactive from './Interactive';
 import { EditWrap } from './MediaEditor';
+import { FeedVideo } from './VideoPlayer';
 
 const REACTIONS = ['❤️', '🔥', '👏', '😂', '😮', '😢', '🎉', '💜'];
-
-// Vídeo publicado: toca sozinho (mudo) quando aparece na tela e pausa ao sair.
-function AutoVideo({ src, style, onError }) {
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const element = ref.current;
-    if (!element || !('IntersectionObserver' in window)) return undefined;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            element.play?.().catch(() => {});
-          } else {
-            element.pause?.();
-          }
-        });
-      },
-      { threshold: 0.2 }
-    );
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <video
-      ref={ref}
-      className="media-video"
-      src={src}
-      controls
-      muted
-      loop
-      autoPlay
-      playsInline
-      preload="metadata"
-      style={style}
-      onError={onError}
-    />
-  );
-}
 
 function MediaItem({ item, author, index }) {
   const [failedSrc, setFailedSrc] = useState(null);
@@ -68,13 +29,11 @@ function MediaItem({ item, author, index }) {
   if (item.kind === 'video') {
     if (item.src && !videoFailed) {
       return (
-        <EditWrap edit={edit}>
-          <AutoVideo
-            src={item.src}
-            style={style}
-            onError={() => setVideoFailed(true)}
-          />
-        </EditWrap>
+        <FeedVideo
+          src={item.src}
+          style={style}
+          onError={() => setVideoFailed(true)}
+        />
       );
     }
     return (
@@ -285,28 +244,43 @@ export default function Post({ post, detail = false }) {
       ? interactive.reactions
       : REACTIONS;
 
-  // Publicação com foto/vídeo conta uma visualização quando aparece na tela.
+  // Publicação com foto/vídeo conta uma visualização depois de 50% visível
+  // por pelo menos 1 segundo. O próprio autor não conta.
   useEffect(() => {
-    if (!hasMedia) return undefined;
+    if (!hasMedia || post.by === 'me') return undefined;
     const element = cardRef.current;
     if (!element) return undefined;
     if (!('IntersectionObserver' in window)) {
       actions.viewPost(post.id);
       return undefined;
     }
+    let timer = null;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          actions.viewPost(post.id);
-          observer.disconnect();
-        }
+        entries.forEach((entry) => {
+          if (entry.intersectionRatio >= 0.5) {
+            if (!timer) {
+              timer = window.setTimeout(() => {
+                timer = null;
+                actions.viewPost(post.id);
+                observer.disconnect();
+              }, 1000);
+            }
+          } else if (timer) {
+            clearTimeout(timer);
+            timer = null;
+          }
+        });
       },
-      { threshold: 0.5 }
+      { threshold: [0, 0.5, 0.75] }
     );
     observer.observe(element);
-    return () => observer.disconnect();
+    return () => {
+      if (timer) clearTimeout(timer);
+      observer.disconnect();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [post.id, hasMedia]);
+  }, [post.id, hasMedia, post.by]);
 
   function openComments() {
     if (detail) {
@@ -323,7 +297,7 @@ export default function Post({ post, detail = false }) {
     if (detail) return;
     if (
       event.target.closest(
-        'button, a, input, textarea, select, label, video, .vid, .acts, .cmts, .interactive, .reaction-wrap, .carousel, .post-menu'
+        'button, a, input, textarea, select, label, video, .fv, .vid, .acts, .cmts, .interactive, .reaction-wrap, .carousel, .post-menu'
       )
     ) {
       return;
@@ -397,11 +371,10 @@ export default function Post({ post, detail = false }) {
 
       <Interactive post={post} />
 
-      {hasMedia ? (
+      {hasMedia && (post.views > 0 || post.by === 'me') ? (
         <div className="views-row">
-          <span className="views-pill">
-            <Icon name="eye" /> {fmt(post.views || 0)}{' '}
-            {post.views === 1 ? 'visualização' : 'visualizações'}
+          <span className="views-pill" title={`${post.views || 0} visualizações`}>
+            <Icon name="eye" /> {fmt(post.views || 0)}
           </span>
         </div>
       ) : null}
