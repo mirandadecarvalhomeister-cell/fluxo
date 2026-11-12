@@ -21,6 +21,34 @@ const ATTACH_LABEL = {
 
 const SWIPE_LIMIT = 58;
 
+// Abre uma camada empilhando um estado no histórico para que o botão voltar do
+// celular/APK feche o menu, a folha ou o visualizador em vez de sair da tela.
+function pushLayerState() {
+  if (history.state?.fluxoLayer) return;
+  try {
+    history.pushState({ ...(history.state || {}), fluxoLayer: true }, '');
+  } catch {
+    /* histórico indisponível */
+  }
+}
+
+function useLayerBack(open, onClose) {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    if (!open) return undefined;
+    pushLayerState();
+    const onPop = () => closeRef.current?.();
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [open]);
+}
+
+function closeLayer(close) {
+  close?.();
+  if (history.state?.fluxoLayer) history.back();
+}
+
 const WALLS = [
   { id: 'aurora', label: 'Aurora' },
   { id: 'neon', label: 'Neon' },
@@ -205,7 +233,7 @@ function AudioMessage({ src }) {
   );
 }
 
-function Attachment({ attachment, onOpen }) {
+function Attachment({ attachment, onOpen, onForward }) {
   if (attachment.kind === 'post') {
     return <PostAttachment attachment={attachment} />;
   }
@@ -235,40 +263,68 @@ function Attachment({ attachment, onOpen }) {
   }
   if (attachment.kind === 'photo') {
     return (
-      <button
-        type="button"
-        className="att-media"
-        onClick={() => onOpen?.({ src: attachment.src, kind: 'photo', name: attachment.name })}
-        aria-label="Abrir foto"
-      >
-        <img
-          className="att-img"
-          src={attachment.src}
-          alt={attachment.name || 'Foto'}
-          loading="lazy"
-        />
-      </button>
+      <span className="att-media-row">
+        <button
+          type="button"
+          className="att-media"
+          onClick={() => onOpen?.({ src: attachment.src, kind: 'photo', name: attachment.name })}
+          aria-label="Abrir foto"
+        >
+          <img
+            className="att-img"
+            src={attachment.src}
+            alt={attachment.name || 'Foto'}
+            loading="lazy"
+          />
+        </button>
+        <button
+          type="button"
+          className="att-forward"
+          onClick={(event) => {
+            event.stopPropagation();
+            onForward?.();
+          }}
+          aria-label="Encaminhar foto"
+          title="Encaminhar"
+        >
+          <Icon name="forward" />
+        </button>
+      </span>
     );
   }
   if (attachment.kind === 'video') {
     return (
-      <button
-        type="button"
-        className="att-media att-media-video"
-        onClick={() => onOpen?.({ src: attachment.src, kind: 'video', name: attachment.name })}
-        aria-label="Abrir vídeo"
-      >
-        <video
-          className="att-video"
-          src={attachment.src}
-          muted
-          playsInline
-          preload="metadata"
-        />
-        <span className="att-play">
-          <Icon name="play" className="fill" />
-        </span>
-      </button>
+      <span className="att-media-row">
+        <button
+          type="button"
+          className="att-media att-media-video"
+          onClick={() => onOpen?.({ src: attachment.src, kind: 'video', name: attachment.name })}
+          aria-label="Abrir vídeo"
+        >
+          <video
+            className="att-video"
+            src={attachment.src}
+            muted
+            playsInline
+            preload="metadata"
+          />
+          <span className="att-play">
+            <Icon name="play" className="fill" />
+          </span>
+        </button>
+        <button
+          type="button"
+          className="att-forward"
+          onClick={(event) => {
+            event.stopPropagation();
+            onForward?.();
+          }}
+          aria-label="Encaminhar vídeo"
+          title="Encaminhar"
+        >
+          <Icon name="forward" />
+        </button>
+      </span>
     );
   }
   if (attachment.kind === 'audio') {
@@ -293,7 +349,7 @@ function Attachment({ attachment, onOpen }) {
   );
 }
 
-function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia }) {
+function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia, onForward }) {
   const { actions } = useApp();
   const [revealed, setRevealed] = useState(false);
   const [drag, setDrag] = useState(null);
@@ -301,6 +357,7 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia }) {
   const pressRef = useRef(null);
   const longRef = useRef(null);
   const movedRef = useRef(false);
+  const suppressOpenRef = useRef(0);
 
   useEffect(() => () => clearTimeout(longRef.current), []);
 
@@ -316,13 +373,19 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia }) {
   const onDown = (event) => {
     movedRef.current = false;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
-    if (event.target.closest('a,button')) return;
+    if (event.target.closest('a')) return;
+    // Permite segurar fotos/vídeos (que são botões) no APK, mantendo os
+    // demais botões do balão livres para o toque normal.
+    const button = event.target.closest('button');
+    if (button && !button.classList.contains('att-media')) return;
     pressRef.current = { x: event.clientX, y: event.clientY };
     if (!revealed) {
       clearLong();
       longRef.current = window.setTimeout(() => {
         longRef.current = null;
         if (!movedRef.current) {
+          // Evita que o toque longo também abra o visualizador de mídia.
+          suppressOpenRef.current = Date.now() + 700;
           onMenu({ message, index, chat });
         }
       }, 460);
@@ -374,6 +437,13 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia }) {
       movedRef.current = false;
     }, 0);
   };
+
+  const openMedia = (media) => {
+    if (Date.now() < suppressOpenRef.current) return;
+    onOpenMedia?.(media);
+  };
+
+  const forwardMessage = () => onForward?.({ message, index, chat });
 
   return (
     <div
@@ -428,7 +498,11 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia }) {
             </p>
           ) : null}
           {message.attachment ? (
-            <Attachment attachment={message.attachment} onOpen={onOpenMedia} />
+            <Attachment
+              attachment={message.attachment}
+              onOpen={openMedia}
+              onForward={forwardMessage}
+            />
           ) : null}
           <span className="meta">
             {hm(message.ts)}
@@ -999,6 +1073,7 @@ export default function Messages() {
   const [menu, setMenu] = useState(null);
   const [viewer, setViewer] = useState(null);
   const [forward, setForward] = useState(null);
+  const [menuDragY, setMenuDragY] = useState(0);
   const [recording, setRecording] = useState(false);
   const [holding, setHolding] = useState(false);
   const [cancelHint, setCancelHint] = useState(false);
@@ -1020,8 +1095,18 @@ export default function Messages() {
   const caretRef = useRef({ start: 0, end: 0 });
   const backRef = useRef(actions.backChat);
   backRef.current = actions.backChat;
-  const viewerRef = useRef(null);
-  viewerRef.current = viewer;
+  const menuDragRef = useRef(null);
+  const menuDragYRef = useRef(0);
+  const menuSwipedRef = useRef(false);
+
+  useLayerBack(!!menu, () => setMenu(null));
+  useLayerBack(!!forward, () => setForward(null));
+  useLayerBack(headMenu, () => setHeadMenu(false));
+  useLayerBack(wallOpen, () => setWallOpen(false));
+  useLayerBack(pickerOpen, () => setPickerOpen(false));
+  useLayerBack(attachOpen, () => setAttachOpen(false));
+  useLayerBack(!!viewer && viewer.kind !== 'video', () => setViewer(null));
+  useLayerBack(cameraOpen, () => setCameraOpen(false));
 
   const chat = data.chats.find((c) => c.id === ui.chat);
   const person = chat ? userOf(data, chat.with) : null;
@@ -1063,13 +1148,10 @@ export default function Messages() {
         /* histórico indisponível */
       }
     }
-    const onPop = () => {
-      // O voltar fecha primeiro a mídia/vídeo aberto e só depois a conversa.
-      if (viewerRef.current) {
-        setViewer(null);
-        return;
-      }
-      backRef.current();
+    const onPop = (event) => {
+      // Camadas (menu, folha, mídia) fecham primeiro e mantêm o estado da
+      // conversa no histórico. Só sai da conversa quando o estado do chat sai.
+      if (!event.state?.fluxoChat) backRef.current();
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
@@ -1122,7 +1204,7 @@ export default function Messages() {
     saveCaret();
     inputRef.current?.blur();
     if (pickerOpen && pickerTab === tab) {
-      setPickerOpen(false);
+      closeLayer(() => setPickerOpen(false));
       return;
     }
     setPickerTab(tab === 'sticker' ? 'sticker' : 'emoji');
@@ -1131,11 +1213,11 @@ export default function Messages() {
   };
 
   const closePicker = () => {
-    setPickerOpen(false);
+    closeLayer(() => setPickerOpen(false));
   };
 
   const sendSticker = (sticker, pack) => {
-    setPickerOpen(false);
+    closeLayer(() => setPickerOpen(false));
     if (sticker?.src) {
       actions.sendMessage('', {
         kind: 'sticker',
@@ -1155,7 +1237,7 @@ export default function Messages() {
   const pickMedia = (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
-    setAttachOpen(false);
+    closeLayer(() => setAttachOpen(false));
     if (!file) return;
     const kind = file.type.startsWith('image/') ? 'photo' : 'video';
     actions.sendChatFile(file, kind);
@@ -1164,7 +1246,7 @@ export default function Messages() {
   const pickFile = (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
-    setAttachOpen(false);
+    closeLayer(() => setAttachOpen(false));
     if (file) actions.sendChatFile(file, 'file');
   };
 
@@ -1295,9 +1377,9 @@ export default function Messages() {
       return;
     }
     setText('');
-    setEmojiOpen(false);
-    setStickerOpen(false);
+    setPickerOpen(false);
     setAttachOpen(false);
+    if (history.state?.fluxoLayer) history.back();
     caretRef.current = { start: 0, end: 0 };
     actions.sendMessage(value);
     requestAnimationFrame(() => {
@@ -1357,12 +1439,6 @@ export default function Messages() {
       }
     : undefined;
 
-  const closePickers = () => {
-    setEmojiOpen(false);
-    setStickerOpen(false);
-    setAttachOpen(false);
-  };
-
   const forwardTo = (target) => {
     if (!forward) return;
     const message = forward.message;
@@ -1370,8 +1446,46 @@ export default function Messages() {
     actions.notify(
       `Encaminhado para ${userOf(data, target.with).name.split(' ')[0]}`
     );
-    setForward(null);
+    closeLayer(() => setForward(null));
     setMenu(null);
+  };
+
+  const dismissMenu = () => closeLayer(() => setMenu(null));
+
+  const startMenuDrag = (event) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    menuDragRef.current = { y: event.clientY };
+    menuSwipedRef.current = false;
+  };
+
+  const moveMenuDrag = (event) => {
+    const start = menuDragRef.current;
+    if (!start) return;
+    const dy = Math.max(0, event.clientY - start.y);
+    if (dy > 6) {
+      menuSwipedRef.current = true;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
+    menuDragYRef.current = dy;
+    setMenuDragY(dy);
+  };
+
+  const endMenuDrag = () => {
+    if (!menuDragRef.current) return;
+    menuDragRef.current = null;
+    const dy = menuDragYRef.current;
+    menuDragYRef.current = 0;
+    setMenuDragY(0);
+    window.setTimeout(() => {
+      menuSwipedRef.current = false;
+    }, 300);
+    if (dy > 80) dismissMenu();
+  };
+
+  const cancelMenuDrag = () => {
+    menuDragRef.current = null;
+    menuDragYRef.current = 0;
+    setMenuDragY(0);
   };
 
   return (
@@ -1497,7 +1611,10 @@ export default function Messages() {
                 <button
                   className={`icon-btn ${headMenu ? 'on' : ''}`}
                   type="button"
-                  onClick={() => setHeadMenu((value) => !value)}
+                  onClick={() => {
+                    if (headMenu) closeLayer(() => setHeadMenu(false));
+                    else setHeadMenu(true);
+                  }}
                   aria-label="Mais opções da conversa"
                   aria-expanded={headMenu}
                   title="Mais opções"
@@ -1510,7 +1627,7 @@ export default function Messages() {
                       className="menu-scrim"
                       type="button"
                       aria-label="Fechar menu"
-                      onClick={() => setHeadMenu(false)}
+                      onClick={() => closeLayer(() => setHeadMenu(false))}
                     />
                     <div className="chat-menu" role="menu">
                       <button
@@ -1527,7 +1644,7 @@ export default function Messages() {
                         type="button"
                         role="menuitem"
                         onClick={() => {
-                          setHeadMenu(false);
+                          closeLayer(() => setHeadMenu(false));
                           actions.toggleChatMute(chat.with);
                         }}
                       >
@@ -1538,7 +1655,7 @@ export default function Messages() {
                         type="button"
                         role="menuitem"
                         onClick={() => {
-                          setHeadMenu(false);
+                          closeLayer(() => setHeadMenu(false));
                           actions.clearChat(chat.id);
                         }}
                       >
@@ -1549,7 +1666,7 @@ export default function Messages() {
                         role="menuitem"
                         className="danger"
                         onClick={() => {
-                          setHeadMenu(false);
+                          closeLayer(() => setHeadMenu(false));
                           actions.deleteChat(chat.id);
                         }}
                       >
@@ -1577,6 +1694,10 @@ export default function Messages() {
                       author={person}
                       onMenu={setMenu}
                       onOpenMedia={setViewer}
+                      onForward={(payload) => {
+                        setForward(payload);
+                        setMenu(null);
+                      }}
                     />
                   ))
                 ) : (
@@ -1615,7 +1736,7 @@ export default function Messages() {
                       className="pop-scrim"
                       type="button"
                       aria-label="Fechar anexos"
-                      onClick={() => setAttachOpen(false)}
+                      onClick={() => closeLayer(() => setAttachOpen(false))}
                     />
                     <div className="attach-menu">
                       <button
@@ -1679,8 +1800,11 @@ export default function Messages() {
                       className="icon-btn msg-composer-btn"
                       type="button"
                       onClick={() => {
-                        setAttachOpen((value) => !value);
-                        setPickerOpen(false);
+                        if (attachOpen) closeLayer(() => setAttachOpen(false));
+                        else {
+                          setAttachOpen(true);
+                          setPickerOpen(false);
+                        }
                       }}
                       aria-label="Anexar"
                       title="Anexar"
@@ -1782,7 +1906,7 @@ export default function Messages() {
             className="sheet-scrim"
             type="button"
             aria-label="Fechar papel de parede"
-            onClick={() => setWallOpen(false)}
+            onClick={() => closeLayer(() => setWallOpen(false))}
           />
           <div className="wall-panel" role="dialog" aria-label="Papel de parede">
             <header>
@@ -1790,7 +1914,7 @@ export default function Messages() {
               <button
                 className="icon-btn"
                 type="button"
-                onClick={() => setWallOpen(false)}
+                onClick={() => closeLayer(() => setWallOpen(false))}
                 aria-label="Fechar"
               >
                 <Icon name="x" />
@@ -1851,9 +1975,28 @@ export default function Messages() {
             className="sheet-scrim"
             type="button"
             aria-label="Fechar opções"
-            onClick={() => setMenu(null)}
+            onClick={dismissMenu}
           />
-          <div className="msg-menu" role="menu">
+          <div
+            className="msg-menu"
+            role="menu"
+            style={
+              menuDragY
+                ? { transform: `translateY(${menuDragY}px)`, transition: 'none' }
+                : undefined
+            }
+            onPointerDown={startMenuDrag}
+            onPointerMove={moveMenuDrag}
+            onPointerUp={endMenuDrag}
+            onPointerCancel={cancelMenuDrag}
+            onClickCapture={(event) => {
+              if (!menuSwipedRef.current) return;
+              menuSwipedRef.current = false;
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+          >
+            <span className="sheet-grab" aria-hidden="true" />
             <div className="msg-menu-head">
               <Avatar
                 user={menu.message.me ? data.me : userOf(data, menu.chat.with)}
@@ -1867,7 +2010,7 @@ export default function Messages() {
                 role="menuitem"
                 onClick={() => {
                   copyMessage(menu.message);
-                  setMenu(null);
+                  dismissMenu();
                 }}
               >
                 <Icon name="file" /> Copiar texto
@@ -1907,7 +2050,7 @@ export default function Messages() {
               role="menuitem"
               onClick={() => {
                 actions.likeMessage(menu.chat.id, menu.index);
-                setMenu(null);
+                dismissMenu();
               }}
             >
               <Icon name="heart" /> {menu.message.liked ? 'Remover reação' : 'Reagir com ❤️'}
@@ -1918,19 +2061,27 @@ export default function Messages() {
               className="danger"
               onClick={() => {
                 actions.deleteMessage(menu.chat.id, menu.index);
-                setMenu(null);
+                dismissMenu();
               }}
             >
               <Icon name="trash" /> Apagar mensagem
             </button>
-            <button type="button" role="menuitem" onClick={() => setMenu(null)}>
+            <button type="button" role="menuitem" onClick={dismissMenu}>
               Cancelar
             </button>
           </div>
         </div>
       ) : null}
 
-      {viewer ? <MediaViewer media={viewer} onClose={() => setViewer(null)} /> : null}
+      {viewer ? (
+        <MediaViewer
+          media={viewer}
+          onClose={() => {
+            if (viewer.kind === 'video') setViewer(null);
+            else closeLayer(() => setViewer(null));
+          }}
+        />
+      ) : null}
 
       {forward ? (
         <div className="forward-layer">
@@ -1938,7 +2089,7 @@ export default function Messages() {
             className="sheet-scrim"
             type="button"
             aria-label="Fechar encaminhamento"
-            onClick={() => setForward(null)}
+            onClick={() => closeLayer(() => setForward(null))}
           />
           <div className="forward-panel" role="dialog" aria-label="Encaminhar mensagem">
             <header>
@@ -1946,7 +2097,7 @@ export default function Messages() {
               <button
                 className="icon-btn"
                 type="button"
-                onClick={() => setForward(null)}
+                onClick={() => closeLayer(() => setForward(null))}
                 aria-label="Fechar"
               >
                 <Icon name="x" />
@@ -1974,9 +2125,9 @@ export default function Messages() {
 
       {cameraOpen ? (
         <CameraCapture
-          onClose={() => setCameraOpen(false)}
+          onClose={() => closeLayer(() => setCameraOpen(false))}
           onCapture={(blob, kind, name) => {
-            setCameraOpen(false);
+            closeLayer(() => setCameraOpen(false));
             actions.sendChatBlob(blob, kind, name);
           }}
         />

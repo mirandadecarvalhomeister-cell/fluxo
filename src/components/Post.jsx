@@ -417,14 +417,6 @@ export default function Post({ post, detail = false }) {
 
       <Interactive post={post} />
 
-      {hasMedia && (post.views > 0 || post.by === 'me') ? (
-        <div className="views-row">
-          <span className="views-pill" title={`${post.views || 0} visualizações`}>
-            <Icon name="eye" /> {fmt(post.views || 0)}
-          </span>
-        </div>
-      ) : null}
-
       {post.feedReason ? (
         <div className="feed-reason">
           <Icon name="spark" />

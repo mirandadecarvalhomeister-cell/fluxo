@@ -2056,6 +2056,33 @@ export default function ModalHost() {
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
   const sheetRef = useRef(null);
+  const modalRef = useRef(false);
+
+  // Botão voltar fecha a janela/modal em vez de sair do app ou trocar de rota.
+  useEffect(() => {
+    const wasOpen = modalRef.current;
+    modalRef.current = !!modal;
+    if (modal && !wasOpen) {
+      if (!history.state?.fluxoModal) {
+        try {
+          history.pushState({ ...(history.state || {}), fluxoModal: true }, '');
+        } catch {
+          /* histórico indisponível */
+        }
+      }
+    } else if (!modal && wasOpen && history.state?.fluxoModal) {
+      history.back();
+    }
+  }, [modal]);
+
+  useEffect(() => {
+    if (!modal) return undefined;
+    const onPop = (event) => {
+      if (!event.state?.fluxoModal) actionsRef.current.closeModal();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [modal]);
 
   useEffect(() => {
     if (!modal) return undefined;

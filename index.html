@@ -41,6 +41,15 @@
       href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400..700&display=swap"
       rel="stylesheet"
     />
+    <style>
+      /* Remove o selo flutuante injetado pelo Netlify no plano gratuito. */
+      #nl-badge-frame,
+      #nl-hud-frame {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

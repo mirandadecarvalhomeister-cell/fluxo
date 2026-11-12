@@ -1347,3 +1347,59 @@ html.video-open,body.video-open{overflow:hidden!important}
 .sticker-cats .sticker-new{width:32px;height:32px;padding:0;justify-content:center;border:1px dashed var(--line);opacity:1}
 .sticker-cats .sticker-new.on{background:var(--accent-soft);color:var(--accent)}
 .sticker-cats button span{display:flex;align-items:center;justify-content:center;line-height:1}
+
+/* ============================================================
+   Ajustes finais de usabilidade (feed, chat e APK).
+   ============================================================ */
+
+/* Selo flutuante que o Netlify injeta no plano gratuito. */
+#nl-badge-frame,
+#nl-hud-frame{display:none!important;visibility:hidden!important;pointer-events:none!important}
+
+/* Volume da previa do feed: apenas o icone, no canto inferior. */
+.fv:not(.fv-open) .fv-mute{top:auto;bottom:10px;right:10px;width:40px;height:40px}
+.fv-mute .ic{width:18px;height:18px}
+
+/* No desktop o video expandido vira um lightbox confortavel, sem esticar
+   a tela inteira e sem prejudicar o encaixe no celular/APK. */
+@media (min-width:821px){
+  .fv-open{padding:22px;background:rgba(4,2,12,.94);backdrop-filter:blur(12px)}
+  .fv-open .fv-video{width:auto;height:auto;max-width:min(94vw,1180px);max-height:min(78dvh,760px);border-radius:16px;object-fit:contain}
+}
+
+/* Baloes do chat: borda bem fina, quase so um contorno. */
+.b{padding:6px 10px 5px;border-radius:13px}
+.b.them{border:1px solid color-mix(in srgb,var(--fg) 9%,transparent);border-radius:3px 13px 13px 13px}
+.b.me{padding:6px 10px 5px;border-radius:13px 3px 13px 13px}
+
+/* Encaminhar ao lado de fotos e videos. */
+.att-media-row{display:flex;align-items:flex-end;gap:6px;max-width:100%}
+.att-media-row .att-media{min-width:0}
+.att-media{-webkit-touch-callout:none;touch-action:pan-y;user-select:none}
+.att-media img,.att-media video{pointer-events:none;-webkit-user-drag:none;user-select:none}
+.att-forward{flex:none;width:36px;height:36px;margin-bottom:3px;border-radius:11px;display:grid;place-items:center;background:rgba(0,0,0,.12);border:1px solid color-mix(in srgb,var(--fg) 10%,transparent);color:inherit}
+.att-forward:hover{background:rgba(0,0,0,.2)}
+.b.me .att-forward{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.24)}
+.att-forward .ic{width:16px;height:16px}
+
+/* Aba de opcoes da mensagem: arrastar para baixo para fechar. */
+.msg-menu{touch-action:none;transition:transform .18s ease}
+.sheet-grab{display:block;width:44px;height:4px;border-radius:999px;background:var(--line);margin:0 auto 6px;flex:none}
+
+/* Alvos de toque maiores no celular/APK. */
+@media (max-width:820px){
+  .icon-btn{min-width:42px;min-height:42px}
+  .chead .icon-btn{width:42px;height:42px}
+  .chat-menu button,
+  .msg-menu button,
+  .attach-menu button{min-height:48px;padding-top:12px;padding-bottom:12px}
+  .msg-menu button{min-height:52px}
+  .forward-list button{min-height:54px}
+  .tabbar a{min-height:46px}
+  .feed-modes>button[role="tab"],
+  .feed-filters button,
+  .chip{min-height:38px}
+  .acts .act-btn{min-height:42px}
+  .att-forward{width:42px;height:42px}
+  .fv-mute{width:44px!important;height:44px!important}
+}
