@@ -3,7 +3,7 @@ import { logo } from '../lib/art';
 import { splitTags } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 
-const ASSET_VERSION = '4';
+const ASSET_VERSION = '5';
 
 export function LogoMark({ size = 32 }) {
   const [failed, setFailed] = useState(false);

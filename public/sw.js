@@ -1,4 +1,4 @@
-const CACHE = 'fluxo-v3';
+const CACHE = 'fluxo-v4';
 const CORE = [
   '/',
   '/manifest.webmanifest',
