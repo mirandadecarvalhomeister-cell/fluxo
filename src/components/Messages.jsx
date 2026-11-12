@@ -5,9 +5,8 @@ import { fileToDataURL, hm } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import { TagText } from './Brand';
-import EmojiPicker from './EmojiPicker';
+import ChatPicker from './ChatPicker';
 import { Icon } from './Icon';
-import StickerPicker from './StickerPicker';
 import { VideoViewer } from './VideoPlayer';
 
 const ATTACH_LABEL = {
@@ -216,7 +215,11 @@ function Attachment({ attachment, onOpen }) {
   if (attachment.kind === 'sticker') {
     return (
       <span className={`att-sticker pack-${attachment.pack || 'fluxo'}`} role="img" aria-label="Figurinha">
-        <span>{attachment.sticker || '✨'}</span>
+        {attachment.src ? (
+          <img className="att-sticker-img" src={attachment.src} alt="Figurinha" />
+        ) : (
+          <span>{attachment.sticker || '✨'}</span>
+        )}
       </span>
     );
   }
@@ -272,16 +275,21 @@ function Attachment({ attachment, onOpen }) {
     return <AudioMessage src={attachment.src} />;
   }
   return (
-    <a
+    <button
+      type="button"
       className="att-file"
-      href={attachment.src}
-      download={attachment.name}
-      target="_blank"
-      rel="noreferrer"
+      onClick={() =>
+        onOpen?.({
+          src: attachment.src,
+          kind: 'file',
+          name: attachment.name,
+          mime: attachment.mime,
+        })
+      }
     >
       <Icon name="file" />
       <span className="ell">{attachment.name || 'Arquivo'}</span>
-    </a>
+    </button>
   );
 }
 
@@ -478,9 +486,69 @@ function PhotoViewer({ media, onClose }) {
   );
 }
 
+function FileViewer({ media, onClose }) {
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="media-viewer doc-viewer"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Visualizar documento"
+    >
+      <button className="mv-scrim" type="button" onClick={onClose} aria-label="Fechar" />
+      <div className="mv-body mv-doc">
+        <button className="mv-close" type="button" onClick={onClose} aria-label="Fechar">
+          <Icon name="x" />
+        </button>
+        <span className="mv-doc-ic">
+          <Icon name="file" />
+        </span>
+        <b className="mv-doc-name">{media.name || 'Documento'}</b>
+        <span className="muted sm">
+          {media.mime ? media.mime.split('/').pop().toUpperCase() : 'Documento'}
+        </span>
+        <div className="mv-actions">
+          <a
+            className="btn primary sm"
+            href={media.src}
+            download={media.name || undefined}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Icon name="download" /> Baixar
+          </a>
+          <a
+            className="btn ghost sm"
+            href={media.src}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Abrir
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MediaViewer({ media, onClose }) {
   if (media.kind === 'video') {
     return <VideoViewer src={media.src} onClose={onClose} />;
+  }
+  if (media.kind === 'file') {
+    return <FileViewer media={media} onClose={onClose} />;
   }
   return <PhotoViewer media={media} onClose={onClose} />;
 }
@@ -922,8 +990,8 @@ function CameraCapture({ onClose, onCapture }) {
 export default function Messages() {
   const { data, ui, actions, onlinePeople, typingPeople } = useApp();
   const [text, setText] = useState('');
-  const [emojiOpen, setEmojiOpen] = useState(false);
-  const [stickerOpen, setStickerOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerTab, setPickerTab] = useState('emoji');
   const [attachOpen, setAttachOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [headMenu, setHeadMenu] = useState(false);
@@ -978,8 +1046,8 @@ export default function Messages() {
     setHeadMenu(false);
     setWallOpen(false);
     setMenu(null);
-    setEmojiOpen(false);
-    setStickerOpen(false);
+    setPickerOpen(false);
+    setPickerTab('emoji');
     setAttachOpen(false);
     setViewer(null);
     setForward(null);
@@ -1050,25 +1118,38 @@ export default function Messages() {
     }
   };
 
-  const openEmoji = () => {
+  const openPicker = (tab = pickerTab) => {
     saveCaret();
     inputRef.current?.blur();
-    setEmojiOpen((value) => !value);
-    setStickerOpen(false);
+    if (pickerOpen && pickerTab === tab) {
+      setPickerOpen(false);
+      return;
+    }
+    setPickerTab(tab === 'sticker' ? 'sticker' : 'emoji');
+    setPickerOpen(true);
     setAttachOpen(false);
   };
 
-  const openStickers = () => {
-    saveCaret();
-    inputRef.current?.blur();
-    setStickerOpen((value) => !value);
-    setEmojiOpen(false);
-    setAttachOpen(false);
+  const closePicker = () => {
+    setPickerOpen(false);
   };
 
   const sendSticker = (sticker, pack) => {
-    setStickerOpen(false);
-    actions.sendMessage('', { kind: 'sticker', sticker, pack });
+    setPickerOpen(false);
+    if (sticker?.src) {
+      actions.sendMessage('', {
+        kind: 'sticker',
+        sticker: '✨',
+        pack: 'custom',
+        src: sticker.src,
+      });
+      return;
+    }
+    actions.sendMessage('', {
+      kind: 'sticker',
+      sticker: sticker?.emoji || sticker,
+      pack,
+    });
   };
 
   const pickMedia = (event) => {
@@ -1558,28 +1639,20 @@ export default function Messages() {
                     </div>
                   </>
                 ) : null}
-                {emojiOpen || stickerOpen ? (
+                {pickerOpen ? (
                   <>
                     <button
                       className="pop-scrim"
                       type="button"
                       aria-label="Fechar painel"
-                      onClick={() => {
-                        setEmojiOpen(false);
-                        setStickerOpen(false);
-                      }}
+                      onClick={closePicker}
                     />
-                    {emojiOpen ? (
-                      <EmojiPicker
-                        onPick={insertEmoji}
-                        onClose={() => setEmojiOpen(false)}
-                      />
-                    ) : (
-                      <StickerPicker
-                        onPick={sendSticker}
-                        onClose={() => setStickerOpen(false)}
-                      />
-                    )}
+                    <ChatPicker
+                      initial={pickerTab}
+                      onEmoji={insertEmoji}
+                      onSticker={sendSticker}
+                      onClose={closePicker}
+                    />
                   </>
                 ) : null}
                 <input
@@ -1607,7 +1680,7 @@ export default function Messages() {
                       type="button"
                       onClick={() => {
                         setAttachOpen((value) => !value);
-                        setEmojiOpen(false);
+                        setPickerOpen(false);
                       }}
                       aria-label="Anexar"
                       title="Anexar"
@@ -1644,24 +1717,23 @@ export default function Messages() {
                       onBlur={saveCaret}
                     />
                     <button
-                      className={`icon-btn msg-composer-btn ${emojiOpen ? 'on' : ''}`}
+                      className={`icon-btn msg-composer-btn ${pickerOpen ? 'on' : ''}`}
                       type="button"
-                      onClick={openEmoji}
-                      aria-label="Emojis"
-                      aria-pressed={emojiOpen}
-                      title="Emojis"
+                      onClick={(event) => {
+                        // Toque curto abre/fecha; toque longo alterna entre
+                        // emojis e figurinhas sem abrir outro painel.
+                        if (event.detail === 2) return;
+                        openPicker(pickerTab);
+                      }}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        openPicker(pickerTab === 'emoji' ? 'sticker' : 'emoji');
+                      }}
+                      aria-label="Emojis e figurinhas"
+                      aria-pressed={pickerOpen}
+                      title={pickerTab === 'emoji' ? 'Emojis e figurinhas' : 'Figurinhas e emojis'}
                     >
-                      <Icon name="smile" />
-                    </button>
-                    <button
-                      className={`icon-btn msg-composer-btn ${stickerOpen ? 'on' : ''}`}
-                      type="button"
-                      onClick={openStickers}
-                      aria-label="Figurinhas"
-                      aria-pressed={stickerOpen}
-                      title="Figurinhas"
-                    >
-                      <Icon name="sticker" />
+                      <Icon name={pickerTab === 'emoji' ? 'smile' : 'sticker'} />
                     </button>
                   </div>
                 )}
@@ -1801,7 +1873,7 @@ export default function Messages() {
                 <Icon name="file" /> Copiar texto
               </button>
             ) : null}
-            {['photo', 'video'].includes(menu.message.attachment?.kind) ? (
+            {['photo', 'video', 'file'].includes(menu.message.attachment?.kind) ? (
               <button
                 type="button"
                 role="menuitem"
@@ -1811,11 +1883,13 @@ export default function Messages() {
                     src: attachment.src,
                     kind: attachment.kind,
                     name: attachment.name,
+                    mime: attachment.mime,
                   });
                   setMenu(null);
                 }}
               >
-                <Icon name="expand" /> Abrir mídia
+                <Icon name={menu.message.attachment?.kind === 'file' ? 'file' : 'expand'} />{' '}
+                {menu.message.attachment?.kind === 'file' ? 'Abrir documento' : 'Abrir mídia'}
               </button>
             ) : null}
             <button

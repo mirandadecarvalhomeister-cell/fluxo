@@ -14,7 +14,7 @@ const readRecents = () => {
   }
 };
 
-export default function EmojiPicker({ onPick, onClose }) {
+export default function EmojiPicker({ onPick, onClose, embedded = false }) {
   const [recents, setRecents] = useState(readRecents);
   const [active, setActive] = useState(recents.length ? 'recent' : EMOJI_GROUPS[0].key);
   const gridRef = useRef(null);
@@ -44,7 +44,11 @@ export default function EmojiPicker({ onPick, onClose }) {
   };
 
   return (
-    <div className="emoji-picker" role="dialog" aria-label="Escolher emoji">
+    <div
+      className={`emoji-picker${embedded ? ' embedded' : ''}`}
+      role="dialog"
+      aria-label="Escolher emoji"
+    >
       <div className="emoji-cats" role="tablist" aria-label="Categorias de emoji">
         {groups.map((item) => (
           <button

@@ -78,8 +78,23 @@ function CommunityCard({ community }) {
     <article className="card comm">
       <div
         className="ccover"
-        style={{ backgroundImage: `url('${art(community.seed, 600, 260)}')` }}
+        style={{
+          backgroundImage: `url('${community.coverUrl || art(community.seed, 600, 260)}')`,
+        }}
       >
+        <span
+          className="ccover-ic"
+          style={{
+            backgroundImage: `url('${
+              community.iconUrl || art(community.seed + '-icone', 160, 160)
+            }')`,
+          }}
+        />
+        {community.private ? (
+          <span className="pill priv">
+            <Icon name="lock" /> Privada
+          </span>
+        ) : null}
         {role ? (
           <span className="pill sun role">
             <Icon name="shield" /> {role}
@@ -97,7 +112,7 @@ function CommunityCard({ community }) {
             <Icon name="users" /> {fmt(community.subs)} inscritos
           </span>
           <div className="mods">
-            {community.mods.slice(0, 3).map((mod) => (
+            {(community.mods || []).slice(0, 3).map((mod) => (
               <Avatar key={mod} user={userOf(data, mod)} size={24} />
             ))}
           </div>
@@ -109,9 +124,19 @@ function CommunityCard({ community }) {
           {community.owner !== 'me' && (
             <button
               className="btn ghost sm"
-              onClick={() => actions.toggleComm(community.id)}
+              onClick={() =>
+                community.invited
+                  ? actions.respondCommunityInvite(community.id, community.invited, true)
+                  : actions.toggleComm(community.id)
+              }
             >
-              {community.joined ? 'Sair' : 'Entrar'}
+              {community.joined
+                ? 'Sair'
+                : community.pending
+                  ? 'Pendente'
+                  : community.invited
+                    ? 'Aceitar'
+                    : 'Entrar'}
             </button>
           )}
         </div>

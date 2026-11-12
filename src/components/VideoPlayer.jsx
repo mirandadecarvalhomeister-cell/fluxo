@@ -78,14 +78,36 @@ function usePlayer(videoRef) {
     wake();
   }, [videoRef, wake]);
 
+  // Liga o som assim que o vídeo é aberto por um toque. O navegador não expõe
+  // o volume físico do celular, então usamos o volume máximo do próprio vídeo
+  // e deixamos o aparelho controlar a saída de áudio.
+  const enableSound = useCallback(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    el.muted = false;
+    if (!el.volume) el.volume = 1;
+    setVolume(el.volume || 1);
+    setMuted(false);
+    wake();
+  }, [videoRef, wake]);
+
   const toggleMute = useCallback(() => {
     const el = videoRef.current;
     if (!el) return;
     const next = !el.muted;
     el.muted = next;
+    if (!next && !el.volume) el.volume = 1;
     setMuted(next);
+    setVolume(el.volume || 1);
     wake();
   }, [videoRef, wake]);
+
+  // Volta ao modo silencioso do feed quando o vídeo é recolhido.
+  const mute = useCallback(() => {
+    const el = videoRef.current;
+    if (el) el.muted = true;
+    setMuted(true);
+  }, [videoRef]);
 
   const setVolumeLevel = useCallback(
     (value) => {
@@ -153,6 +175,8 @@ function usePlayer(videoRef) {
     wake,
     play,
     toggleMute,
+    enableSound,
+    mute,
     setVolumeLevel,
     seek,
     videoProps,
@@ -190,24 +214,27 @@ function PlayerControls({ player, onClose, status }) {
         <span className="fv-status">
           {status || (playing ? 'Reproduzindo' : 'Pausado')}
         </span>
+      </div>
+
+      <div className="fv-center">
         <button
-          className="fv-btn"
+          className="fv-play"
+          type="button"
+          onClick={play}
+          aria-label={playing ? 'Pausar vídeo' : 'Reproduzir vídeo'}
+        >
+          <Icon name={playing ? 'pause' : 'play'} className="fill" />
+        </button>
+        <button
+          className="fv-sound"
           type="button"
           onClick={toggleMute}
           aria-label={muted ? 'Ativar som' : 'Silenciar'}
         >
           <Icon name={muted ? 'volumeoff' : 'volume'} />
+          <span>{muted ? 'Sem som' : 'Com som'}</span>
         </button>
       </div>
-
-      <button
-        className="fv-play"
-        type="button"
-        onClick={play}
-        aria-label={playing ? 'Pausar vídeo' : 'Reproduzir vídeo'}
-      >
-        <Icon name={playing ? 'pause' : 'play'} className="fill" />
-      </button>
 
       <div className="fv-bottom">
         <input
@@ -296,10 +323,15 @@ export function FeedVideo({ src, style, onError }) {
   }, []);
 
   useEffect(() => {
-    if (!expanded) return;
+    if (!expanded) {
+      player.mute();
+      return;
+    }
+    player.enableSound();
     videoRef.current?.play?.().catch(() => {});
     wake();
-  }, [expanded, wake]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded]);
 
   const close = () => closeVideoWithHistory(() => setExpanded(false));
 
@@ -343,6 +375,7 @@ export function FeedVideo({ src, style, onError }) {
         if (!expanded) {
           event.preventDefault();
           event.stopPropagation();
+          player.enableSound();
           setExpanded(true);
           return;
         }
@@ -400,9 +433,11 @@ export function VideoViewer({ src, onClose }) {
   useVideoHistory(true, onClose);
 
   useEffect(() => {
+    player.enableSound();
     videoRef.current?.play?.().catch(() => {});
     wake();
-  }, [wake]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const close = () => closeVideoWithHistory(onClose);
 

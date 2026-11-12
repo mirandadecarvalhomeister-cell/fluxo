@@ -28,6 +28,7 @@ import {
 } from '../lib/interactive';
 import { COVERS, STATE_VERSION, newState } from '../lib/seed';
 import { mentionsHandle, notificationText } from '../lib/selectors';
+import { DEFAULT_FEED_PREFS, feedPrefs } from '../lib/feed';
 import { showDeviceNotification } from '../lib/notify';
 import { playMessageSound, playSentSound } from '../lib/sound';
 import {
@@ -59,6 +60,7 @@ const DEFAULT_SETTINGS = {
   mutedChats: [],
   liveChannels: [],
   chatWalls: {},
+  feed: DEFAULT_FEED_PREFS,
 };
 
 const readSettings = () => {
@@ -198,6 +200,7 @@ function mergeWorkspace(base, ws, user) {
         seed: p.seed || p.id,
         src: p.media_url || media[0]?.src,
         media,
+        communityId: p.community_id || null,
         dur: p.dur ?? undefined,
         likes: ws.likes.counts.get(p.id) || 0,
         liked: !!myReaction,
@@ -237,25 +240,59 @@ function mergeWorkspace(base, ws, user) {
   const comms = (ws.allComms || [])
     .map((c) => {
       const owner = asPerson(c.owner_id);
-      const modIds = (ws.allCommMembers || [])
+      const memberRows = (ws.allCommMembers || []).filter(
+        (row) => row.community_id === c.id
+      );
+      const modIds = memberRows
+        .filter((row) => row.role === 'owner' || row.role === 'moderator')
+        .map((row) => asPerson(row.user_id));
+      const mods = [...new Set([owner, ...modIds])];
+      const channelIds = (ws.communityChannels || [])
+        .filter((row) => row.community_id === c.id)
+        .map((row) => row.channel_id);
+      const requests = (ws.joinRequests || [])
         .filter(
           (row) =>
             row.community_id === c.id &&
-            (row.role === 'owner' || row.role === 'moderator')
+            (row.status || 'pending') === 'pending' &&
+            row.user_id !== uidv
         )
-        .map((row) => asPerson(row.user_id));
-      const mods = [...new Set([owner, ...modIds])];
+        .map((row) => ({
+          id: row.user_id,
+          userId: asPerson(row.user_id),
+          ts: new Date(row.created_at || Date.now()).getTime(),
+        }));
+      const myRequest = (ws.joinRequests || []).find(
+        (row) =>
+          row.community_id === c.id &&
+          row.user_id === uidv &&
+          (row.status || 'pending') === 'pending'
+      );
+      const invite = (ws.communityInvites || []).find(
+        (row) =>
+          row.community_id === c.id &&
+          row.invitee_id === uidv &&
+          (row.status || 'pending') === 'pending'
+      );
       return {
         id: c.id,
         name: c.name,
         cat: c.category || 'Outros',
         desc: c.description || '',
-        subs: commMemberCounts.get(c.id) || 0,
+        subs: memberRows.length,
         owner,
         mods,
-        joined: myCommRoles.has(c.id),
+        joined: memberRows.some((row) => row.user_id === uidv),
+        pending: !!myRequest,
+        invited: invite ? invite.id : null,
+        private: !!c.is_private,
+        iconUrl: c.icon_url || null,
+        coverUrl: c.cover_url || null,
         seed: c.cover_seed || c.id + '-capa',
         rules: c.rules?.length ? c.rules : ['Respeite todo mundo no fluxo.'],
+        members: memberRows.map((row) => asPerson(row.user_id)),
+        requests,
+        channelIds,
         topics: (ws.topics || [])
           .filter((t) => t.community_id === c.id)
           .map((t) => ({
@@ -450,8 +487,66 @@ function mergeWorkspace(base, ws, user) {
       });
     });
   }
+  // Convites e solicitações de comunidades.
+  (ws.communityInvites || []).forEach((row) => {
+    if (row.invitee_id !== uidv || (row.status || 'pending') !== 'pending') return;
+    notifications.push({
+      id: `cInvite:${row.id}`,
+      type: 'communityInvite',
+      actorId: row.inviter_id,
+      communityId: row.community_id,
+      inviteId: row.id,
+      ts: new Date(row.created_at || Date.now()).getTime(),
+    });
+  });
+  const myManagedComms = new Set(
+    (ws.allComms || [])
+      .filter((row) => row.owner_id === uidv)
+      .map((row) => row.id)
+  );
+  (ws.allCommMembers || []).forEach((row) => {
+    if (
+      row.user_id === uidv &&
+      (row.role === 'owner' || row.role === 'moderator')
+    ) {
+      myManagedComms.add(row.community_id);
+    }
+  });
+  (ws.joinRequests || []).forEach((row) => {
+    if (
+      !myManagedComms.has(row.community_id) ||
+      row.user_id === uidv ||
+      (row.status || 'pending') !== 'pending'
+    ) {
+      return;
+    }
+    notifications.push({
+      id: `cRequest:${row.community_id}:${row.user_id}`,
+      type: 'communityRequest',
+      actorId: row.user_id,
+      communityId: row.community_id,
+      ts: new Date(row.created_at || Date.now()).getTime(),
+    });
+  });
+
   notifications.sort((a, b) => b.ts - a.ts);
   const trimmedNotifications = notifications.slice(0, 80);
+
+  const customStickerPacks = (ws.stickerPacks || []).map((pack) => ({
+    id: pack.id,
+    name: pack.name,
+    icon: pack.icon || '✨',
+    ts: new Date(pack.created_at || Date.now()).getTime(),
+    custom: true,
+    stickers: (ws.stickerRows || [])
+      .filter((row) => row.pack_id === pack.id)
+      .map((row) => ({
+        id: row.id,
+        src: row.src,
+        ts: new Date(row.created_at || 0).getTime(),
+      }))
+      .sort((a, b) => a.ts - b.ts),
+  }));
 
   return {
     ...base,
@@ -463,6 +558,7 @@ function mergeWorkspace(base, ws, user) {
     comms,
     chans,
     chats,
+    customStickerPacks,
     notifications: trimmedNotifications,
   };
 }
@@ -503,6 +599,7 @@ const initialUi = () => {
       options: [],
       reactions: DEFAULT_REACTIONS,
       invited: [],
+      communityId: null,
     },
     open: {},
     profTab: 'posts',
@@ -516,6 +613,7 @@ const initialUi = () => {
     authTab: 'in',
     modal: null,
     commSeed: COVERS[0],
+    commDraft: null,
     settings: readSettings(),
     theme:
       lsGet(THEME_KEY) ||
@@ -671,6 +769,12 @@ export function AppProvider({ children }) {
         myLive: null,
         modal: null,
         typing: {},
+        settings: workspace?.feedPrefs
+          ? {
+              ...u.settings,
+              feed: { ...feedPrefs(u.settings), ...workspace.feedPrefs },
+            }
+          : u.settings,
       }));
       writeCache(email, merged);
       setReady(true);
@@ -1774,6 +1878,7 @@ export function AppProvider({ children }) {
     const trimmed = text.trim();
     const media = draft.media || [];
     const format = draft.format || 'classic';
+    const communityId = draft.communityId || null;
     const interactive = buildInteractive(format, draft, media);
 
     if (format === 'poll' && (interactive?.options?.length || 0) < 2) {
@@ -1806,6 +1911,7 @@ export function AppProvider({ children }) {
       comments: [],
       interactive: interactive || null,
       interactions: [],
+      communityId,
     };
     setData((cur) => ({ ...cur, posts: [post, ...cur.posts] }));
     setUi((u) => ({
@@ -1817,6 +1923,7 @@ export function AppProvider({ children }) {
         options: [],
         reactions: DEFAULT_REACTIONS,
         invited: [],
+        communityId: null,
       },
     }));
     if (sessionRef.current?.id) remote.savePost(post, sessionRef.current.id);
@@ -1974,8 +2081,25 @@ export function AppProvider({ children }) {
     setUi((u) => ({ ...u, modal: { type: 'user', id } }));
   }
 
-  function addComment(postId, text) {
-    const trimmed = text.trim();
+  function reportPost(postId) {
+    const post = dataRef.current?.posts.find((item) => item.id === postId);
+    if (!post) return;
+    requestConfirm({
+      title: 'Denunciar publicação?',
+      text: 'A denúncia é diferente de ocultar ou deixar de seguir. Ela será registrada para análise.',
+      confirmLabel: 'Denunciar',
+      tone: 'hot',
+      action: () => {
+        if (sessionRef.current?.id) {
+          remote.reportPost(postId, sessionRef.current.id, 'conteudo');
+        }
+        feedFeedback(postId, 'notInterested');
+        toast('Denúncia registrada. O conteúdo foi ocultado do seu feed.');
+      },
+    });
+  }
+
+  function addComment(postId, text) {    const trimmed = text.trim();
     if (!trimmed) return;
     const post = dataRef.current?.posts.find((p) => p.id === postId);
     if (post?.commentsDisabled) {
@@ -2288,6 +2412,10 @@ export function AppProvider({ children }) {
   function toggleComm(id) {
     const community = dataRef.current?.comms.find((c) => c.id === id);
     if (!community) return;
+    if (community.pending) {
+      cancelJoinComm(id);
+      return;
+    }
     if (community.joined) {
       requestConfirm({
         title: 'Sair da comunidade?',
@@ -2298,7 +2426,172 @@ export function AppProvider({ children }) {
       });
       return;
     }
+    if (community.private) {
+      requestJoinComm(id);
+      return;
+    }
     applyToggleComm(id);
+  }
+
+  function requestJoinComm(id) {
+    const community = dataRef.current?.comms.find((c) => c.id === id);
+    if (!community) return;
+    setData((cur) => ({
+      ...cur,
+      comms: cur.comms.map((c) => (c.id === id ? { ...c, pending: true } : c)),
+    }));
+    if (sessionRef.current?.id) {
+      remote.requestCommunityJoin(id, sessionRef.current.id);
+    }
+    toast(`Solicitação enviada para ${community.name}`);
+  }
+
+  function cancelJoinComm(id) {
+    setData((cur) => ({
+      ...cur,
+      comms: cur.comms.map((c) => (c.id === id ? { ...c, pending: false } : c)),
+    }));
+    if (sessionRef.current?.id) remote.cancelCommunityJoin(id, sessionRef.current.id);
+    toast('Solicitação cancelada');
+  }
+
+  function approveJoin(commId, userId) {
+    setData((cur) => ({
+      ...cur,
+      comms: cur.comms.map((c) =>
+        c.id === commId
+          ? {
+              ...c,
+              requests: c.requests.filter((item) => item.userId !== userId),
+              members: [...new Set([...(c.members || []), userId])],
+              subs: c.subs + 1,
+            }
+          : c
+      ),
+    }));
+    if (sessionRef.current?.id) {
+      remote.setJoinRequestStatus(commId, userId, 'accepted');
+      remote.setCommunityMembership(commId, userId, true);
+    }
+    toast('Participante aprovado');
+  }
+
+  function rejectJoin(commId, userId) {
+    setData((cur) => ({
+      ...cur,
+      comms: cur.comms.map((c) =>
+        c.id === commId
+          ? { ...c, requests: c.requests.filter((item) => item.userId !== userId) }
+          : c
+      ),
+    }));
+    if (sessionRef.current?.id) {
+      remote.setJoinRequestStatus(commId, userId, 'rejected');
+    }
+    toast('Solicitação recusada');
+  }
+
+  function inviteToComm(commId, userId) {
+    const community = dataRef.current?.comms.find((c) => c.id === commId);
+    if (!community || !userId || userId === 'me') return;
+    const invite = {
+      id: uid(),
+      communityId: commId,
+      inviterId: 'me',
+      inviteeId: userId,
+      status: 'pending',
+    };
+    if (sessionRef.current?.id) {
+      remote.saveCommunityInvite(invite, sessionRef.current.id);
+    }
+    toast(`Convite enviado para ${dataRef.current.users[userId]?.name || 'a pessoa'}`);
+  }
+
+  function respondCommunityInvite(commId, inviteId, accept) {
+    const community = dataRef.current?.comms.find((c) => c.id === commId);
+    if (!community) return;
+    if (inviteId) remote.setCommunityInviteStatus(inviteId, accept ? 'accepted' : 'declined');
+    if (!accept) {
+      setData((cur) => ({
+        ...cur,
+        comms: cur.comms.map((c) =>
+          c.id === commId ? { ...c, invited: null } : c
+        ),
+      }));
+      toast('Convite recusado');
+      return;
+    }
+    setData((cur) => ({
+      ...cur,
+      comms: cur.comms.map((c) =>
+        c.id === commId
+          ? {
+              ...c,
+              invited: null,
+              joined: true,
+              subs: c.subs + 1,
+              members: [...new Set([...(c.members || []), 'me'])],
+            }
+          : c
+      ),
+    }));
+    if (sessionRef.current?.id) {
+      remote.setCommunityMembership(commId, sessionRef.current.id, true);
+    }
+    toast(`Bem-vindo a ${community.name}`);
+  }
+
+  function linkCommChannel(commId, chanId) {
+    if (!chanId) return;
+    setData((cur) => ({
+      ...cur,
+      comms: cur.comms.map((c) =>
+        c.id === commId
+          ? { ...c, channelIds: [...new Set([...(c.channelIds || []), chanId])] }
+          : c
+      ),
+    }));
+    remote.saveCommunityChannel(commId, chanId);
+    toast('Canal vinculado à comunidade');
+  }
+
+  function unlinkCommChannel(commId, chanId) {
+    setData((cur) => ({
+      ...cur,
+      comms: cur.comms.map((c) =>
+        c.id === commId
+          ? { ...c, channelIds: (c.channelIds || []).filter((id) => id !== chanId) }
+          : c
+      ),
+    }));
+    remote.deleteCommunityChannel(commId, chanId);
+    toast('Canal desvinculado');
+  }
+
+  async function uploadCommunityArt(commId, kind, file) {
+    if (!file) return;
+    try {
+      let src = await fileToDataURL(file, kind === 'icon' ? 320 : 1400);
+      if (sessionRef.current?.id) {
+        const uploaded = await remote.uploadMedia(file, sessionRef.current.id);
+        if (uploaded) src = uploaded;
+      }
+      const community = dataRef.current?.comms.find((c) => c.id === commId);
+      if (!community) return;
+      const updated = {
+        ...community,
+        iconUrl: kind === 'icon' ? src : community.iconUrl,
+        coverUrl: kind === 'cover' ? src : community.coverUrl,
+      };
+      setData((cur) => ({
+        ...cur,
+        comms: cur.comms.map((c) => (c.id === commId ? updated : c)),
+      }));
+      remote.updateCommunity(updated);
+      toast(kind === 'icon' ? 'Ícone atualizado' : 'Capa atualizada');
+    } catch {
+      toast('Não foi possível usar essa imagem.');
+    }
   }
 
   function applyToggleComm(id) {
@@ -2308,7 +2601,11 @@ export function AppProvider({ children }) {
     const updated = {
       ...community,
       joined,
+      pending: false,
       subs: Math.max(0, community.subs + (joined ? 1 : -1)),
+      members: joined
+        ? [...new Set([...(community.members || []), 'me'])]
+        : (community.members || []).filter((member) => member !== 'me'),
     };
     if (!joined && community.mods.includes('me')) {
       updated.mods = community.mods.filter((m) => m !== 'me');
@@ -2323,7 +2620,7 @@ export function AppProvider({ children }) {
     toast(joined ? 'Você entrou em ' + community.name : 'Você saiu de ' + community.name);
   }
 
-  function createComm({ name, cat, desc, rules, seed }) {
+  function createComm({ name, cat, desc, rules, seed, private: isPrivate, iconUrl, coverUrl }) {
     const community = {
       id: uid(),
       name,
@@ -2333,14 +2630,30 @@ export function AppProvider({ children }) {
       owner: 'me',
       mods: ['me'],
       joined: true,
+      pending: false,
+      invited: null,
+      private: !!isPrivate,
+      iconUrl: iconUrl || null,
+      coverUrl: coverUrl || null,
       seed: (seed || COVERS[0]) + '-c',
       rules: rules?.length ? rules : ['Respeite todo mundo no fluxo.'],
+      members: ['me'],
+      requests: [],
+      channelIds: [],
       topics: [],
     };
     setData((cur) => ({ ...cur, comms: [community, ...cur.comms] }));
     setUi((u) => ({ ...u, profTab: 'comms', modal: { type: 'comm', id: community.id } }));
     if (sessionRef.current?.id) remote.saveCommunity(community, sessionRef.current.id);
     toast('Comunidade criada');
+  }
+
+  function openNewCommFromTopic(term) {
+    setUi((u) => ({
+      ...u,
+      modal: { type: 'newcomm' },
+      commDraft: { name: term ? `Comunidade de ${term}` : '' },
+    }));
   }
 
   function addModerator(commId, userId) {
@@ -2882,8 +3195,176 @@ export function AppProvider({ children }) {
     if (sessionRef.current?.id) remote.setReaction(messageId, sessionRef.current.id, emoji, on);
   }
 
+  async function createStickerPack(name) {
+    const trimmed = String(name || '').trim();
+    if (!trimmed) {
+      toast('Dê um nome ao pacote de figurinhas.');
+      return null;
+    }
+    const pack = {
+      id: uid(),
+      name: trimmed,
+      icon: '🖼️',
+      ts: Date.now(),
+      custom: true,
+      stickers: [],
+    };
+    setData((cur) => ({
+      ...cur,
+      customStickerPacks: [...(cur.customStickerPacks || []), pack],
+    }));
+    if (sessionRef.current?.id) remote.saveStickerPack(pack, sessionRef.current.id);
+    toast('Pacote criado');
+    return pack;
+  }
+
+  async function addStickerToPack(packId, file) {
+    if (!file || !packId) return;
+    try {
+      let src = await fileToDataURL(file, 512);
+      if (sessionRef.current?.id) {
+        const uploaded = await remote.uploadMedia(file, sessionRef.current.id);
+        if (uploaded) src = uploaded;
+      }
+      const sticker = { id: uid(), src, ts: Date.now() };
+      setData((cur) => ({
+        ...cur,
+        customStickerPacks: (cur.customStickerPacks || []).map((pack) =>
+          pack.id === packId
+            ? { ...pack, stickers: [...pack.stickers, sticker] }
+            : pack
+        ),
+      }));
+      if (sessionRef.current?.id) {
+        remote.saveStickerRow(sticker, packId, sessionRef.current.id);
+      }
+      toast('Figurinha adicionada');
+    } catch {
+      toast('Não foi possível usar essa imagem.');
+    }
+  }
+
+  function removeStickerFromPack(packId, stickerId) {
+    setData((cur) => ({
+      ...cur,
+      customStickerPacks: (cur.customStickerPacks || []).map((pack) =>
+        pack.id === packId
+          ? { ...pack, stickers: pack.stickers.filter((item) => item.id !== stickerId) }
+          : pack
+      ),
+    }));
+    remote.deleteStickerRow(stickerId);
+    toast('Figurinha removida');
+  }
+
+  function deleteStickerPack(packId) {
+    const pack = (dataRef.current?.customStickerPacks || []).find(
+      (item) => item.id === packId
+    );
+    requestConfirm({
+      title: 'Excluir pacote?',
+      text: `As figurinhas de ${pack?.name || 'este pacote'} serão removidas.`,
+      confirmLabel: 'Excluir',
+      tone: 'hot',
+      action: () => {
+        (pack?.stickers || []).forEach((item) => remote.deleteStickerRow(item.id));
+        setData((cur) => ({
+          ...cur,
+          customStickerPacks: (cur.customStickerPacks || []).filter(
+            (item) => item.id !== packId
+          ),
+        }));
+        remote.deleteStickerPackRemote(packId);
+        toast('Pacote excluído');
+      },
+    });
+  }
+
   function setSetting(key, value) {
     setUi((u) => ({ ...u, settings: { ...u.settings, [key]: value } }));
+  }
+
+  function setFeedPref(patch) {
+    const current = feedPrefs(uiRef.current.settings);
+    const next = { ...current, ...(patch || {}) };
+    setSetting('feed', next);
+    if (sessionRef.current?.id) remote.saveFeedPreferences(sessionRef.current.id, next);
+  }
+
+  function resetFeedPrefs() {
+    setSetting('feed', { ...DEFAULT_FEED_PREFS });
+    if (sessionRef.current?.id) {
+      remote.saveFeedPreferences(sessionRef.current.id, { ...DEFAULT_FEED_PREFS });
+    }
+    toast('Preferências do feed restauradas');
+  }
+
+  // Feedback das recomendações. Cada escolha tem efeito próprio e persistente.
+  function feedFeedback(postId, kind, value) {
+    const prefs = feedPrefs(uiRef.current.settings);
+    const post = dataRef.current?.posts.find((item) => item.id === postId);
+    if (!post) return;
+    if (kind === 'notInterested') {
+      setFeedPref({ hiddenPosts: [...new Set([...prefs.hiddenPosts, postId])] });
+      toast('Vamos mostrar menos conteúdos como este');
+    } else if (kind === 'lessLike') {
+      const term = String(post.text || '').split(/\s+/).filter((word) => word.length > 4)[0];
+      setFeedPref({
+        hiddenPosts: [...new Set([...prefs.hiddenPosts, postId])],
+        mutedTopics: term ? [...new Set([...prefs.mutedTopics, term])] : prefs.mutedTopics,
+      });
+      toast(term ? `Menos assuntos como “${term}”` : 'Vamos mostrar menos conteúdos assim');
+    } else if (kind === 'muteTopic') {
+      const term = String(value || '').trim();
+      if (!term) return;
+      setFeedPref({ mutedTopics: [...new Set([...prefs.mutedTopics, term])] });
+      toast(`Assunto “${term}” silenciado`);
+    } else if (kind === 'hideProfile') {
+      setFeedPref({ hiddenProfiles: [...new Set([...prefs.hiddenProfiles, post.by])] });
+      toast('Publicações deste perfil ocultadas');
+    } else if (kind === 'unhideProfile') {
+      setFeedPref({ hiddenProfiles: prefs.hiddenProfiles.filter((id) => id !== post.by) });
+      toast('Perfil reexibido no feed');
+    } else if (kind === 'muteCommunity') {
+      const id = post.communityId;
+      if (!id) return;
+      setFeedPref({ mutedComms: [...new Set([...prefs.mutedComms, id])] });
+      toast('Comunidade silenciada no feed');
+    }
+  }
+
+  function addInterest(term) {
+    const value = String(term || '').trim();
+    if (!value) return;
+    const current = dataRef.current?.me?.interests || [];
+    if (current.includes(value)) return;
+    const next = [...current, value];
+    setData((cur) => ({ ...cur, me: { ...cur.me, interests: next } }));
+    if (sessionRef.current?.id) {
+      remote.saveProfile({ ...dataRef.current.me, interests: next }, sessionRef.current.id);
+    }
+  }
+
+  function removeInterest(term) {
+    const current = dataRef.current?.me?.interests || [];
+    const next = current.filter((item) => item !== term);
+    setData((cur) => ({ ...cur, me: { ...cur.me, interests: next } }));
+    if (sessionRef.current?.id) {
+      remote.saveProfile({ ...dataRef.current.me, interests: next }, sessionRef.current.id);
+    }
+  }
+
+  function muteTopic(term) {
+    const value = String(term || '').trim();
+    if (!value) return;
+    const prefs = feedPrefs(uiRef.current.settings);
+    setFeedPref({ mutedTopics: [...new Set([...prefs.mutedTopics, value])] });
+    toast(`Assunto “${value}” silenciado`);
+  }
+
+  function unmuteTopic(term) {
+    const prefs = feedPrefs(uiRef.current.settings);
+    setFeedPref({ mutedTopics: prefs.mutedTopics.filter((item) => item !== term) });
   }
 
   function toggleChatMute(withId) {
@@ -2958,6 +3439,8 @@ export function AppProvider({ children }) {
     go,
     setDraftText: (text) => setUi((u) => ({ ...u, draft: { ...u.draft, text } })),
     setDraftFormat,
+    setDraftCommunity: (communityId) =>
+      setUi((u) => ({ ...u, draft: { ...u.draft, communityId: communityId || null } })),
     setDraftOption,
     addDraftOption,
     removeDraftOption,
@@ -2981,6 +3464,7 @@ export function AppProvider({ children }) {
     toggleComments,
     openPost,
     openUser,
+    reportPost,
     addComment,
     deleteComment,
     openEditPost,
@@ -2997,6 +3481,18 @@ export function AppProvider({ children }) {
     openNotifications: () => setUi((u) => ({ ...u, modal: { type: 'notifications' } })),
     markNotifsSeen,
     setSetting,
+    createStickerPack,
+    addStickerToPack,
+    removeStickerFromPack,
+    deleteStickerPack,
+    setFeedPref,
+    resetFeedPrefs,
+    feedFeedback,
+    addInterest,
+    removeInterest,
+    muteTopic,
+    unmuteTopic,
+    openFeedPrefs: () => setUi((u) => ({ ...u, modal: { type: 'feedprefs' } })),
     playTestSound: playMessageSound,
     installApp,
     clearCache: clearLocalCache,
@@ -3015,6 +3511,16 @@ export function AppProvider({ children }) {
     closeModal,
     toggleComm,
     createComm,
+    requestJoinComm,
+    cancelJoinComm,
+    approveJoin,
+    rejectJoin,
+    inviteToComm,
+    respondCommunityInvite,
+    linkCommChannel,
+    unlinkCommChannel,
+    uploadCommunityArt,
+    openNewCommFromTopic,
     addModerator,
     removeModerator,
     addTopic,

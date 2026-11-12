@@ -263,12 +263,34 @@ create policy follows_insert on public.follows for insert to authenticated with 
 drop policy if exists follows_delete on public.follows;
 create policy follows_delete on public.follows for delete to authenticated using (follower_id = auth.uid()::text);
 
+-- Moderadores de comunidade, sem recursao de RLS ao consultar a propria tabela.
+create or replace function public.is_community_mod(p_community_id text)
+returns boolean
+language sql
+security definer
+set search_path = public, pg_temp
+stable
+as $$
+  select exists (
+    select 1 from public.community_members m
+    where m.community_id = p_community_id
+      and m.user_id = auth.uid()::text
+      and m.role in ('owner', 'moderator')
+  );
+$$;
+
+grant execute on function public.is_community_mod(text) to authenticated;
+
 drop policy if exists communities_read on public.communities;
 create policy communities_read on public.communities for select to authenticated using (true);
 drop policy if exists communities_insert on public.communities;
 create policy communities_insert on public.communities for insert to authenticated with check (owner_id = auth.uid()::text);
 drop policy if exists communities_update on public.communities;
-create policy communities_update on public.communities for update to authenticated using (owner_id = auth.uid()::text) with check (owner_id = auth.uid()::text);
+create policy communities_update on public.communities for update to authenticated using (
+  owner_id = auth.uid()::text or public.is_community_mod(id)
+) with check (
+  owner_id = auth.uid()::text or public.is_community_mod(id)
+);
 drop policy if exists communities_delete on public.communities;
 create policy communities_delete on public.communities for delete to authenticated using (owner_id = auth.uid()::text);
 
@@ -281,6 +303,7 @@ create policy community_members_insert on public.community_members for insert to
     select 1 from public.communities c
     where c.id = community_id and c.owner_id = auth.uid()::text
   )
+  or public.is_community_mod(community_id)
 );
 drop policy if exists community_members_update on public.community_members;
 create policy community_members_update on public.community_members for update to authenticated using (
@@ -289,12 +312,14 @@ create policy community_members_update on public.community_members for update to
     select 1 from public.communities c
     where c.id = community_id and c.owner_id = auth.uid()::text
   )
+  or public.is_community_mod(community_id)
 ) with check (
   user_id = auth.uid()::text
   or exists (
     select 1 from public.communities c
     where c.id = community_id and c.owner_id = auth.uid()::text
   )
+  or public.is_community_mod(community_id)
 );
 drop policy if exists community_members_delete on public.community_members;
 create policy community_members_delete on public.community_members for delete to authenticated using (
@@ -303,6 +328,7 @@ create policy community_members_delete on public.community_members for delete to
     select 1 from public.communities c
     where c.id = community_id and c.owner_id = auth.uid()::text
   )
+  or public.is_community_mod(community_id)
 );
 
 drop policy if exists topics_read on public.topics;

@@ -48,5 +48,6 @@ export function newState(name, email) {
     comms: [],
     chats: [],
     chans: [],
+    customStickerPacks: [],
   };
 }

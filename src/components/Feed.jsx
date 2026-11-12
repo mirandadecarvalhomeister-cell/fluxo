@@ -6,7 +6,18 @@ import {
   REACTION_CHOICES,
   formatMeta,
 } from '../lib/interactive';
+import {
+  FEED_FORMATS,
+  FEED_MODES,
+  applyFeedPreferences,
+  communityActivity,
+  communityAffinity,
+  feedPrefs,
+  interestTerms,
+  spontaneousTopics,
+} from '../lib/feed';
 import { MAX_POST_MEDIA } from '../lib/media';
+import { art } from '../lib/art';
 import { mediaDisplayStyle } from '../lib/mediaEdit';
 import { userOf } from '../lib/selectors';
 import { useApp } from '../store/AppContext';
@@ -29,6 +40,7 @@ function Composer() {
   const options = draft.options || [];
   const invited = draft.invited || [];
   const friends = (data.follows || []).filter((id) => id !== 'me');
+  const joinedComms = (data.comms || []).filter((item) => item.joined);
 
   const placeholder =
     format === 'poll'
@@ -295,6 +307,23 @@ function Composer() {
               event.target.value = '';
             }}
           />
+          {joinedComms.length ? (
+            <label className="composer-comm">
+              <Icon name="users" />
+              <select
+                value={draft.communityId || ''}
+                onChange={(event) => actions.setDraftCommunity(event.target.value)}
+                aria-label="Publicar em uma comunidade"
+              >
+                <option value="">Feed geral</option>
+                {joinedComms.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <span className="muted sm">
             {media.length}/{MAX_POST_MEDIA} · vídeos até 3 min
           </span>
@@ -310,22 +339,194 @@ function Composer() {
   );
 }
 
+function FeedControls({ prefs, suggestions }) {
+  const { actions } = useApp();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const toggleFormat = (id) => {
+    const next = prefs.formats.includes(id)
+      ? prefs.formats.filter((item) => item !== id)
+      : [...prefs.formats, id];
+    actions.setFeedPref({ formats: next });
+  };
+
+  return (
+    <div className="feed-controls">
+      <div className="feed-modes" role="tablist" aria-label="Modo de visualização do feed">
+        {FEED_MODES.map((mode) => (
+          <button
+            key={mode.id}
+            type="button"
+            role="tab"
+            aria-selected={prefs.mode === mode.id}
+            className={prefs.mode === mode.id ? 'on' : ''}
+            onClick={() => actions.setFeedPref({ mode: mode.id })}
+            title={mode.hint}
+          >
+            {mode.label}
+          </button>
+        ))}
+        <span className="grow" />
+        <button
+          type="button"
+          className={`feed-tool${filtersOpen || prefs.formats.length ? ' on' : ''}`}
+          onClick={() => setFiltersOpen((value) => !value)}
+          aria-expanded={filtersOpen}
+          aria-label="Filtros de formato"
+          title="Filtrar formatos"
+        >
+          <Icon name="filter" />
+          {prefs.formats.length ? <i>{prefs.formats.length}</i> : null}
+        </button>
+        <button
+          type="button"
+          className="feed-tool"
+          onClick={actions.openFeedPrefs}
+          aria-label="Preferências do feed"
+          title="Preferências do feed"
+        >
+          <Icon name="settings" />
+        </button>
+      </div>
+
+      {filtersOpen ? (
+        <div className="feed-filters" role="group" aria-label="Formatos exibidos">
+          <button
+            type="button"
+            className={!prefs.formats.length ? 'on' : ''}
+            onClick={() => actions.setFeedPref({ formats: [] })}
+          >
+            Todos
+          </button>
+          {FEED_FORMATS.map((format) => (
+            <button
+              key={format.id}
+              type="button"
+              className={prefs.formats.includes(format.id) ? 'on' : ''}
+              onClick={() => toggleFormat(format.id)}
+              aria-pressed={prefs.formats.includes(format.id)}
+            >
+              {format.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {prefs.mode === 'communities' && suggestions.length ? (
+        <div className="feed-suggest">
+          <span className="feed-suggest-title">
+            <Icon name="spark" /> Comunidades para descobrir
+          </span>
+          <div className="feed-suggest-row">
+            {suggestions.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="feed-suggest-card"
+                onClick={() => actions.openComm(item.id)}
+              >
+                <span
+                  className="feed-suggest-cover"
+                  style={{ backgroundImage: `url('${art(item.seed, 240, 140)}')` }}
+                />
+                <b className="ell">{item.name}</b>
+                <small>
+                  {item.subs} participantes · {item.activity?.level || 'Tranquila'}
+                </small>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SpontaneousTopics({ topics }) {
+  const { actions } = useApp();
+  if (!topics.length) return null;
+  return (
+    <div className="feed-spontaneous">
+      <span className="feed-suggest-title">
+        <Icon name="spark" /> Conversas virando assunto
+      </span>
+      <div className="feed-spontaneous-row">
+        {topics.map((topic) => (
+          <div className="feed-spontaneous-card" key={topic.key}>
+            <b className="ell">#{topic.term}</b>
+            <small>
+              {topic.count} {topic.count === 1 ? 'conversa' : 'conversas'} em alta
+            </small>
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => actions.openNewCommFromTopic(topic.term)}
+            >
+              <Icon name="plus" /> Criar comunidade
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Feed() {
-  const { data } = useApp();
-  const list = data.posts
-    .filter((p) => p.kind !== 'story')
-    .sort((a, b) => b.ts - a.ts);
+  const { data, ui } = useApp();
+  const prefs = feedPrefs(ui.settings);
+  const followedTerms = interestTerms(data.me, data.comms);
+  const commById = new Map((data.comms || []).map((item) => [item.id, item]));
+  const enriched = data.posts.map((post) => {
+    const community = post.communityId ? commById.get(post.communityId) : null;
+    return {
+      ...post,
+      communityName: community?.name,
+      communityCat: community?.cat,
+    };
+  });
+  const list = applyFeedPreferences(enriched, {
+    prefs,
+    follows: data.follows || [],
+    comms: data.comms || [],
+    terms: followedTerms,
+    level: prefs.level,
+  });
+  const suggestions = (data.comms || [])
+    .filter((item) => !item.joined && !prefs.mutedComms.includes(item.id))
+    .map((item) => ({
+      ...item,
+      activity: communityActivity(item, enriched),
+      affinity: communityAffinity(item, followedTerms),
+    }))
+    .sort(
+      (a, b) =>
+        b.affinity - a.affinity ||
+        b.activity.recent - a.activity.recent ||
+        b.subs - a.subs
+    )
+    .slice(0, 4);
+  const spontaneous = spontaneousTopics(enriched, data.comms);
 
   return (
     <>
       <Composer />
+      <FeedControls prefs={prefs} suggestions={suggestions} />
+      {prefs.mode !== 'communities' ? (
+        <SpontaneousTopics topics={spontaneous} />
+      ) : null}
       <div className="posts">
         {list.length ? (
           list.map((post) => <Post key={post.id} post={post} />)
         ) : (
           <Empty
             title="Nada por aqui ainda"
-            text="Siga mais pessoas para encher o seu feed."
+            text={
+              prefs.formats.length
+                ? 'Nenhum conteúdo com esses filtros. Ajuste os formatos ou volte para todos.'
+                : prefs.mode === 'communities'
+                  ? 'Entre em comunidades para acompanhar as discussões delas aqui.'
+                  : 'Siga mais pessoas ou explore novas comunidades para encher o seu feed.'
+            }
           />
         )}
       </div>

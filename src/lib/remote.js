@@ -159,6 +159,12 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
     reactions,
     directMessages,
     postInteractions,
+    feedPrefsRows,
+    joinRequests,
+    communityInvites,
+    communityChannels,
+    stickerPacks,
+    stickerRows,
   ] = await Promise.all([
     safe(
       supabase
@@ -198,6 +204,12 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
         .order('created_at', { ascending: true })
     ),
     safe(supabase.from('post_interactions').select('*')),
+    safe(supabase.from('feed_preferences').select('*').eq('user_id', uid)),
+    safe(supabase.from('community_join_requests').select('*')),
+    safe(supabase.from('community_invites').select('*')),
+    safe(supabase.from('community_channels').select('*')),
+    safe(supabase.from('sticker_packs').select('*').eq('user_id', uid)),
+    safe(supabase.from('stickers').select('*')),
   ]);
 
   const follows = allFollows
@@ -241,9 +253,29 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
     scraps,
     directMessages,
     postInteractions,
+    feedPrefs: feedPrefsRows?.[0]?.prefs || null,
+    joinRequests,
+    communityInvites,
+    communityChannels,
+    stickerPacks,
+    stickerRows,
     localPostIds,
     localChanIds,
   };
+}
+
+export async function saveFeedPreferences(uid, prefs) {
+  if (!enabled() || !uid) return;
+  try {
+    const { error } = await supabase.from('feed_preferences').upsert({
+      user_id: uid,
+      prefs,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
 }
 
 export async function saveProfile(me, uid) {
@@ -291,15 +323,22 @@ export async function savePost(post, uid) {
       likes: post.likes || 0,
       comments_disabled: !!post.commentsDisabled,
       interactive: post.interactive || null,
+      community_id: post.communityId || null,
       created_at: new Date(post.ts).toISOString(),
     };
     let row = { ...payload, media: media.length ? media : null };
     let { error } = await supabase.from('posts').upsert(row);
+    if (error && /community_id/i.test(error.message || '')) {
+      const { community_id: _community, ...withoutCommunity } = row;
+      row = withoutCommunity;
+      ({ error } = await supabase.from('posts').upsert(row));
+    }
     if (error && /media|comments_disabled|interactive|column/i.test(error.message || '')) {
       const {
         media: _media,
         comments_disabled: _disabled,
         interactive: _interactive,
+        community_id: _community,
         ...legacy
       } = payload;
       row = legacy;
@@ -439,6 +478,21 @@ export async function setSave(postId, uid, saved) {
   }
 }
 
+export async function reportPost(postId, uid, reason = '') {
+  if (!enabled()) return;
+  try {
+    const { error } = await supabase.from('post_reports').insert({
+      id: `${postId}:${uid}`,
+      post_id: postId,
+      user_id: uid,
+      reason,
+    });
+    if (error && !/duplicate|unique/i.test(error.message || '')) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
 export async function addComment(comment, postId, uid) {
   if (!enabled()) return;
   try {
@@ -489,7 +543,7 @@ export async function setFollow(followerId, followingId, following) {
 export async function saveCommunity(community, uid) {
   if (!enabled()) return;
   try {
-    const { error } = await supabase.from('communities').upsert({
+    const payload = {
       id: community.id,
       name: community.name,
       category: community.cat,
@@ -497,9 +551,200 @@ export async function saveCommunity(community, uid) {
       cover_seed: community.seed,
       rules: community.rules,
       owner_id: uid,
-    });
+      icon_url: community.iconUrl || null,
+      cover_url: community.coverUrl || null,
+      is_private: !!community.private,
+    };
+    let { error } = await supabase.from('communities').upsert(payload);
+    if (error && /icon_url|cover_url|is_private|column/i.test(error.message || '')) {
+      const {
+        icon_url: _icon,
+        cover_url: _cover,
+        is_private: _private,
+        ...legacy
+      } = payload;
+      ({ error } = await supabase.from('communities').upsert(legacy));
+    }
     if (error) warn(error);
     await setCommunityMembership(community.id, uid, true, 'owner');
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function updateCommunity(community) {
+  if (!enabled()) return;
+  try {
+    const { error } = await supabase
+      .from('communities')
+      .update({
+        name: community.name,
+        category: community.cat,
+        description: community.desc,
+        cover_seed: community.seed,
+        rules: community.rules,
+        icon_url: community.iconUrl || null,
+        cover_url: community.coverUrl || null,
+        is_private: !!community.private,
+      })
+      .eq('id', community.id);
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function requestCommunityJoin(communityId, uid) {
+  if (!enabled()) return;
+  try {
+    const { error } = await supabase
+      .from('community_join_requests')
+      .upsert({
+        community_id: communityId,
+        user_id: uid,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      });
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function cancelCommunityJoin(communityId, uid) {
+  if (!enabled()) return;
+  try {
+    const { error } = await supabase
+      .from('community_join_requests')
+      .delete()
+      .eq('community_id', communityId)
+      .eq('user_id', uid);
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function setJoinRequestStatus(communityId, userId, status) {
+  if (!enabled()) return;
+  try {
+    const { error } = await supabase
+      .from('community_join_requests')
+      .update({ status })
+      .eq('community_id', communityId)
+      .eq('user_id', userId);
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function saveCommunityInvite(invite, inviterId = invite.inviterId) {
+  if (!enabled()) return;
+  try {
+    const { error } = await supabase.from('community_invites').upsert(
+      {
+        id: invite.id,
+        community_id: invite.communityId,
+        inviter_id: inviterId === 'me' ? invite.inviterId : inviterId,
+        invitee_id: invite.inviteeId,
+        status: invite.status || 'pending',
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: 'community_id,invitee_id' }
+    );
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function setCommunityInviteStatus(id, status) {
+  if (!enabled()) return;
+  try {
+    const { error } = await supabase
+      .from('community_invites')
+      .update({ status })
+      .eq('id', id);
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function saveCommunityChannel(communityId, channelId) {
+  if (!enabled()) return;
+  try {
+    const { error } = await supabase
+      .from('community_channels')
+      .upsert({ community_id: communityId, channel_id: channelId });
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function deleteCommunityChannel(communityId, channelId) {
+  if (!enabled()) return;
+  try {
+    const { error } = await supabase
+      .from('community_channels')
+      .delete()
+      .eq('community_id', communityId)
+      .eq('channel_id', channelId);
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function saveStickerPack(pack, uid) {
+  if (!enabled()) return;
+  try {
+    const { error } = await supabase.from('sticker_packs').upsert({
+      id: pack.id,
+      user_id: uid,
+      name: pack.name,
+      icon: pack.icon || '✨',
+      created_at: new Date(pack.ts || Date.now()).toISOString(),
+    });
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function deleteStickerPackRemote(id) {
+  if (!enabled()) return;
+  try {
+    const { error } = await supabase.from('sticker_packs').delete().eq('id', id);
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function saveStickerRow(sticker, packId, uid) {
+  if (!enabled()) return;
+  try {
+    const { error } = await supabase.from('stickers').upsert({
+      id: sticker.id,
+      pack_id: packId,
+      user_id: uid,
+      src: sticker.src,
+      created_at: new Date(sticker.ts || Date.now()).toISOString(),
+    });
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function deleteStickerRow(id) {
+  if (!enabled()) return;
+  try {
+    const { error } = await supabase.from('stickers').delete().eq('id', id);
+    if (error) warn(error);
   } catch (error) {
     warn(error);
   }

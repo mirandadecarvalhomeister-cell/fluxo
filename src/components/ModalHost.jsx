@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { art } from '../lib/art';
 import { isLiveKitEnabled } from '../lib/livekit';
 import { MAX_POST_MEDIA, mediaOf } from '../lib/media';
+import { ALGO_LEVELS, FEED_FORMATS, FEED_MODES, communityActivity, feedPrefs } from '../lib/feed';
 import { mediaDisplayStyle } from '../lib/mediaEdit';
-import { CATS, COVERS } from '../lib/seed';
+import { CATS, COVERS, KINDS } from '../lib/seed';
 import {
   groupNotifications,
   likesGroupText,
@@ -177,28 +178,143 @@ function ProfileEditModal() {
 function CommunityModal({ community }) {
   const { data, actions } = useApp();
   const owner = community.owner === 'me';
-  const mod = community.mods.includes('me');
-  const candidates = data.follows.filter((id) => !community.mods.includes(id));
+  const mod = (community.mods || []).includes('me');
+  const canManage = owner || mod;
+  const activity = communityActivity(community, data.posts);
+  const members = community.members || [];
+  const requests = community.requests || [];
+  const topics = community.topics || [];
+  const candidates = data.follows.filter((id) => !(community.mods || []).includes(id));
+  const inviteCandidates = data.follows.filter(
+    (id) => id !== 'me' && !members.includes(id)
+  );
+  const linkableChannels = (data.chans || []).filter(
+    (channel) => channel.owner === 'me' || channel.joined
+  );
+  const linkedChannels = (community.channelIds || [])
+    .map((id) => (data.chans || []).find((channel) => channel.id === id))
+    .filter(Boolean);
   const [topic, setTopic] = useState('');
   const [modSel, setModSel] = useState(candidates[0] || '');
+  const [inviteSel, setInviteSel] = useState(inviteCandidates[0] || '');
+  const [chanSel, setChanSel] = useState('');
+  const coverInputRef = useRef(null);
+  const iconInputRef = useRef(null);
+
+  const joinButton = () => {
+    if (community.joined) {
+      return (
+        <button className="btn ghost" onClick={() => actions.toggleComm(community.id)}>
+          Sair da comunidade
+        </button>
+      );
+    }
+    if (community.invited) {
+      return (
+        <div className="row wrap">
+          <button
+            className="btn primary"
+            onClick={() =>
+              actions.respondCommunityInvite(community.id, community.invited, true)
+            }
+          >
+            Aceitar convite
+          </button>
+          <button
+            className="btn ghost"
+            onClick={() =>
+              actions.respondCommunityInvite(community.id, community.invited, false)
+            }
+          >
+            Recusar
+          </button>
+        </div>
+      );
+    }
+    if (community.pending) {
+      return (
+        <button className="btn ghost" onClick={() => actions.toggleComm(community.id)}>
+          Solicitação pendente · Cancelar
+        </button>
+      );
+    }
+    return (
+      <button className="btn primary" onClick={() => actions.toggleComm(community.id)}>
+        {community.private ? 'Solicitar entrada' : 'Entrar na comunidade'}
+      </button>
+    );
+  };
 
   return (
     <>
       <div
         className="mcover"
-        style={{ backgroundImage: `url('${art(community.seed, 800, 260)}')` }}
-      />
+        style={{
+          backgroundImage: `url('${community.coverUrl || art(community.seed, 800, 260)}')`,
+        }}
+      >
+        {canManage ? (
+          <div className="mcover-tools">
+            <button
+              type="button"
+              className="mcover-btn"
+              onClick={() => coverInputRef.current?.click()}
+              title="Trocar capa"
+              aria-label="Trocar capa"
+            >
+              <Icon name="image" />
+            </button>
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) actions.uploadCommunityArt(community.id, 'cover', file);
+                event.target.value = '';
+              }}
+            />
+          </div>
+        ) : null}
+      </div>
       <div className="mbody">
-        <div
-          className="row"
-          style={{ justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap' }}
-        >
-          <div style={{ minWidth: 0 }}>
+        <div className="comm-head">
+          <button
+            type="button"
+            className="comm-icon"
+            onClick={() => canManage && iconInputRef.current?.click()}
+            aria-label={canManage ? 'Trocar ícone da comunidade' : 'Ícone da comunidade'}
+            title={canManage ? 'Trocar ícone' : undefined}
+          >
+            {community.iconUrl ? (
+              <img src={community.iconUrl} alt="" />
+            ) : (
+              <span
+                style={{ backgroundImage: `url('${art(community.seed + '-icone', 160, 160)}')` }}
+              />
+            )}
+          </button>
+          {canManage ? (
+            <input
+              ref={iconInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) actions.uploadCommunityArt(community.id, 'icon', file);
+                event.target.value = '';
+              }}
+            />
+          ) : null}
+          <div style={{ minWidth: 0, flex: 1 }}>
             <h2 style={{ margin: '0 0 6px' }}>{community.name}</h2>
-            <div className="row" style={{ flexWrap: 'wrap' }}>
+            <div className="row wrap">
               <span className="pill acc">{community.cat}</span>
-              <span className="muted sm">
-                <Icon name="users" /> {fmt(community.subs)} inscritos
+              <span className="pill">
+                <Icon name={community.private ? 'lock' : 'globe'} />
+                {community.private ? 'Privada' : 'Aberta'}
               </span>
               {roleOf(community) ? (
                 <span className="pill sun">
@@ -207,21 +323,191 @@ function CommunityModal({ community }) {
               ) : null}
             </div>
           </div>
-          {!owner && (
-            <button
-              className={`btn ${community.joined ? 'ghost' : 'primary'}`}
-              onClick={() => actions.toggleComm(community.id)}
-            >
-              {community.joined ? 'Sair da comunidade' : 'Entrar na comunidade'}
-            </button>
-          )}
+          {!owner ? joinButton() : null}
         </div>
+
+        <div className="comm-stats">
+          <span>
+            <Icon name="users" /> {fmt(community.subs)} participantes
+          </span>
+          <span>
+            <Icon name="chat" /> {topics.length} discussões
+          </span>
+          <span>
+            <Icon name="spark" /> {activity.level}
+          </span>
+          {activity.lastTs ? <span>{ago(activity.lastTs)}</span> : null}
+        </div>
+
+        {community.pending ? (
+          <p className="comm-note">
+            Sua solicitação está aguardando aprovação de quem modera.
+          </p>
+        ) : null}
 
         <p>{community.desc}</p>
 
         <section>
+          <h3 className="h3">Participantes</h3>
+          {community.joined ? (
+            <>
+              <div className="comm-members">
+                {members.slice(0, 14).map((memberId) => {
+                  const person = userOf(data, memberId);
+                  const isOwner = memberId === community.owner;
+                  const isMod = community.mods.includes(memberId);
+                  return (
+                    <div className="comm-member" key={memberId}>
+                      <Avatar user={person} size={32} />
+                      <span className="ell">
+                        {person.name}
+                        {isOwner ? ' · criador' : isMod ? ' · moderador' : ''}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              {members.length > 14 ? (
+                <p className="muted sm">e mais {members.length - 14} participantes</p>
+              ) : null}
+            </>
+          ) : (
+            <p className="muted sm">
+              Entre na comunidade para ver quem participa.
+            </p>
+          )}
+        </section>
+
+        {canManage && requests.length ? (
+          <section>
+            <h3 className="h3">Solicitações para entrar</h3>
+            {requests.map((request) => {
+              const person = userOf(data, request.userId);
+              return (
+                <div className="mrow" key={request.id}>
+                  <Avatar user={person} size={34} />
+                  <div className="grow">
+                    <b>{person.name}</b>
+                    <div className="muted sm">Quer participar · {ago(request.ts)}</div>
+                  </div>
+                  <button
+                    className="btn primary sm"
+                    onClick={() => actions.approveJoin(community.id, request.userId)}
+                  >
+                    Aprovar
+                  </button>
+                  <button
+                    className="btn ghost sm"
+                    onClick={() => actions.rejectJoin(community.id, request.userId)}
+                  >
+                    Recusar
+                  </button>
+                </div>
+              );
+            })}
+          </section>
+        ) : null}
+
+        <section>
+          <h3 className="h3">Canais da comunidade</h3>
+          {linkedChannels.length ? (
+            linkedChannels.map((channel) => (
+              <div className="mrow" key={channel.id}>
+                <span className="comm-chan-ic">
+                  <Icon name={KINDS[channel.kind]?.[0] || 'chat'} />
+                </span>
+                <div className="grow">
+                  <b>{channel.name}</b>
+                  <div className="muted sm">
+                    {KINDS[channel.kind]?.[1] || 'Conversa'}
+                    {channel.live ? ' · ao vivo' : ''}
+                  </div>
+                </div>
+                <button
+                  className="btn ghost sm"
+                  onClick={() => actions.openRoom(channel.id)}
+                >
+                  Abrir
+                </button>
+                {canManage ? (
+                  <button
+                    className="icon-btn"
+                    onClick={() => actions.unlinkCommChannel(community.id, channel.id)}
+                    aria-label="Desvincular canal"
+                    title="Desvincular canal"
+                  >
+                    <Icon name="x" />
+                  </button>
+                ) : null}
+              </div>
+            ))
+          ) : (
+            <p className="muted sm">Nenhum canal vinculado ainda.</p>
+          )}
+          {canManage && linkableChannels.length ? (
+            <form
+              className="cmform"
+              style={{ marginTop: 8 }}
+              onSubmit={(event) => {
+                event.preventDefault();
+                actions.linkCommChannel(community.id, chanSel);
+                setChanSel('');
+              }}
+            >
+              <select
+                className="in"
+                value={chanSel}
+                onChange={(event) => setChanSel(event.target.value)}
+                aria-label="Canal para vincular"
+              >
+                <option value="">Escolher canal…</option>
+                {linkableChannels
+                  .filter((channel) => !(community.channelIds || []).includes(channel.id))
+                  .map((channel) => (
+                    <option key={channel.id} value={channel.id}>
+                      {channel.name}
+                    </option>
+                  ))}
+              </select>
+              <button className="btn tonal sm" type="submit">
+                Vincular
+              </button>
+            </form>
+          ) : null}
+        </section>
+
+        {community.joined && inviteCandidates.length ? (
+          <section>
+            <h3 className="h3">Convidar pessoas</h3>
+            <form
+              className="cmform"
+              onSubmit={(event) => {
+                event.preventDefault();
+                actions.inviteToComm(community.id, inviteSel);
+              }}
+            >
+              <select
+                className="in"
+                value={inviteSel}
+                onChange={(event) => setInviteSel(event.target.value)}
+                aria-label="Pessoa para convidar"
+              >
+                {inviteCandidates.map((id) => (
+                  <option key={id} value={id}>
+                    {userOf(data, id).name}
+                  </option>
+                ))}
+              </select>
+              <button className="btn tonal sm" type="submit">
+                Enviar convite
+              </button>
+            </form>
+          </section>
+        ) : null}
+
+        <section>
           <h3 className="h3">Moderação</h3>
-          {community.mods.map((modId) => {
+          {(community.mods || []).map((modId) => {
             const person = userOf(data, modId);
             return (
               <div className="mrow" key={modId}>
@@ -277,7 +563,7 @@ function CommunityModal({ community }) {
         <section>
           <h3 className="h3">Regras</h3>
           <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4 }}>
-            {community.rules.map((rule, index) => (
+            {(community.rules || []).map((rule, index) => (
               <li key={index}>{rule}</li>
             ))}
           </ol>
@@ -285,7 +571,7 @@ function CommunityModal({ community }) {
 
         <section>
           <h3 className="h3">Tópicos</h3>
-          {community.topics.map((item) => {
+          {topics.map((item) => {
             const person = userOf(data, item.by);
             return (
               <div className="mrow" key={item.id}>
@@ -308,7 +594,7 @@ function CommunityModal({ community }) {
               </div>
             );
           })}
-          {!community.topics.length && <p className="muted sm">Nenhum tópico ainda.</p>}
+          {!topics.length && <p className="muted sm">Nenhum tópico ainda.</p>}
           {community.joined ? (
             <form
               className="cmform"
@@ -345,10 +631,11 @@ function CommunityModal({ community }) {
 
 function NewCommunityModal() {
   const { ui, actions } = useApp();
-  const [name, setName] = useState('');
+  const [name, setName] = useState(ui.commDraft?.name || '');
   const [cat, setCat] = useState(CATS[0]);
   const [desc, setDesc] = useState('');
   const [rules, setRules] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
   const seed = ui.commSeed;
 
   return (
@@ -365,10 +652,23 @@ function NewCommunityModal() {
             .map((line) => line.trim())
             .filter(Boolean),
           seed,
+          private: isPrivate,
         });
       }}
     >
       <h2>Criar comunidade</h2>
+      <div className="comm-preview">
+        <span
+          className="comm-preview-cover"
+          style={{ backgroundImage: `url('${art(seed, 600, 200)}')` }}
+        />
+        <span
+          className="comm-preview-icon"
+          style={{ backgroundImage: `url('${art(seed + '-icone', 160, 160)}')` }}
+        />
+        <b>{name.trim() || 'Sua nova comunidade'}</b>
+        <small>{isPrivate ? 'Privada · entrada por aprovação' : 'Aberta · entre quem quiser'}</small>
+      </div>
       <div className="field">
         <label htmlFor="cnName">Nome</label>
         <input
@@ -419,6 +719,30 @@ function NewCommunityModal() {
           value={rules}
           onChange={(event) => setRules(event.target.value)}
         />
+      </div>
+      <div className="field">
+        <label>Privacidade</label>
+        <div className="seg wrap">
+          <button
+            type="button"
+            className={!isPrivate ? 'on' : ''}
+            onClick={() => setIsPrivate(false)}
+          >
+            <Icon name="globe" /> Aberta
+          </button>
+          <button
+            type="button"
+            className={isPrivate ? 'on' : ''}
+            onClick={() => setIsPrivate(true)}
+          >
+            <Icon name="lock" /> Privada
+          </button>
+        </div>
+        <p className="muted sm">
+          {isPrivate
+            ? 'Quem quiser entrar precisa de aprovação de quem modera.'
+            : 'Qualquer pessoa pode entrar sem burocracia.'}
+        </p>
       </div>
       <div className="field">
         <label>Capa</label>
@@ -1143,6 +1467,241 @@ function SwitchRow({ title, text, checked, onChange }) {
   );
 }
 
+function FeedPrefsModal() {
+  const { data, ui, actions } = useApp();
+  const prefs = feedPrefs(ui.settings);
+  const [interest, setInterest] = useState('');
+  const [topic, setTopic] = useState('');
+
+  const hiddenPeople = prefs.hiddenProfiles.map((id) => userOf(data, id));
+  const mutedComms = prefs.mutedComms
+    .map((id) => data.comms.find((item) => item.id === id))
+    .filter(Boolean);
+  const suggestions = [
+    ...new Set([
+      ...(data.me.interests || []),
+      ...(data.comms || []).filter((item) => item.joined).map((item) => item.cat),
+      ...CATS,
+    ]),
+  ].filter((item) => item && !(data.me.interests || []).includes(item));
+
+  return (
+    <div className="settings feed-prefs">
+      <h2>Preferências do Feed</h2>
+      <p className="muted sm">
+        O algoritmo recomenda, mas você escolhe. Tudo aqui é salvo automaticamente.
+      </p>
+
+      <section className="set-block">
+        <h3 className="h3">Modo preferido</h3>
+        <div className="seg wrap">
+          {FEED_MODES.map((mode) => (
+            <button
+              key={mode.id}
+              type="button"
+              className={prefs.mode === mode.id ? 'on' : ''}
+              onClick={() => actions.setFeedPref({ mode: mode.id })}
+              title={mode.hint}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="set-block">
+        <h3 className="h3">Personalização do algoritmo</h3>
+        <div className="seg wrap">
+          {ALGO_LEVELS.map((level) => (
+            <button
+              key={level.id}
+              type="button"
+              className={prefs.level === level.id ? 'on' : ''}
+              onClick={() => actions.setFeedPref({ level: level.id })}
+              title={level.hint}
+            >
+              {level.label}
+            </button>
+          ))}
+        </div>
+        <p className="muted sm">
+          {ALGO_LEVELS.find((item) => item.id === prefs.level)?.hint}
+        </p>
+        <SwitchRow
+          title="Mostrar por que recomendei"
+          text="Exibe uma etiqueta discreta nas publicações recomendadas."
+          checked={prefs.showReasons}
+          onChange={(value) => actions.setFeedPref({ showReasons: value })}
+        />
+      </section>
+
+      <section className="set-block">
+        <h3 className="h3">Formatos de conteúdo</h3>
+        <div className="chips-wrap">
+          <button
+            type="button"
+            className={`chip${!prefs.formats.length ? ' on' : ''}`}
+            onClick={() => actions.setFeedPref({ formats: [] })}
+          >
+            Todos
+          </button>
+          {FEED_FORMATS.map((format) => (
+            <button
+              key={format.id}
+              type="button"
+              className={`chip${prefs.formats.includes(format.id) ? ' on' : ''}`}
+              onClick={() =>
+                actions.setFeedPref({
+                  formats: prefs.formats.includes(format.id)
+                    ? prefs.formats.filter((item) => item !== format.id)
+                    : [...prefs.formats, format.id],
+                })
+              }
+            >
+              {format.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="set-block">
+        <h3 className="h3">Meus interesses</h3>
+        <form
+          className="row"
+          onSubmit={(event) => {
+            event.preventDefault();
+            actions.addInterest(interest);
+            setInterest('');
+          }}
+        >
+          <input
+            className="in"
+            value={interest}
+            maxLength={40}
+            placeholder="Adicionar assunto de interesse"
+            onChange={(event) => setInterest(event.target.value)}
+          />
+          <button className="btn ghost sm" type="submit">
+            <Icon name="plus" /> Adicionar
+          </button>
+        </form>
+        <div className="chips-wrap">
+          {(data.me.interests || []).map((item) => (
+            <button
+              key={item}
+              type="button"
+              className="chip on"
+              onClick={() => actions.removeInterest(item)}
+              title="Remover interesse"
+            >
+              {item} <Icon name="x" />
+            </button>
+          ))}
+          {!(data.me.interests || []).length ? (
+            <span className="muted sm">Nenhum interesse cadastrado ainda.</span>
+          ) : null}
+        </div>
+        {suggestions.length ? (
+          <div className="chips-wrap">
+            <span className="muted sm">Descobrir:</span>
+            {suggestions.slice(0, 10).map((item) => (
+              <button
+                key={item}
+                type="button"
+                className="chip"
+                onClick={() => actions.addInterest(item)}
+              >
+                <Icon name="plus" /> {item}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="set-block">
+        <h3 className="h3">Assuntos silenciados</h3>
+        <form
+          className="row"
+          onSubmit={(event) => {
+            event.preventDefault();
+            actions.muteTopic(topic);
+            setTopic('');
+          }}
+        >
+          <input
+            className="in"
+            value={topic}
+            maxLength={40}
+            placeholder="Silenciar um assunto"
+            onChange={(event) => setTopic(event.target.value)}
+          />
+          <button className="btn ghost sm" type="submit">
+            <Icon name="eyeoff" /> Silenciar
+          </button>
+        </form>
+        <div className="chips-wrap">
+          {prefs.mutedTopics.map((item) => (
+            <button
+              key={item}
+              type="button"
+              className="chip on"
+              onClick={() => actions.unmuteTopic(item)}
+              title="Reativar assunto"
+            >
+              {item} <Icon name="x" />
+            </button>
+          ))}
+          {!prefs.mutedTopics.length ? (
+            <span className="muted sm">Nenhum assunto silenciado.</span>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="set-block">
+        <h3 className="h3">Perfis e comunidades ocultados</h3>
+        <div className="chips-wrap">
+          {hiddenPeople.map((person) => (
+            <button
+              key={person.id}
+              type="button"
+              className="chip on"
+              onClick={() => actions.setFeedPref({ hiddenProfiles: prefs.hiddenProfiles.filter((id) => id !== person.id) })}
+            >
+              {person.name} <Icon name="x" />
+            </button>
+          ))}
+          {mutedComms.map((community) => (
+            <button
+              key={community.id}
+              type="button"
+              className="chip on"
+              onClick={() => actions.setFeedPref({ mutedComms: prefs.mutedComms.filter((id) => id !== community.id) })}
+            >
+              {community.name} <Icon name="x" />
+            </button>
+          ))}
+          {!hiddenPeople.length && !mutedComms.length ? (
+            <span className="muted sm">Nada ocultado no momento.</span>
+          ) : null}
+        </div>
+        {prefs.hiddenPosts.length ? (
+          <button
+            type="button"
+            className="btn ghost sm"
+            onClick={() => actions.setFeedPref({ hiddenPosts: [] })}
+          >
+            <Icon name="broom" /> Reexibir {prefs.hiddenPosts.length} publicações ocultadas
+          </button>
+        ) : null}
+      </section>
+
+      <button type="button" className="btn ghost" onClick={actions.resetFeedPrefs}>
+        <Icon name="broom" /> Restaurar configurações originais
+      </button>
+    </div>
+  );
+}
+
 function SettingsModal() {
   const { data, ui, actions, mode, canInstall, session } = useApp();
   const settings = ui.settings;
@@ -1417,7 +1976,11 @@ function NotificationsModal() {
               className="share-person notif-row"
               key={group.kind === 'likes' ? `likes:${group.postId}` : n.id}
               onClick={() =>
-                n.postId ? actions.openPost(n.postId) : actions.openUser(n.actorId)
+                n.communityId
+                  ? actions.openComm(n.communityId)
+                  : n.postId
+                    ? actions.openPost(n.postId)
+                    : actions.openUser(n.actorId)
               }
             >
               <Avatar user={person} size={40} />
@@ -1473,6 +2036,7 @@ const MODAL_LABELS = {
   live: 'Iniciar live',
   confirm: 'Confirmar ação',
   settings: 'Configurações',
+  feedprefs: 'Preferências do feed',
   editpost: 'Editar publicação',
   share: 'Compartilhar publicação',
   newchat: 'Nova conversa',
@@ -1634,6 +2198,8 @@ export default function ModalHost() {
     content = <LiveModal />;
   } else if (modal.type === 'settings') {
     content = <SettingsModal />;
+  } else if (modal.type === 'feedprefs') {
+    content = <FeedPrefsModal />;
     wide = true;
   } else if (modal.type === 'editpost') {
     content = <EditPostModal modal={modal} />;

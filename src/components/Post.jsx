@@ -154,10 +154,17 @@ function Media({ post, author }) {
 }
 
 function PostMenu({ post, onEdit, onShare }) {
-  const { actions } = useApp();
+  const { data, actions } = useApp();
   const ref = useRef(null);
+  const following = data.follows.includes(post.by);
+  const author = userOf(data, post.by);
   const close = () => {
     if (ref.current) ref.current.open = false;
+  };
+
+  const act = (fn) => {
+    close();
+    fn();
   };
 
   useEffect(() => {
@@ -209,14 +216,38 @@ function PostMenu({ post, onEdit, onShare }) {
           </>
         ) : (
           <>
-            <button type="button" onClick={() => { close(); onShare(); }}>
+            <button type="button" onClick={() => act(() => actions.feedFeedback(post.id, 'notInterested'))}>
+              <Icon name="eyeoff" /> Não tenho interesse
+            </button>
+            <button type="button" onClick={() => act(() => actions.feedFeedback(post.id, 'lessLike'))}>
+              <Icon name="minus" /> Mostrar menos conteúdos assim
+            </button>
+            <button type="button" onClick={() => act(() => actions.feedFeedback(post.id, 'muteTopic', String(post.text || '').split(/\s+/).find((word) => word.length > 4) || 'assunto'))}>
+              <Icon name="filter" /> Silenciar este assunto
+            </button>
+            <button type="button" onClick={() => act(() => actions.feedFeedback(post.id, 'hideProfile'))}>
+              <Icon name="eyeoff" /> Ocultar publicações deste perfil
+            </button>
+            {following ? (
+              <button type="button" onClick={() => act(() => actions.follow(post.by))}>
+                <Icon name="user" /> Deixar de seguir {author.name.split(' ')[0]}
+              </button>
+            ) : null}
+            <button type="button" onClick={() => act(() => onShare())}>
               <Icon name="share" /> Compartilhar com alguém
             </button>
-            <button type="button" onClick={() => { close(); actions.sharePost(post.id); }}>
+            <button type="button" onClick={() => act(() => actions.sharePost(post.id))}>
               <Icon name="link" /> Copiar link
             </button>
-            <button type="button" onClick={() => { close(); actions.toggleSave(post.id); }}>
+            <button type="button" onClick={() => act(() => actions.toggleSave(post.id))}>
               <Icon name="bookmark" /> {post.saved ? 'Remover dos salvos' : 'Salvar'}
+            </button>
+            <button
+              type="button"
+              className="danger"
+              onClick={() => act(() => actions.reportPost(post.id))}
+            >
+              <Icon name="shield" /> Denunciar publicação
             </button>
           </>
         )}
@@ -347,6 +378,21 @@ export default function Post({ post, detail = false }) {
         />
       </header>
 
+      {post.communityId ? (
+        <button
+          type="button"
+          className="post-comm"
+          onClick={(event) => {
+            event.stopPropagation();
+            actions.openComm(post.communityId);
+          }}
+          title="Abrir comunidade"
+        >
+          <Icon name="users" />
+          <span>{post.communityName || 'Comunidade'}</span>
+        </button>
+      ) : null}
+
       {post.text ? (
         <div className="txt-wrap">
           <p className={`txt${longText && !expanded ? ' clamped' : ''}`}>
@@ -379,6 +425,22 @@ export default function Post({ post, detail = false }) {
         </div>
       ) : null}
 
+      {post.feedReason ? (
+        <div className="feed-reason">
+          <Icon name="spark" />
+          <span>{post.feedReason}</span>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              actions.feedFeedback(post.id, 'notInterested');
+            }}
+          >
+            Não tenho interesse
+          </button>
+        </div>
+      ) : null}
+
       <footer className="acts">
         <div className="reaction-wrap">
           <button
@@ -386,16 +448,10 @@ export default function Post({ post, detail = false }) {
             className={`act-btn act-like ${post.myReaction ? 'on' : ''}`}
             aria-pressed={!!post.myReaction}
             onClick={() => actions.reactPost(post.id, post.myReaction || '❤️')}
-            title="Curtir ou escolher uma reação"
+            aria-label={post.myReaction ? 'Remover reação' : 'Reagir'}
+            title="Reagir"
           >
-            {post.myReaction ? (
-              <span className="reaction-emoji">{post.myReaction}</span>
-            ) : (
-              <Icon name="heart" />
-            )}
-            <span className="act-label">
-              {post.myReaction ? 'Reagido' : 'Curtir'}
-            </span>
+            <Icon name="heart" className="act-ic" />
             <span className="act-count">{fmt(totalLikes)}</span>
           </button>
           <div className="react-picker" role="menu" aria-label="Escolher reação">
@@ -418,9 +474,9 @@ export default function Post({ post, detail = false }) {
           onClick={openComments}
           aria-expanded={detail ? true : open}
           aria-label="Abrir comentários"
+          title="Comentar"
         >
-          <Icon name="comment" />
-          <span className="act-label">Comentar</span>
+          <Icon name="comment" className="act-ic" />
           <span className="act-count">{post.comments.length}</span>
         </button>
         <span className="sp" />
@@ -431,8 +487,7 @@ export default function Post({ post, detail = false }) {
           aria-label={post.saved ? 'Remover dos salvos' : 'Salvar'}
           title={post.saved ? 'Remover dos salvos' : 'Salvar'}
         >
-          <Icon name="bookmark" />
-          <span className="act-label">{post.saved ? 'Salvo' : 'Salvar'}</span>
+          <Icon name="bookmark" className="act-ic" />
         </button>
         <button
           type="button"
@@ -441,8 +496,7 @@ export default function Post({ post, detail = false }) {
           aria-label="Compartilhar com alguém"
           title="Compartilhar"
         >
-          <Icon name="share" />
-          <span className="act-label">Compartilhar</span>
+          <Icon name="share" className="act-ic" />
         </button>
       </footer>
 
