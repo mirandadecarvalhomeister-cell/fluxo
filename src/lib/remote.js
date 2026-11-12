@@ -755,11 +755,47 @@ export function subscribeDirectMessages(uid, callback) {
       .on(
         'postgres_changes',
         {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'direct_messages',
+          filter: `sender_id=eq.${uid}`,
+        },
+        (payload) => callback(payload.new, 'UPDATE')
+      )
+      .on(
+        'postgres_changes',
+        {
           event: 'DELETE',
           schema: 'public',
           table: 'direct_messages',
         },
         (payload) => callback(payload.old, 'DELETE')
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel).catch(() => {});
+    };
+  } catch (error) {
+    warn(error);
+    return () => {};
+  }
+}
+
+// "Fulano começou a seguir você": novas linhas em follows com following_id = eu.
+export function subscribeFollows(uid, callback) {
+  if (!enabled() || !uid) return () => {};
+  try {
+    const channel = supabase
+      .channel(`follows-${uid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'follows',
+          filter: `following_id=eq.${uid}`,
+        },
+        (payload) => callback(payload.new)
       )
       .subscribe();
     return () => {

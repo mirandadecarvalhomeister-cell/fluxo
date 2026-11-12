@@ -61,6 +61,12 @@ export default function IconSprite() {
         <symbol id="i-volumeoff" viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6L8 10z" /><path d="m17 9 5 6M22 9l-5 6" /></symbol>
         <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M9 4H4M4 4l6 6M15 20h5M20 20l-6-6" /></symbol>
         <symbol id="i-compress" viewBox="0 0 24 24"><path d="M9 4v5H4M15 20v-5h5M9 9H4M9 9 3 3M15 15h5M15 15l6 6" /></symbol>
+        <symbol id="i-flip" viewBox="0 0 24 24"><path d="M4 8a8 8 0 0 1 13.6-3.6L20 7M20 16a8 8 0 0 1-13.6 3.6L4 17" /><path d="M20 3v4h-4M4 21v-4h4" /><circle cx="12" cy="12" r="3" /></symbol>
+        <symbol id="i-flash" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z" /></symbol>
+        <symbol id="i-flashoff" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z" /><path d="M3 3l18 18" /></symbol>
+        <symbol id="i-sticker" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 0-9 9c1.4 0 3.6-.5 5.5-2.5S21 13.4 21 12z" /><path d="M21 12h-5a4 4 0 0 1-4-4V3" /><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01" /></symbol>
+        <symbol id="i-forward" viewBox="0 0 24 24"><path d="M14 5l7 7-7 7" /><path d="M21 12H8a5 5 0 0 0-5 5v2" /></symbol>
+        <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
       </defs>
     </svg>
   );

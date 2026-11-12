@@ -270,15 +270,43 @@ export default function Post({ post, detail = false }) {
   const { data, ui, actions } = useApp();
   const compact = useCompact();
   const detailCommentsRef = useRef(null);
+  const cardRef = useRef(null);
+  const [expanded, setExpanded] = useState(false);
   const author = userOf(data, post.by);
   const open = !!ui.open[post.id];
   const following = data.follows.includes(post.by);
   const totalLikes = post.likes || 0;
   const interactive = normalizeInteractive(post.interactive);
+  const media = mediaOf(post);
+  const hasMedia = media.length > 0 || post.kind === 'photo' || post.kind === 'video';
+  const longText = !detail && (post.text || '').length > 320;
   const reactionChoices =
     interactive?.format === 'reactions' && interactive.reactions.length
       ? interactive.reactions
       : REACTIONS;
+
+  // Publicação com foto/vídeo conta uma visualização quando aparece na tela.
+  useEffect(() => {
+    if (!hasMedia) return undefined;
+    const element = cardRef.current;
+    if (!element) return undefined;
+    if (!('IntersectionObserver' in window)) {
+      actions.viewPost(post.id);
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          actions.viewPost(post.id);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.5 }
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post.id, hasMedia]);
 
   function openComments() {
     if (detail) {
@@ -315,6 +343,7 @@ export default function Post({ post, detail = false }) {
     <article
       className={`card post${detail ? ' post-detail' : ''}`}
       data-post={post.id}
+      ref={cardRef}
       onClick={openDetail}
       onKeyDown={openDetailKey}
       tabIndex={detail ? undefined : 0}
@@ -345,14 +374,37 @@ export default function Post({ post, detail = false }) {
       </header>
 
       {post.text ? (
-        <p className="txt">
-          <TagText text={post.text} />
-        </p>
+        <div className="txt-wrap">
+          <p className={`txt${longText && !expanded ? ' clamped' : ''}`}>
+            <TagText text={post.text} />
+          </p>
+          {longText ? (
+            <button
+              type="button"
+              className="read-more"
+              onClick={(event) => {
+                event.stopPropagation();
+                setExpanded((value) => !value);
+              }}
+            >
+              {expanded ? 'Ler menos' : 'Ler mais'}
+            </button>
+          ) : null}
+        </div>
       ) : null}
 
       {interactive?.format !== 'imageVote' ? <Media post={post} author={author} /> : null}
 
       <Interactive post={post} />
+
+      {hasMedia ? (
+        <div className="views-row">
+          <span className="views-pill">
+            <Icon name="eye" /> {fmt(post.views || 0)}{' '}
+            {post.views === 1 ? 'visualização' : 'visualizações'}
+          </span>
+        </div>
+      ) : null}
 
       <footer className="acts">
         <div className="reaction-wrap">

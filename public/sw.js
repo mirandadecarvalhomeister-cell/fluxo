@@ -1,4 +1,4 @@
-const CACHE = 'fluxo-v2';
+const CACHE = 'fluxo-v3';
 const CORE = [
   '/',
   '/manifest.webmanifest',
@@ -78,4 +78,48 @@ self.addEventListener('fetch', (event) => {
       })
     );
   }
+});
+
+// Notificações vindas de push (quando configurado no servidor) e do app.
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { body: event.data ? event.data.text() : '' };
+  }
+  const title = payload.title || 'FluXo';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: payload.body || 'Você tem uma novidade no FluXo.',
+      icon: '/assets/icon-192.png',
+      badge: '/assets/icon-192.png',
+      vibrate: [90, 45, 120],
+      tag: payload.tag,
+      data: payload.data || { url: '/#mensagens' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = event.notification.data?.url || '/#mensagens';
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windows) => {
+        const existing = windows.find((client) =>
+          client.url.startsWith(self.location.origin)
+        );
+        if (existing) {
+          existing.navigate(target).catch(() => undefined);
+          return existing.focus();
+        }
+        return self.clients.openWindow(target);
+      })
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });

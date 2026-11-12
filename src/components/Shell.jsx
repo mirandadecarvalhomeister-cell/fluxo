@@ -119,7 +119,12 @@ export default function Shell() {
     ? `Notificações (${notifUnread} ${notifUnread === 1 ? 'nova' : 'novas'})`
     : 'Notificações';
   const bellBtn = (
-    <button className="icon-btn" onClick={actions.openNotifications} aria-label={notifLabel} title={notifLabel}>
+    <button
+      className={`icon-btn bell-btn${notifUnread ? ' has-news' : ''}`}
+      onClick={actions.openNotifications}
+      aria-label={notifLabel}
+      title={notifLabel}
+    >
       <Icon name="bell" />
       {notifUnread ? (
         <span className="bubble">{notifUnread > 9 ? '9+' : notifUnread}</span>
@@ -148,12 +153,15 @@ export default function Shell() {
   }, [actions]);
 
   // Deslizar para o lado troca de aba (Feed ⇄ Perfil ⇄ Mensagens ⇄ Conexões).
-  // O gesto fica desativado sobre carrosséis, listas horizontais e campos.
+  // O gesto fica desativado sobre carrosséis, listas horizontais, campos e
+  // dentro de uma conversa aberta.
   const swipeStart = useRef(null);
   const routeRef = useRef(ui.route);
   const goRef = useRef(actions.go);
+  const chatOpenRef = useRef(ui.chatOpen);
   routeRef.current = ui.route;
   goRef.current = actions.go;
+  chatOpenRef.current = ui.chatOpen;
 
   useEffect(() => {
     const view = document.getElementById('view');
@@ -174,10 +182,10 @@ export default function Shell() {
 
     const onStart = (event) => {
       swipeStart.current = null;
-      if (event.touches.length !== 1) return;
+      if (chatOpenRef.current || event.touches.length !== 1) return;
       const touch = event.touches[0];
       // Deixa as bordas para os gestos do sistema (voltar/avançar).
-      if (touch.clientX < 20 || touch.clientX > window.innerWidth - 20) return;
+      if (touch.clientX < 16 || touch.clientX > window.innerWidth - 16) return;
       const target = event.target;
       if (
         target instanceof Element &&
@@ -185,20 +193,45 @@ export default function Shell() {
       ) {
         return;
       }
-      swipeStart.current = { x: touch.clientX, y: touch.clientY, at: Date.now() };
+      swipeStart.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+        at: Date.now(),
+        dx: 0,
+        dy: 0,
+        locked: false,
+        dead: false,
+      };
+    };
+
+    const onMove = (event) => {
+      const start = swipeStart.current;
+      if (!start || event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      const dx = touch.clientX - start.x;
+      const dy = touch.clientY - start.y;
+      start.dx = dx;
+      start.dy = dy;
+      if (start.dead) return;
+      // Gesto vertical: rolagem do feed, não navegação entre abas.
+      if (!start.locked && Math.abs(dy) > 16 && Math.abs(dy) > Math.abs(dx) * 1.1) {
+        start.dead = true;
+        return;
+      }
+      if (Math.abs(dx) > 14 && Math.abs(dx) > Math.abs(dy)) start.locked = true;
     };
 
     const onEnd = (event) => {
       const start = swipeStart.current;
       swipeStart.current = null;
-      if (!start || event.touches.length || event.changedTouches.length !== 1) return;
+      if (!start || start.dead || event.changedTouches.length !== 1) return;
       const touch = event.changedTouches[0];
       const dx = touch.clientX - start.x;
       const dy = touch.clientY - start.y;
       if (
-        Date.now() - start.at > 800 ||
-        Math.abs(dx) < 64 ||
-        Math.abs(dx) < Math.abs(dy) * 1.4
+        Date.now() - start.at > 900 ||
+        Math.abs(dx) < 48 ||
+        Math.abs(dx) < Math.abs(dy) * 1.15
       ) {
         return;
       }
@@ -210,10 +243,10 @@ export default function Shell() {
       if (!reduce && typeof view.animate === 'function') {
         view.animate(
           [
-            { opacity: 0.4, transform: `translateX(${dx < 0 ? 26 : -26}px)` },
+            { opacity: 0.35, transform: `translateX(${dx < 0 ? 22 : -22}px)` },
             { opacity: 1, transform: 'translateX(0)' },
           ],
-          { duration: 240, easing: 'cubic-bezier(.22,.61,.36,1)' }
+          { duration: 230, easing: 'cubic-bezier(.22,.61,.36,1)' }
         );
       }
       goRef.current(next);
@@ -224,10 +257,12 @@ export default function Shell() {
     };
 
     view.addEventListener('touchstart', onStart, { passive: true });
+    view.addEventListener('touchmove', onMove, { passive: true });
     view.addEventListener('touchend', onEnd, { passive: true });
     view.addEventListener('touchcancel', onCancel, { passive: true });
     return () => {
       view.removeEventListener('touchstart', onStart);
+      view.removeEventListener('touchmove', onMove);
       view.removeEventListener('touchend', onEnd);
       view.removeEventListener('touchcancel', onCancel);
     };

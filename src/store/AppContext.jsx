@@ -28,6 +28,7 @@ import {
 } from '../lib/interactive';
 import { COVERS, STATE_VERSION, newState } from '../lib/seed';
 import { mentionsHandle, notificationText } from '../lib/selectors';
+import { showDeviceNotification } from '../lib/notify';
 import { playMessageSound, playSentSound } from '../lib/sound';
 import {
   fileToDataURL,
@@ -212,6 +213,10 @@ function mergeWorkspace(base, ws, user) {
             }
           : null,
         interactions: (interactionsByPost[p.id] || []).sort((a, b) => a.ts - b.ts),
+        views: (interactionsByPost[p.id] || []).filter((row) => row.kind === 'view').length,
+        viewed: (interactionsByPost[p.id] || []).some(
+          (row) => row.kind === 'view' && row.by === 'me'
+        ),
       };
     })
     .sort((a, b) => b.ts - a.ts);
@@ -378,6 +383,7 @@ function mergeWorkspace(base, ws, user) {
   const postsById = new Map(posts.map((post) => [post.id, post]));
   (ws.postInteractions || []).forEach((row) => {
     if (!row?.post_id || row.user_id === uidv) return;
+    if (row.kind === 'view') return; // visualizações não geram notificação
     const post = postsById.get(row.post_id);
     if (!post || post.by !== 'me') return;
     notifications.push({
@@ -544,6 +550,7 @@ export function AppProvider({ children }) {
   const presenceRef = useRef(null);
   const typingTimersRef = useRef({});
   const lastTypingRef = useRef({});
+  const viewedRef = useRef(new Set());
   uiRef.current = ui;
   dataRef.current = data;
   sessionRef.current = session;
@@ -717,6 +724,24 @@ export function AppProvider({ children }) {
     if (!isSupabaseEnabled || !session?.id) return undefined;
     return remote.subscribeDirectMessages(session.id, (row, event) => {
       if (!row) return;
+      if (event === 'UPDATE') {
+        if (!row.id || !row.read) return;
+        // O "visto" do outro lado chega em tempo real: marca os meus envios.
+        setData((cur) =>
+          cur
+            ? {
+                ...cur,
+                chats: cur.chats.map((chat) => ({
+                  ...chat,
+                  msgs: chat.msgs.map((item) =>
+                    item.id === row.id ? { ...item, st: 'read' } : item
+                  ),
+                })),
+              }
+            : cur
+        );
+        return;
+      }
       if (event === 'DELETE') {
         if (!row.id) return;
         setData((cur) =>
@@ -771,27 +796,74 @@ export function AppProvider({ children }) {
             ];
         return { ...cur, chats };
       });
+      if (viewing) {
+        remote.markDirectMessagesRead(session.id, row.sender_id);
+      }
       const muted = (settings.mutedChats || []).includes(row.sender_id);
       if (settings.messageSound && !muted) playMessageSound();
       if (
         settings.notifications &&
         !muted &&
-        typeof Notification !== 'undefined' &&
-        Notification.permission === 'granted' &&
         document.hidden &&
         row.sender_id !== session.id
       ) {
-        try {
-          new Notification('Nova mensagem no FluXo', {
-            body: row.text || 'Você recebeu um anexo.',
-            icon: '/assets/icon-192.png',
-          });
-        } catch {
-          /* notification is best-effort */
-        }
+        showDeviceNotification('Nova mensagem no FluXo', {
+          body: row.text || 'Você recebeu um anexo.',
+          tag: `dm:${row.sender_id}`,
+          data: { url: '/#mensagens' },
+        });
       }
     });
   }, [session?.id]);
+
+  // Novos seguidores em tempo real: atualiza o sino e avisa no celular.
+  useEffect(() => {
+    if (!isSupabaseEnabled || !session?.id) return undefined;
+    return remote.subscribeFollows(session.id, (row) => {
+      const followerId = row?.follower_id;
+      if (!followerId || followerId === session.id) return;
+      const settings = uiRef.current.settings || DEFAULT_SETTINGS;
+      setData((cur) => {
+        if (!cur) return cur;
+        const alreadyFollower = (cur.followers || []).includes(followerId);
+        const entry = {
+          id: `follow:${followerId}`,
+          type: 'follow',
+          actorId: followerId,
+          ts: Date.now(),
+        };
+        const already = (cur.notifications || []).some(
+          (item) => item.id === entry.id
+        );
+        return {
+          ...cur,
+          followers: alreadyFollower
+            ? cur.followers
+            : [...(cur.followers || []), followerId],
+          me: cur.me
+            ? {
+                ...cur.me,
+                followers: (cur.me.followers || 0) + (alreadyFollower ? 0 : 1),
+              }
+            : cur.me,
+          notifications: already
+            ? cur.notifications
+            : [entry, ...(cur.notifications || [])].slice(0, 80),
+        };
+      });
+      const person = dataRef.current?.users?.[followerId];
+      const label = person?.name || 'Alguém';
+      if (settings.notifications && document.hidden) {
+        showDeviceNotification('Novo seguidor no FluXo', {
+          body: `${label} começou a seguir você`,
+          tag: `follow:${followerId}`,
+          data: { url: '/#perfil' },
+        });
+      } else {
+        toast(`${label} começou a seguir você`);
+      }
+    });
+  }, [session?.id, toast]);
 
   // Presença online e "digitando…" via Realtime (presence + broadcast).
   useEffect(() => {
@@ -1771,7 +1843,13 @@ export function AppProvider({ children }) {
         const kept = (p.interactions || []).filter(
           (row) => row.id !== id && !(row.by === 'me' && row.kind === kind)
         );
-        return { ...p, interactions: [...kept, entry].sort((a, b) => a.ts - b.ts) };
+        const interactions = [...kept, entry].sort((a, b) => a.ts - b.ts);
+        return {
+          ...p,
+          interactions,
+          views: interactions.filter((row) => row.kind === 'view').length,
+          viewed: kind === 'view' ? true : p.viewed,
+        };
       }),
     }));
     if (uidv) {
@@ -1785,6 +1863,19 @@ export function AppProvider({ children }) {
       });
     }
     return entry;
+  }
+
+  // Visualização de foto/vídeo: registra uma vez por pessoa e por publicação.
+  function viewPost(postId) {
+    const post = dataRef.current?.posts.find((p) => p.id === postId);
+    if (!post) return;
+    if (viewedRef.current.has(postId)) return;
+    if ((post.interactions || []).some((row) => row.kind === 'view' && row.by === 'me')) {
+      viewedRef.current.add(postId);
+      return;
+    }
+    viewedRef.current.add(postId);
+    saveInteraction(postId, 'view');
   }
 
   function votePost(postId, optionId) {
@@ -2335,11 +2426,10 @@ export function AppProvider({ children }) {
     }
   }
 
-  function sendMessage(text, attachment) {
-    const chatId = uiRef.current.chat;
+  function sendMessageTo(chatId, text, attachment) {
     const chat = dataRef.current?.chats.find((c) => c.id === chatId);
     const trimmed = (text || '').trim();
-    if (!chat || (!trimmed && !attachment)) return;
+    if (!chat || (!trimmed && !attachment)) return null;
     const message = {
       id: uid(),
       me: true,
@@ -2358,6 +2448,11 @@ export function AppProvider({ children }) {
       remote.sendDirectMessage(message, sessionRef.current.id, chat.with);
     }
     if (uiRef.current.settings?.soundOnSend) playSentSound();
+    return message;
+  }
+
+  function sendMessage(text, attachment) {
+    return sendMessageTo(uiRef.current.chat, text, attachment);
   }
 
   function sendTyping(to) {
@@ -2927,9 +3022,11 @@ export function AppProvider({ children }) {
     backChat: () => setUi((u) => ({ ...u, chatOpen: false })),
     setChatQuery: (chatQ) => setUi((u) => ({ ...u, chatQ })),
     sendMessage,
+    sendMessageTo,
     sendTyping,
     sendChatFile,
     sendChatBlob,
+    viewPost,
     likeMessage,
     deleteMessage,
     clearChat,

@@ -16,10 +16,11 @@ export function PostThumb({ post }) {
   const author = userOf(data, post.by);
   const media = mediaOf(post);
   const first = media[0];
+  const isVideo = first?.kind === 'video' && !!first.src;
   const picture =
     first?.kind === 'photo'
       ? first.src || art(first.seed || post.seed || post.id, 500, 500)
-      : first?.seed
+      : !isVideo && first?.seed
         ? art(first.seed, 500, 500)
         : null;
 
@@ -30,7 +31,15 @@ export function PostThumb({ post }) {
       onClick={() => actions.openPost(post.id)}
       aria-label={`Abrir publicação de ${author.name}`}
     >
-      {picture ? (
+      {isVideo ? (
+        <video
+          className="pgvideo-src"
+          src={first.src}
+          muted
+          playsInline
+          preload="metadata"
+        />
+      ) : picture ? (
         <img src={picture} alt="" loading="lazy" />
       ) : (
         <div className="pgtxt">
@@ -52,6 +61,11 @@ export function PostThumb({ post }) {
         <span>
           <Icon name="comment" /> {post.comments.length}
         </span>
+        {post.views ? (
+          <span>
+            <Icon name="eye" /> {fmt(post.views)}
+          </span>
+        ) : null}
       </span>
     </button>
   );

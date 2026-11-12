@@ -45,7 +45,7 @@ export default function EmojiPicker({ onPick, onClose }) {
 
   return (
     <div className="emoji-picker" role="dialog" aria-label="Escolher emoji">
-      <div className="emoji-cats" role="tablist">
+      <div className="emoji-cats" role="tablist" aria-label="Categorias de emoji">
         {groups.map((item) => (
           <button
             key={item.key}
@@ -58,11 +58,12 @@ export default function EmojiPicker({ onPick, onClose }) {
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => setActive(item.key)}
           >
-            {item.icon}
+            <span>{item.icon}</span>
+            <b>{item.label}</b>
           </button>
         ))}
       </div>
-      <div className="emoji-grid" ref={gridRef}>
+      <div className="emoji-grid" ref={gridRef} key={group.key}>
         {group.emojis.map((emoji, index) => (
           <button
             key={`${group.key}-${index}-${emoji}`}
