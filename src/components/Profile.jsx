@@ -5,7 +5,7 @@ import { roleOf, userOf } from '../lib/selectors';
 import { ago, fmt } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
-import { TagText } from './Brand';
+import { TagText, Verified } from './Brand';
 import Empty from './Empty';
 import { Icon } from './Icon';
 
@@ -302,7 +302,9 @@ export default function Profile() {
             />
           </div>
           <div className="pinfo">
-            <h1>{me.name}</h1>
+            <h1>
+              {me.name} <Verified user={me} />
+            </h1>
             <span className="muted">
               @{me.handle}
               {me.city ? ` · ${me.city}` : ''}

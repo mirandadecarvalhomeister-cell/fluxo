@@ -1406,3 +1406,15 @@ html.video-open,body.video-open{overflow:hidden!important}
   .att-forward{width:42px;height:42px}
   .fv-mute{width:44px!important;height:44px!important}
 }
+
+/* Avatar do feed abre o perfil; selo apenas para a conta oficial. */
+.post-av{display:inline-grid;place-items:center;padding:0;border:0;background:none;border-radius:50%;cursor:pointer;flex:none;line-height:0}
+.post-av:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.verified{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:linear-gradient(135deg,#2F7BE8,#22D3EE);color:#fff;vertical-align:-2px;margin-left:3px;box-shadow:0 0 10px -2px rgba(34,211,238,.85)}
+.verified svg{width:10px;height:10px;display:block}
+
+/* Palco maior nas transmissões ao vivo. */
+.room-live .stage,.room-live .stage.lk-stage{aspect-ratio:auto;height:clamp(320px,62vh,720px);min-height:320px}
+@media (max-width:900px){
+  .room-live .stage,.room-live .stage.lk-stage{height:clamp(240px,48vh,460px);min-height:240px}
+}

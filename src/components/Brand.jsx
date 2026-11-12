@@ -5,6 +5,31 @@ import { useApp } from '../store/AppContext';
 
 const ASSET_VERSION = '5';
 
+// Selo de conta oficial. Hoje apenas o perfil @fluxooficial é verificado.
+export const OFFICIAL_HANDLE = 'fluxooficial';
+
+export function isOfficial(user) {
+  return String(user?.handle || '').trim().toLowerCase() === OFFICIAL_HANDLE;
+}
+
+export function Verified({ user }) {
+  if (!isOfficial(user)) return null;
+  return (
+    <span className="verified" title="Conta oficial verificada" aria-label="Conta oficial verificada">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="m5 12.5 4.5 4.5L19 7"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  );
+}
+
 export function LogoMark({ size = 32 }) {
   const [failed, setFailed] = useState(false);
   if (failed) {

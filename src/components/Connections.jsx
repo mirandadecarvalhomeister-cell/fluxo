@@ -6,7 +6,7 @@ import { isLiveKitEnabled } from '../lib/livekit';
 import { userOf } from '../lib/selectors';
 import { useApp } from '../store/AppContext';
 import { Avatar, LiveAvatar } from './Avatar';
-import { TagText } from './Brand';
+import { TagText, Verified } from './Brand';
 import Empty from './Empty';
 import { Icon } from './Icon';
 
@@ -150,8 +150,8 @@ function Room({ channel }) {
         <div className="grow">
           <h1 style={{ fontSize: '1.4rem' }}>{channel.name}</h1>
           <span className="kind">
-            <Icon name={kind[0]} /> {kind[1]} · {author.name} · {fmt(channel.followers)}{' '}
-            participantes
+            <Icon name={kind[0]} /> {kind[1]} · {author.name} <Verified user={author} /> ·{' '}
+            {fmt(channel.followers)} participantes
           </span>
         </div>
         {!owner && channel.kind === 'palco' ? (
@@ -341,7 +341,9 @@ function Room({ channel }) {
                       <div className="row">
                         <Avatar user={person} size={36} />
                         <div className="grow">
-                          <b>{person.name}</b>{' '}
+                          <b>
+                            {person.name} <Verified user={person} />
+                          </b>{' '}
                           <span className="muted sm">{ago(message.ts)}</span>
                         </div>
                       </div>
@@ -367,7 +369,9 @@ function Room({ channel }) {
                     <Avatar user={person} size={36} />
                     <div style={{ minWidth: 0 }}>
                       <div className="rhead">
-                        <b className={isOwner ? 'owner' : ''}>{person.name}</b>
+                        <b className={isOwner ? 'owner' : ''}>
+                          {person.name} <Verified user={person} />
+                        </b>
                         {isOwner ? <span className="tagc">Criador</span> : null}
                         <time>{hm(message.ts)}</time>
                       </div>

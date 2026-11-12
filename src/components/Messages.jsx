@@ -659,21 +659,53 @@ function CameraCapture({ onClose, onCapture }) {
     }
   };
 
+  const listCameras = async () => {
+    if (!navigator.mediaDevices?.enumerateDevices) return [];
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      return devices.filter((device) => device.kind === 'videoinput');
+    } catch {
+      return [];
+    }
+  };
+
   const openStream = async (next) => {
     setError('');
     setReady(false);
-    const attempts = [
-      {
-        video: {
-          facingMode: { ideal: next },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
-        audio: true,
-      },
+    const cameras = await listCameras();
+    const currentId =
+      streamRef.current?.getVideoTracks?.()[0]?.getSettings?.().deviceId || null;
+    const wantsRear = next === 'environment';
+    const rank = (camera) => {
+      const label = String(camera.label || '').toLowerCase();
+      const rear = /(back|rear|traseira|environment|trás|tras)/.test(label);
+      const front = /(front|user|frontal|selfie)/.test(label);
+      if (wantsRear) return rear ? 2 : front ? -2 : 0;
+      return front ? 2 : rear ? -2 : 0;
+    };
+    // Depois da primeira permissão o navegador revela os rótulos; usar o
+    // deviceId exato garante a troca real entre frontal e traseira.
+    const others = cameras
+      .filter((camera) => camera.deviceId && camera.deviceId !== currentId)
+      .sort((a, b) => rank(b) - rank(a));
+
+    const high = {
+      width: { ideal: 1920 },
+      height: { ideal: 1080 },
+    };
+    const attempts = [];
+    others.forEach((camera) => {
+      attempts.push({ video: { deviceId: { exact: camera.deviceId }, ...high }, audio: true });
+      attempts.push({ video: { deviceId: { exact: camera.deviceId } }, audio: true });
+    });
+    attempts.push(
+      { video: { facingMode: { exact: next }, ...high }, audio: true },
+      { video: { facingMode: { exact: next } }, audio: true },
+      { video: { facingMode: { ideal: next }, ...high }, audio: true },
       { video: { facingMode: { ideal: next } }, audio: true },
-      { video: true, audio: true },
-    ];
+      { video: true, audio: true }
+    );
+
     let stream = null;
     for (const constraints of attempts) {
       try {
@@ -694,6 +726,11 @@ function CameraCapture({ onClose, onCapture }) {
     setZoom(1);
     setTorch(false);
     const track = stream.getVideoTracks()[0];
+    const actualFacing = track?.getSettings?.().facingMode;
+    if (actualFacing === 'user' || actualFacing === 'environment') {
+      facingRef.current = actualFacing;
+      setFacing(actualFacing);
+    }
     setTorchable(!!track?.getCapabilities?.().torch);
     if (videoRef.current) {
       videoRef.current.srcObject = stream;
@@ -891,6 +928,11 @@ function CameraCapture({ onClose, onCapture }) {
 
   const flipCamera = async () => {
     if (recording) return;
+    const cameras = await listCameras();
+    if (cameras.length < 2) {
+      setError('Este dispositivo não tem outra câmera disponível.');
+      return;
+    }
     const next = facingRef.current === 'user' ? 'environment' : 'user';
     const ok = await openStream(next);
     if (!ok) setError('Não foi possível trocar a câmera.');

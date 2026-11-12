@@ -8,7 +8,7 @@ import { useCompact } from '../lib/useCompact';
 import { ago, fmt, fmtDur } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { LiveAvatar } from './Avatar';
-import { TagText } from './Brand';
+import { TagText, Verified } from './Brand';
 import CommentSheet, { Comments } from './Comments';
 import { Icon } from './Icon';
 import Interactive from './Interactive';
@@ -356,9 +356,22 @@ export default function Post({ post, detail = false }) {
       title={detail ? undefined : 'Abrir publicação'}
     >
       <header className="post-h">
-        <LiveAvatar user={author} size={44} data={data} />
+        <button
+          type="button"
+          className="post-av"
+          onClick={(event) => {
+            event.stopPropagation();
+            actions.openUser(post.by);
+          }}
+          aria-label={`Ver perfil de ${author.name}`}
+          title={`Ver perfil de ${author.name}`}
+        >
+          <LiveAvatar user={author} size={44} data={data} />
+        </button>
         <div className="who">
-          <b className="ell">{author.name}</b>
+          <b className="ell">
+            {author.name} <Verified user={author} />
+          </b>
           <span className="sub ell">
             @{author.handle} · {ago(post.ts)}
           </span>

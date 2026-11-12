@@ -15,6 +15,7 @@ import {
 import { ago, fmt, slug } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
+import { Verified } from './Brand';
 import { Icon } from './Icon';
 import MediaEditor, { EditOverlay } from './MediaEditor';
 import Post from './Post';
@@ -1094,7 +1095,9 @@ function UserModal({ modal }) {
             <Avatar user={person} size={84} />
           </span>
           <div className="grow">
-            <h2>{person.name}</h2>
+            <h2>
+              {person.name} <Verified user={person} />
+            </h2>
             <span className="muted">
               @{person.handle}
               {person.city ? ` · ${person.city}` : ''}
@@ -1828,18 +1831,7 @@ function SettingsModal() {
           <button
             className="btn ghost sm danger"
             type="button"
-            onClick={() =>
-              actions.requestConfirm({
-                title: 'Excluir sua conta?',
-                text: 'Isso apaga permanentemente seu perfil, publicações, mensagens, comunidades e mídias. Não dá para desfazer.',
-                confirmLabel: 'Excluir conta',
-                tone: 'hot',
-                action: async () => {
-                  const error = await actions.deleteAccount();
-                  if (error) actions.notify(error);
-                },
-              })
-            }
+            onClick={actions.openDeleteAccount}
           >
             <Icon name="trash" /> Excluir conta
           </button>
@@ -2047,6 +2039,94 @@ function ConfirmModal({ modal }) {
   );
 }
 
+function DeleteAccountModal() {
+  const { data, actions, session, mode } = useApp();
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const email = session?.email || data?.email || '';
+  const hasPassword =
+    mode === 'demo' ||
+    (
+      session?.app_metadata?.providers ||
+      (session?.identities || []).map((identity) => identity.provider)
+    ).includes('email');
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (busy) return;
+    if (!hasPassword && password.trim().toUpperCase() !== 'EXCLUIR') {
+      setError('Digite EXCLUIR para confirmar a exclusão.');
+      return;
+    }
+    if (hasPassword && !password) {
+      setError('Digite a senha da sua conta.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    const problem = await actions.deleteAccount(password);
+    setBusy(false);
+    if (problem) setError(problem);
+  };
+
+  return (
+    <form className="confirm" onSubmit={submit}>
+      <h2>Excluir sua conta?</h2>
+      <p className="muted">
+        Isso apaga permanentemente o perfil <b>{email}</b>, publicações, mensagens,
+        comunidades e mídias. Não dá para desfazer.
+      </p>
+      {hasPassword ? (
+        <div className="field">
+          <label htmlFor="delPwd">Senha da conta</label>
+          <input
+            id="delPwd"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => {
+              setPassword(event.target.value);
+              setError('');
+            }}
+            autoFocus
+          />
+        </div>
+      ) : (
+        <div className="field">
+          <label htmlFor="delWord">
+            Esta conta entra pelo Google. Digite <b>EXCLUIR</b> para confirmar.
+          </label>
+          <input
+            id="delWord"
+            type="text"
+            autoComplete="off"
+            value={password}
+            onChange={(event) => {
+              setPassword(event.target.value);
+              setError('');
+            }}
+            autoFocus
+          />
+        </div>
+      )}
+      {error ? (
+        <p className="muted sm" style={{ color: 'var(--hot)' }}>
+          {error}
+        </p>
+      ) : null}
+      <div className="confirm-acts">
+        <button type="button" className="btn ghost" onClick={actions.closeModal}>
+          Cancelar
+        </button>
+        <button type="submit" className="btn hot" disabled={busy}>
+          {busy ? 'Excluindo…' : 'Excluir conta'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 const MODAL_LABELS = {
   profile: 'Editar perfil',
   post: 'Publicação',
@@ -2055,6 +2135,7 @@ const MODAL_LABELS = {
   newchan: 'Criar canal',
   live: 'Iniciar live',
   confirm: 'Confirmar ação',
+  deleteaccount: 'Excluir conta',
   settings: 'Configurações',
   feedprefs: 'Preferências do feed',
   editpost: 'Editar publicação',
@@ -2269,6 +2350,8 @@ export default function ModalHost() {
     wide = true;
   } else if (modal.type === 'confirm') {
     content = <ConfirmModal modal={modal} />;
+  } else if (modal.type === 'deleteaccount') {
+    content = <DeleteAccountModal />;
   }
 
   return (

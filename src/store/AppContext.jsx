@@ -660,9 +660,11 @@ export function AppProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = ui.theme;
+    // Login, cadastro e recuperação de senha usam sempre o modo claro,
+    // independentemente do tema salvo na conta.
+    document.documentElement.dataset.theme = data ? ui.theme : 'light';
     lsSet(THEME_KEY, ui.theme);
-  }, [ui.theme]);
+  }, [ui.theme, data]);
 
   useEffect(() => {
     lsSet(SETTINGS_KEY, JSON.stringify(ui.settings));
@@ -1529,19 +1531,40 @@ export function AppProvider({ children }) {
     if (location.hash) history.replaceState(null, '', location.pathname);
   }
 
-  async function deleteAccount() {
+  async function deleteAccount(password) {
     const email = session?.email || data?.email || '';
-    if (liveChannelOfMine()) finishLive({ silent: true });
+    const typed = String(password || '');
 
     try {
       if (isSupabaseEnabled) {
+        // Contas criadas com e-mail/senha pedem a senha atual. Contas só com
+        // Google não têm senha, então exigem a confirmação digitada.
+        const hasPassword = (
+          session?.app_metadata?.providers ||
+          (session?.identities || []).map((identity) => identity.provider)
+        ).includes('email');
+        if (hasPassword) {
+          if (!typed) return 'Digite a senha da sua conta para confirmar.';
+          try {
+            await remote.verifyPassword(email, typed);
+          } catch {
+            return 'Senha incorreta. A conta não foi excluída.';
+          }
+        } else if (typed.trim().toUpperCase() !== 'EXCLUIR') {
+          return 'Digite EXCLUIR para confirmar a exclusão.';
+        }
+        if (liveChannelOfMine()) finishLive({ silent: true });
         await remote.deleteAccount();
       } else {
         const accounts = demoAccounts();
         if (email && accounts[email]) {
+          if (!typed || accounts[email].h !== (await sha256(typed))) {
+            return 'Senha incorreta. A conta não foi excluída.';
+          }
           delete accounts[email];
           lsSet(ACCOUNTS_KEY, JSON.stringify(accounts));
         }
+        if (liveChannelOfMine()) finishLive({ silent: true });
         lsSet(SESSION_KEY, '');
       }
     } catch (error) {
@@ -3479,6 +3502,7 @@ export function AppProvider({ children }) {
     cancelRecovery,
     logout,
     deleteAccount,
+    openDeleteAccount: () => setUi((u) => ({ ...u, modal: { type: 'deleteaccount' } })),
     notify: toast,
     setAuthTab: (authTab) => setUi((u) => ({ ...u, authTab })),
     openSearch: () => setUi((u) => ({ ...u, modal: { type: 'search' } })),

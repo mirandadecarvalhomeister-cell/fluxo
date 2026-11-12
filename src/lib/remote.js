@@ -1,5 +1,11 @@
+import { createClient } from '@supabase/supabase-js';
 import { durSeconds, parseRemoteMedia } from './media';
-import { isSupabaseEnabled, supabase } from './supabase';
+import {
+  isSupabaseEnabled,
+  supabase,
+  supabaseAnonKey,
+  supabaseUrl,
+} from './supabase';
 import { slug } from './utils';
 
 const enabled = () => isSupabaseEnabled && !!supabase;
@@ -84,6 +90,25 @@ export async function signIn({ email, password }) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
   return data;
+}
+
+// Confere a senha sem mexer na sessão principal: cria um cliente descartável.
+export async function verifyPassword(email, password) {
+  if (!enabled()) throw new Error('Supabase não configurado.');
+  const probe = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+  const { error } = await probe.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  try {
+    await probe.auth.signOut({ scope: 'local' });
+  } catch {
+    /* cliente descartável */
+  }
 }
 
 export async function signOut() {
