@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PAL } from '../lib/art';
 import { useApp } from '../store/AppContext';
-import { Logo, LogoMark } from './Brand';
+import { Logo } from './Brand';
 import { Icon } from './Icon';
 
 const GLOGO = (
@@ -126,9 +126,7 @@ export default function Auth() {
         </p>
         <div className="orbit" aria-hidden="true">
           <div className="spin">{orbs}</div>
-          <div className="core">
-            <LogoMark size={46} />
-          </div>
+          <div className="core" />
         </div>
       </section>
 
