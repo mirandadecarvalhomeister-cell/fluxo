@@ -270,7 +270,11 @@ function Lobby({ arena, onLeave, notify }) {
                       {host ? <span className="arena-crown"> ★</span> : null}
                     </strong>
                     <small>
-                      {player.connected ? `@${player.handle || 'fluxo'}` : 'Reconectando…'}
+                      {player.isBot
+                        ? 'IA • treino'
+                        : player.connected
+                          ? `@${player.handle || 'fluxo'}`
+                          : 'Reconectando…'}
                     </small>
                   </span>
                   {player.ready ? (
@@ -382,6 +386,9 @@ function ResultOverlay({ result, view, isHost, saved, onShare, onRematch, onLeav
           {result?.reason ? `Encerrada por ${result.reason}.` : 'Boa partida!'}{' '}
           {result?.winnerName && !isWinner ? `Campeão: ${result.winnerName}.` : ''}
         </p>
+        {result?.training ? (
+          <p className="muted sm">Partida de treino contra a IA — não entra no ranking.</p>
+        ) : null}
 
         <div className="arena-result-stats">
           <div>
@@ -690,6 +697,8 @@ export default function Arena({ code = '' }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [visibility, setVisibility] = useState('public');
   const [maxPlayers, setMaxPlayers] = useState(8);
+  const [mode, setMode] = useState('friends');
+  const [botLevel, setBotLevel] = useState('normal');
   const [period, setPeriod] = useState('week');
   const [ranking, setRanking] = useState([]);
   const [rankLoading, setRankLoading] = useState(true);
@@ -808,7 +817,7 @@ export default function Arena({ code = '' }) {
           <p>
             Batalha real 2D para 2 a 8 jogadores. Último sobrevivente vence em
             partidas de até 2 minutos e meio, com zona que fecha, obstáculos
-            móveis, dash e itens.
+            móveis, dash e itens. Sem ninguém online? Treine sozinho contra a IA.
           </p>
           <div className="arena-hero-tags">
             <span>
@@ -829,6 +838,14 @@ export default function Arena({ code = '' }) {
               onClick={() => arena.quickPlay()}
             >
               <Icon name="play" /> {busy ? 'Conectando…' : 'Jogar agora'}
+            </button>
+            <button
+              type="button"
+              className="btn tonal"
+              disabled={busy || !arena.configured}
+              onClick={() => arena.train({ bots: 3, botLevel })}
+            >
+              <Icon name="spark" /> Treinar com IA
             </button>
             <button
               type="button"
@@ -890,26 +907,47 @@ export default function Arena({ code = '' }) {
                 note="Você será o anfitrião e escolhe quando começar."
               />
               <div className="arena-form-row">
-                <span>Visibilidade</span>
+                <span>Modo</span>
                 <div className="seg">
                   <button
                     type="button"
-                    className={visibility === 'public' ? 'on' : ''}
-                    onClick={() => setVisibility('public')}
+                    className={mode === 'friends' ? 'on' : ''}
+                    onClick={() => setMode('friends')}
                   >
-                    <Icon name="globe" /> Pública
+                    <Icon name="users" /> Com amigos
                   </button>
                   <button
                     type="button"
-                    className={visibility === 'private' ? 'on' : ''}
-                    onClick={() => setVisibility('private')}
+                    className={mode === 'bots' ? 'on' : ''}
+                    onClick={() => setMode('bots')}
                   >
-                    <Icon name="lock" /> Privada
+                    <Icon name="spark" /> Contra a IA
                   </button>
                 </div>
               </div>
+              {mode === 'friends' ? (
+                <div className="arena-form-row">
+                  <span>Visibilidade</span>
+                  <div className="seg">
+                    <button
+                      type="button"
+                      className={visibility === 'public' ? 'on' : ''}
+                      onClick={() => setVisibility('public')}
+                    >
+                      <Icon name="globe" /> Pública
+                    </button>
+                    <button
+                      type="button"
+                      className={visibility === 'private' ? 'on' : ''}
+                      onClick={() => setVisibility('private')}
+                    >
+                      <Icon name="lock" /> Privada
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               <div className="arena-form-row">
-                <span>Jogadores</span>
+                <span>{mode === 'bots' ? 'Total (você + IA)' : 'Jogadores'}</span>
                 <div className="seg">
                   {[2, 4, 6, 8].map((value) => (
                     <button
@@ -923,18 +961,45 @@ export default function Arena({ code = '' }) {
                   ))}
                 </div>
               </div>
+              {mode === 'bots' ? (
+                <div className="arena-form-row">
+                  <span>Dificuldade</span>
+                  <div className="seg">
+                    {[
+                      ['easy', 'Fácil'],
+                      ['normal', 'Normal'],
+                      ['hard', 'Difícil'],
+                    ].map(([value, label]) => (
+                      <button
+                        type="button"
+                        key={value}
+                        className={botLevel === value ? 'on' : ''}
+                        onClick={() => setBotLevel(value)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <p className="muted sm">
-                {visibility === 'private'
-                  ? 'Só entra quem tiver o código ou receber o convite pelo chat.'
-                  : 'A sala aparece na lista pública para qualquer pessoa entrar.'}
+                {mode === 'bots'
+                  ? `${maxPlayers - 1} adversário(s) controlado(s) pela IA. Sala privada, início automático e resultado fora do ranking.`
+                  : visibility === 'private'
+                    ? 'Só entra quem tiver o código ou receber o convite pelo chat.'
+                    : 'A sala aparece na lista pública para qualquer pessoa entrar.'}
               </p>
               <button
                 type="button"
                 className="btn primary block"
                 disabled={busy}
-                onClick={() => arena.createRoom({ visibility, maxPlayers })}
+                onClick={() =>
+                  mode === 'bots'
+                    ? arena.train({ bots: maxPlayers - 1, botLevel })
+                    : arena.createRoom({ visibility, maxPlayers })
+                }
               >
-                <Icon name="play" /> Criar e entrar
+                <Icon name="play" /> {mode === 'bots' ? 'Treinar agora' : 'Criar e entrar'}
               </button>
             </div>
           ) : null}

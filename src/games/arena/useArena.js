@@ -54,6 +54,7 @@ function toView(state, sessionId) {
       speedUntil: player.speedUntil,
       survivedMs: player.survivedMs,
       isMe: key === sessionId,
+      isBot: String(player.id || key).startsWith('bot:'),
     });
   });
   const projectiles = [];
@@ -343,13 +344,35 @@ export function useArena({ profile, notify } = {}) {
   const createRoom = useCallback(
     (opts = {}) =>
       startWith(async (client) => {
+        const bots = Math.max(0, Math.min(7, Number(opts.bots) || 0));
         const options = await optionsFor({
           visibility: opts.visibility === 'private' ? 'private' : 'public',
           maxPlayers: Math.max(2, Math.min(8, Number(opts.maxPlayers) || 8)),
+          bots,
+          botLevel: ['easy', 'normal', 'hard'].includes(opts.botLevel)
+            ? opts.botLevel
+            : 'normal',
+          autoStart: Boolean(opts.autoStart),
         });
         return client.create('arena', options, ArenaState);
       }),
     [optionsFor, startWith]
+  );
+
+  // Partida solo de treino: sala privada preenchida com bots, início automático
+  // e sem gravar resultado no ranking.
+  const train = useCallback(
+    (opts = {}) => {
+      const bots = Math.max(1, Math.min(7, Number(opts.bots) || 3));
+      return createRoom({
+        visibility: 'private',
+        maxPlayers: bots + 1,
+        bots,
+        botLevel: opts.botLevel || 'normal',
+        autoStart: true,
+      });
+    },
+    [createRoom]
   );
 
   const quickPlay = useCallback(
@@ -443,6 +466,7 @@ export function useArena({ profile, notify } = {}) {
     sessionId: roomRef.current?.sessionId || '',
     hasReconnect: Boolean(readToken()),
     createRoom,
+    train,
     quickPlay,
     joinRoomId,
     joinCode,

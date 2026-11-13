@@ -19,6 +19,24 @@ const RECONNECT_SECONDS = 20;
 const MAX_PLAYERS = 8;
 const COLORS = 6;
 
+// Personalidade dos bots de treino: precisão da mira, distância que tentam
+// manter do alvo, velocidade e frequência de dash.
+const BOT_LEVELS = {
+  easy: { aimError: 0.28, lead: 0.12, speed: 0.78, keep: 300, strafe: 0.35, dash: 0.12 },
+  normal: { aimError: 0.13, lead: 0.3, speed: 1, keep: 360, strafe: 0.7, dash: 0.4 },
+  hard: { aimError: 0.05, lead: 0.45, speed: 1.08, keep: 410, strafe: 1, dash: 0.7 },
+};
+const BOT_NAMES = [
+  'Zé Bot',
+  'Capivara IA',
+  'Trovão IA',
+  'Neo IA',
+  'Pipoca IA',
+  'Fantasma IA',
+  'Turbo IA',
+  'Pixel IA',
+];
+
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const num = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
 const distance = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
@@ -53,8 +71,15 @@ export class ArenaRoom extends Room {
     this.patchRate = 66;
     this.state = new ArenaState();
     this.state.visibility = options.visibility === 'private' ? 'private' : 'public';
+    const botCount = clamp(Math.round(num(options.bots)), 0, MAX_PLAYERS - 1);
+    const botLevel = ['easy', 'normal', 'hard'].includes(options.botLevel)
+      ? options.botLevel
+      : 'normal';
     this.state.maxPlayers = clamp(
-      Math.round(num(options.maxPlayers) || MAX_PLAYERS),
+      Math.max(
+        Math.round(num(options.maxPlayers) || MAX_PLAYERS),
+        botCount > 0 ? botCount + 1 : 2
+      ),
       2,
       MAX_PLAYERS
     );
@@ -62,10 +87,14 @@ export class ArenaRoom extends Room {
     this.state.roomCode = makeCode();
     this.inputs = new Map();
     this.damageAcc = new Map();
+    this.bots = new Map();
+    this.autoStartBots = botCount > 0 && Boolean(options.autoStart);
+    this.autoStartTimer = null;
     this.persisted = false;
     this.persisting = false;
 
     this.resetWorld();
+    if (botCount > 0) this.spawnBots(botCount, botLevel);
     this.registerMessages();
     this.setSimulationInterval((delta) => this.tick(delta), TICK_MS);
     this.updateMetadata();
@@ -144,6 +173,7 @@ export class ArenaRoom extends Room {
       tone: 'join',
     });
     this.updateMetadata();
+    this.scheduleBotStart();
   }
 
   async onLeave(client, code = CloseCode.CONSENTED) {
@@ -195,8 +225,11 @@ export class ArenaRoom extends Room {
   }
 
   onDispose() {
+    if (this.autoStartTimer) clearTimeout(this.autoStartTimer);
+    this.autoStartTimer = null;
     this.inputs?.clear();
     this.damageAcc?.clear();
+    this.bots?.clear();
   }
 
   registerMessages() {
@@ -258,7 +291,7 @@ export class ArenaRoom extends Room {
           continue;
         }
         this.resetPlayer(player);
-        player.ready = false;
+        player.ready = this.bots.has(sessionId);
       }
       this.state.phase = 'lobby';
       this.state.matchId = '';
@@ -268,6 +301,7 @@ export class ArenaRoom extends Room {
       this.reassignHost();
       this.broadcast('system', { text: 'Nova partida pronta. Marquem "Estou pronto".', tone: 'info' });
       this.updateMetadata();
+      this.scheduleBotStart(1200);
     });
 
     this.onMessage('chat', (client, message = {}) => {
@@ -286,6 +320,190 @@ export class ArenaRoom extends Room {
         ts: now,
       });
     });
+  }
+
+  // Cria adversários controlados pelo servidor (modo treino). Os bots usam os
+  // mesmos campos de um jogador comum, com chaves "bot:N" em vez de sessões.
+  spawnBots(count, level) {
+    for (let i = 0; i < count; i += 1) {
+      const key = `bot:${i + 1}`;
+      const spawn = spawnPoint(this.state.players.size, this.state.maxPlayers);
+      const bot = new Player();
+      bot.id = key;
+      bot.name = BOT_NAMES[i % BOT_NAMES.length];
+      bot.x = spawn.x;
+      bot.y = spawn.y;
+      bot.color = this.state.players.size % COLORS;
+      bot.hp = bot.maxHp;
+      bot.alive = true;
+      bot.connected = true;
+      bot.ready = true;
+      this.state.players.set(key, bot);
+      this.inputs.set(key, { mx: 0, my: 0, aim: 0, at: 0 });
+      this.bots.set(key, {
+        level,
+        seed: Math.random() * Math.PI * 2,
+        strafeDir: Math.random() < 0.5 ? -1 : 1,
+        nextFireAt: 0,
+      });
+    }
+    this.state.playerCount = this.state.players.size;
+  }
+
+  scheduleBotStart(delay = 1500) {
+    if (!this.autoStartBots || this.state.phase !== 'lobby') return;
+    if (this.autoStartTimer) clearTimeout(this.autoStartTimer);
+    this.autoStartTimer = setTimeout(() => {
+      this.autoStartTimer = null;
+      if (this.state.phase !== 'lobby') return;
+      const hasHuman = [...this.state.players.entries()].some(
+        ([key, player]) => player.connected && !this.bots.has(key)
+      );
+      if (!hasHuman) return;
+      this.startCountdown();
+    }, delay);
+    if (typeof this.autoStartTimer.unref === 'function') {
+      this.autoStartTimer.unref();
+    }
+  }
+
+  // IA simples: escolhe o alvo vivo mais próximo, mantém distância, desvia das
+  // armadilhas, foge da zona e atira quando tem linha de visão.
+  updateBots(dt) {
+    const now = Date.now();
+    const zoneX = this.state.zoneX;
+    const zoneY = this.state.zoneY;
+    const zoneR = this.state.zoneR;
+
+    this.bots.forEach((brain, key) => {
+      const bot = this.state.players.get(key);
+      if (!bot || !bot.alive) return;
+      const cfg = BOT_LEVELS[brain.level] || BOT_LEVELS.normal;
+
+      let target = null;
+      let targetDist = Infinity;
+      this.state.players.forEach((other) => {
+        if (other === bot || !other.alive) return;
+        const dist = distance(bot.x, bot.y, other.x, other.y);
+        if (dist < targetDist) {
+          targetDist = dist;
+          target = other;
+        }
+      });
+
+      let mx = 0;
+      let my = 0;
+      let aim = bot.aim;
+
+      if (target) {
+        const lead = Math.min(0.55, targetDist / 900) * cfg.lead;
+        const px = target.x + clamp(num(target.vx), -400, 400) * lead;
+        const py = target.y + clamp(num(target.vy), -400, 400) * lead;
+        const wobble = Math.sin(now / 620 + brain.seed) * cfg.aimError;
+        aim = Math.atan2(py - bot.y, px - bot.x) + wobble;
+
+        const dx = target.x - bot.x;
+        const dy = target.y - bot.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const nx = dx / dist;
+        const ny = dy / dist;
+        const side = Math.sin(now / 900 + brain.seed) >= 0 ? 1 : -1;
+
+        if (dist > cfg.keep + 90) {
+          mx = nx;
+          my = ny;
+        } else if (dist < cfg.keep - 90) {
+          mx = -nx;
+          my = -ny;
+        } else {
+          mx = -ny * side * cfg.strafe;
+          my = nx * side * cfg.strafe;
+        }
+
+        const lineClear = this.hasLineOfSight(bot, target);
+        if (!lineClear && dist > 150) {
+          // Sem linha de visão: contorna o obstáculo em vez de empurrar a parede.
+          mx += -ny * 0.9 * brain.strafeDir;
+          my += nx * 0.9 * brain.strafeDir;
+        }
+        if (Math.random() < dt * 0.2) brain.strafeDir *= -1;
+
+        if (
+          lineClear &&
+          dist < 900 &&
+          now >= bot.fireReadyAt &&
+          now >= brain.nextFireAt
+        ) {
+          brain.nextFireAt = now + 180 + Math.random() * 320;
+          this.tryFire(bot, key, { aim, mx, my }, now);
+        }
+
+        if (
+          dist < 270 &&
+          now >= bot.dashReadyAt &&
+          Math.random() < cfg.dash * dt * 3
+        ) {
+          this.tryDash(bot, key, { mx: -nx, my: -ny, aim }, now);
+        }
+      } else {
+        const dx = zoneX - bot.x;
+        const dy = zoneY - bot.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 60) {
+          mx = dx / dist;
+          my = dy / dist;
+        }
+        aim = Math.atan2(dy, dx);
+      }
+
+      // Não ficar tomando dano da zona.
+      const zoneDist = distance(bot.x, bot.y, zoneX, zoneY);
+      const safe = zoneR - 110;
+      if (zoneDist > safe && zoneDist > 1) {
+        const pull = Math.min(2, (zoneDist - safe) / 90);
+        mx += ((zoneX - bot.x) / zoneDist) * pull;
+        my += ((zoneY - bot.y) / zoneDist) * pull;
+      }
+
+      // Desviar das armadilhas móveis.
+      for (let i = 0; i < this.state.obstacles.length; i += 1) {
+        const obstacle = this.state.obstacles.at(i);
+        if (obstacle.kind !== 'hazard') continue;
+        const dist = distance(bot.x, bot.y, obstacle.x, obstacle.y);
+        if (dist < 130 && dist > 0.001) {
+          mx += ((bot.x - obstacle.x) / dist) * 1.4;
+          my += ((bot.y - obstacle.y) / dist) * 1.4;
+        }
+      }
+
+      const length = Math.hypot(mx, my);
+      if (length > 1) {
+        mx /= length;
+        my /= length;
+      }
+      mx *= cfg.speed;
+      my *= cfg.speed;
+
+      this.inputs.set(key, { mx, my, aim, at: now });
+      bot.aim = aim;
+    });
+  }
+
+  hasLineOfSight(from, to) {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const dist = Math.hypot(dx, dy);
+    const steps = Math.max(1, Math.ceil(dist / 28));
+    for (let i = 1; i < steps; i += 1) {
+      const x = from.x + (dx * i) / steps;
+      const y = from.y + (dy * i) / steps;
+      for (let j = 0; j < this.state.obstacles.length; j += 1) {
+        const obstacle = this.state.obstacles.at(j);
+        if (obstacle.kind === 'hazard') continue;
+        if (circleRect(x, y, 8, obstacle)) return false;
+      }
+    }
+    return true;
   }
 
   tick(delta) {
@@ -436,6 +654,10 @@ export class ArenaRoom extends Room {
     this.state.zoneNextAt = Date.now() + 12000;
     this.spawnPickup();
     this.spawnPickup();
+    const now = Date.now();
+    this.bots.forEach((brain) => {
+      brain.nextFireAt = now + 900 + Math.random() * 1500;
+    });
     this.broadcast('started', { matchId: this.state.matchId });
     this.updateMetadata();
   }
@@ -458,7 +680,7 @@ export class ArenaRoom extends Room {
   reassignHost() {
     if (this.state.hostId && this.state.players.has(this.state.hostId)) return;
     const next = [...this.state.players.entries()].find(
-      ([, player]) => player.connected
+      ([key, player]) => player.connected && !this.bots.has(key)
     );
     this.state.hostId = next ? next[0] : '';
   }
@@ -537,6 +759,7 @@ export class ArenaRoom extends Room {
   }
 
   updatePlayers(dt) {
+    if (this.bots.size) this.updateBots(dt);
     const players = [...this.state.players.entries()];
     players.forEach(([sessionId, player]) => {
       if (!player.alive) return;
@@ -873,6 +1096,7 @@ export class ArenaRoom extends Room {
     const payload = {
       matchId: this.state.matchId,
       reason,
+      training: this.bots.size > 0,
       winnerId: this.state.winnerId,
       winnerName: this.state.winnerName,
       durationMs: Math.max(0, endedAt - this.state.startedAt),
@@ -895,6 +1119,12 @@ export class ArenaRoom extends Room {
 
   async persistResult(payload, endedAt) {
     if (this.persisted || this.persisting) return;
+    if (this.bots.size > 0) {
+      // Treino contra a IA não entra no histórico nem no ranking.
+      this.persisted = true;
+      this.broadcast('matchSaved', { saved: true, training: true });
+      return;
+    }
     this.persisting = true;
     const saved = await persistMatch({
       id: this.state.matchId,
