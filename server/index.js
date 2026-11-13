@@ -3,6 +3,7 @@ import { WebSocketTransport } from '@colyseus/ws-transport';
 import { ArenaRoom } from './ArenaRoom.js';
 
 const PORT = Number(process.env.PORT || 2567);
+const HOST = String(process.env.HOST || '').trim();
 const ALLOWED_ORIGIN = process.env.ARENA_ALLOWED_ORIGIN || '*';
 
 function roomSummary(room) {
@@ -83,5 +84,11 @@ const gameServer = new Server({
 
 gameServer.define('arena', ArenaRoom);
 
-await gameServer.listen(PORT);
-console.log(`[arena] Arena do Caos ouvindo em http://localhost:${PORT}`);
+if (HOST) {
+  await gameServer.listen(PORT, HOST);
+} else {
+  await gameServer.listen(PORT);
+}
+console.log(
+  `[arena] Arena do Caos ouvindo em ${HOST || '0.0.0.0'}:${PORT}`
+);

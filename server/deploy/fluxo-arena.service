@@ -1,0 +1,20 @@
+[Unit]
+Description=FluXo Arena do Caos (servidor Colyseus)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fluxo
+Group=fluxo
+WorkingDirectory=/opt/fluxo-arena
+EnvironmentFile=/opt/fluxo-arena/.env
+ExecStart=/usr/bin/node index.js
+Restart=always
+RestartSec=3
+# Endurecimento básico
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

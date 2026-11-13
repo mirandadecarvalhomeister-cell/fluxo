@@ -1,0 +1,13 @@
+# Caddy: HTTPS automático (Let's Encrypt) + proxy para o servidor da Arena.
+# Troque pelo seu subdomínio, com o DNS apontando para o IP da VM.
+#
+# O Caddy cuida sozinho do upgrade de WebSocket (wss://) e renova o certificado.
+
+arena.seudominio.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:2567
+}
+
+# Sem domínio próprio? Alternativas:
+#  - DuckDNS: use seu-subdominio.duckdns.org acima (porta 80 precisa estar aberta).
+#  - Cloudflare Tunnel: não abre portas; ver DEPLOY.md.
