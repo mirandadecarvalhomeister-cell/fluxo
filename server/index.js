@@ -4,7 +4,21 @@ import { ArenaRoom } from './ArenaRoom.js';
 
 const PORT = Number(process.env.PORT || 2567);
 const HOST = String(process.env.HOST || '').trim();
-const ALLOWED_ORIGIN = process.env.ARENA_ALLOWED_ORIGIN || '*';
+// Origens permitidas (CORS). Aceita uma lista separada por vírgula, ex.:
+// "https://vibefluxo.com,https://www.vibefluxo.com,https://fluxosocial.pages.dev".
+// O curinga "*" libera geral (usado em desenvolvimento).
+const ALLOWED_ORIGINS = String(process.env.ARENA_ALLOWED_ORIGIN || '*')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
+
+function resolveAllowedOrigin(requestOrigin) {
+  if (ALLOWED_ORIGINS.includes('*')) return '*';
+  if (requestOrigin && ALLOWED_ORIGINS.includes(requestOrigin)) {
+    return requestOrigin;
+  }
+  return ALLOWED_ORIGINS[0] || '*';
+}
 
 function roomSummary(room) {
   const meta = room.metadata || {};
@@ -24,7 +38,8 @@ function roomSummary(room) {
 // tratadas pelo router interno dele antes de chegar aqui.
 function registerRoutes(app) {
   app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Origin', resolveAllowedOrigin(req.headers.origin));
+    res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') {

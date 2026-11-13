@@ -9,7 +9,7 @@ domínio próprio, Caddy nem abrir portas.
 ## Arquitetura
 
 ```
-Navegador (FluXo, https://fluxosocial.netlify.app)
+Navegador (FluXo, https://vibefluxo.com)
         │  wss://fluxo-arena.fly.dev  (WebSocket seguro)
         ▼
    Fly.io proxy ──► Node/Colyseus 0.0.0.0:2567
@@ -52,9 +52,12 @@ fly secrets set \
   SUPABASE_URL=https://SEU-PROJETO.supabase.co \
   SUPABASE_ANON_KEY=... \
   SUPABASE_SERVICE_ROLE_KEY=... \
-  ARENA_ALLOWED_ORIGIN=https://fluxosocial.netlify.app \
+  ARENA_ALLOWED_ORIGIN=https://vibefluxo.com,https://www.vibefluxo.com \
   -a fluxo-arena
 ```
+
+> `ARENA_ALLOWED_ORIGIN` aceita **várias origens separadas por vírgula** (CORS).
+> Use `*` apenas em desenvolvimento.
 
 ## Passo 4 — Deploy
 
@@ -75,7 +78,7 @@ curl https://fluxo-arena.fly.dev/arena/rooms
 
 ## Passo 6 — Cliente (FluXo)
 
-No `.env` local e nas variáveis de ambiente do Netlify:
+No `.env` local e nas variáveis de ambiente do Cloudflare Pages:
 
 ```env
 VITE_ARENA_URL=wss://fluxo-arena.fly.dev
@@ -91,10 +94,13 @@ depois de alterá-las.
 fly logs -a fluxo-arena        # logs ao vivo
 fly status -a fluxo-arena      # estado da máquina
 fly deploy -a fluxo-arena      # publicar mudanças
-fly secrets set ARENA_ALLOWED_ORIGIN=https://novo-dominio -a fluxo-arena
+fly secrets set ARENA_ALLOWED_ORIGIN=https://vibefluxo.com,https://www.vibefluxo.com -a fluxo-arena
 ```
 
 ## Custos
 
-- **Fly.io:** máquina `shared-cpu-1x` / 512 MB sempre ligada (alguns dólares/mês).
+- **Fly.io:** máquina `shared-cpu-1x` / 256 MB sempre ligada na região `gru`
+  (~US$ 3.54/mês, abaixo do limite de US$ 5 que o Fly isenta em organizações
+  pessoais → **R$ 0/mês**).
 - **Supabase Free:** R$ 0.
+- **Cloudflare Pages:** R$ 0.
