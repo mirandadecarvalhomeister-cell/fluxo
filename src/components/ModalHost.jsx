@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { art } from '../lib/art';
-import { isLiveKitEnabled } from '../lib/livekit';
+import { fetchIngress, isLiveKitEnabled } from '../lib/livekit';
 import { MAX_POST_MEDIA, mediaOf } from '../lib/media';
 import { ALGO_LEVELS, FEED_FORMATS, FEED_MODES, communityActivity, feedPrefs } from '../lib/feed';
 import { mediaDisplayStyle } from '../lib/mediaEdit';
@@ -1849,12 +1849,37 @@ function SettingsModal() {
 function ObsModal({ modal }) {
   const { data, actions } = useApp();
   const channel = data.chans.find((item) => item.id === modal.id);
-  if (!channel) return <p className="muted">Canal indisponível.</p>;
-  const url =
-    location.href.split('#')[0] +
-    '#conexoes/' +
-    encodeURIComponent(channel.id);
-  const ingressHost = import.meta.env.VITE_LIVEKIT_INGRESS_URL || '';
+  const [ingress, setIngress] = useState(null);
+  const [ingressError, setIngressError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const envIngress = import.meta.env.VITE_LIVEKIT_INGRESS_URL || '';
+
+  useEffect(() => {
+    let active = true;
+    if (!channel || !isLiveKitEnabled) return undefined;
+    setLoading(true);
+    setIngressError('');
+    fetchIngress(channel.id, false)
+      .then((result) => {
+        if (active) setIngress(result);
+      })
+      .catch((error) => {
+        if (active) {
+          setIngressError(
+            error?.message || 'Não foi possível preparar o Ingress RTMP.'
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel?.id]);
+
   const copy = async (value, message) => {
     try {
       await navigator.clipboard.writeText(value);
@@ -1864,16 +1889,90 @@ function ObsModal({ modal }) {
     }
   };
 
+  const regenerate = async () => {
+    if (!channel) return;
+    setRefreshing(true);
+    setIngressError('');
+    try {
+      setIngress(await fetchIngress(channel.id, true));
+      actions.notify('Nova URL do Ingress gerada.');
+    } catch (error) {
+      setIngressError(error?.message || 'Não foi possível gerar uma nova URL.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  if (!channel) return <p className="muted">Canal indisponível.</p>;
+
+  const stageUrl =
+    location.href.split('#')[0] +
+    '#conexoes/' +
+    encodeURIComponent(channel.id);
+  const serverUrl = ingress?.url || envIngress || '';
+  const streamKey = ingress?.key || '';
+  const ready = Boolean(ingress?.url && ingress?.key);
+
   return (
     <div className="obs-modal">
       <p className="muted">
         Transmita pelo OBS no computador e mantenha o chat, os corações e as
         notificações do palco funcionando no FluXo.
       </p>
-      <span className={`obs-status${ingressHost ? ' on' : ''}`}>
-        <Icon name={ingressHost ? 'check' : 'radio'} />{' '}
-        {ingressHost ? 'Ingress RTMP configurado' : 'Ingress RTMP em preparação'}
+      <span className={`obs-status${ready ? ' on' : ''}`}>
+        <Icon name={ready ? 'check' : 'radio'} />{' '}
+        {ready
+          ? 'Ingress RTMP pronto'
+          : loading
+            ? 'Preparando o Ingress RTMP…'
+            : ingressError
+              ? 'Ingress RTMP indisponível'
+              : 'Ingress RTMP em preparação'}
       </span>
+
+      {ready ? (
+        <section className="set-block">
+          <h3 className="h3">Servidor e chave do OBS</h3>
+          <p className="muted sm">
+            Copie os valores abaixo para o OBS em{' '}
+            <b>Configurações → Transmissão → Personalizado</b>.
+          </p>
+          <div className="obs-copy">
+            <code>{serverUrl}</code>
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => copy(serverUrl, 'Servidor copiado')}
+            >
+              <Icon name="link" /> Servidor
+            </button>
+          </div>
+          <div className="obs-copy">
+            <code>{streamKey}</code>
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => copy(streamKey, 'Chave copiada')}
+            >
+              <Icon name="lock" /> Chave
+            </button>
+          </div>
+          <p className="muted sm">
+            A chave é secreta: não compartilhe com o público. Se ela vazar, gere
+            uma nova.
+          </p>
+          <button
+            type="button"
+            className="btn tonal sm"
+            disabled={refreshing}
+            onClick={regenerate}
+          >
+            <Icon name="flip" /> {refreshing ? 'Gerando…' : 'Gerar nova chave'}
+          </button>
+        </section>
+      ) : null}
+
+      {ingressError ? <p className="muted sm">{ingressError}</p> : null}
 
       <section className="set-block">
         <h3 className="h3">1. Agora, sem OBS</h3>
@@ -1888,19 +1987,15 @@ function ObsModal({ modal }) {
         <h3 className="h3">2. Com OBS</h3>
         <ol className="obs-steps">
           <li>
-            No painel do LiveKit, crie um <b>Ingress</b> para a sala{' '}
-            <code>{channel.id}</code> e copie a URL RTMPS e a chave.
-          </li>
-          <li>
-            No OBS, abra <b>Configurações → Transmissão</b> e escolha o
-            serviço <b>Personalizado</b>.
+            No OBS, abra <b>Configurações → Transmissão</b> e escolha o serviço{' '}
+            <b>Personalizado</b>.
           </li>
           <li>
             Servidor:{' '}
             <code>
-              {ingressHost || 'rtmps://SEU-INGRESS.livekit.cloud:1935/x'}
+              {serverUrl || 'rtmps://SEU-INGRESS.livekit.cloud:1935/x'}
             </code>{' '}
-            e cole a chave gerada no painel.
+            e cole a chave {ready ? 'mostrada acima' : 'gerada no painel do LiveKit'}.
           </li>
           <li>
             Saída 1080p a 30 fps, keyframe 2 s, áudio 48 kHz. Monte a cena com
@@ -1918,11 +2013,11 @@ function ObsModal({ modal }) {
       <section className="set-block">
         <h3 className="h3">Link do palco</h3>
         <div className="obs-copy">
-          <code>{url}</code>
+          <code>{stageUrl}</code>
           <button
             type="button"
             className="btn ghost sm"
-            onClick={() => copy(url, 'Link do palco copiado')}
+            onClick={() => copy(stageUrl, 'Link do palco copiado')}
           >
             <Icon name="link" /> Copiar
           </button>
