@@ -132,7 +132,6 @@ textarea.in{resize:vertical;min-height:44px}
 .orbit{position:relative;width:260px;height:260px;margin:30px 0 10px}
 .orbit .spin{position:absolute;inset:0;animation:spin 48s linear infinite}
 .orbit i{position:absolute;left:50%;top:50%;width:var(--z,48px);height:var(--z,48px);margin:calc(var(--z,48px)/-2);border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));transform:rotate(calc(var(--i)*45deg)) translateY(-108px);box-shadow:0 8px 18px -8px rgba(0,0,0,.45)}
-.orbit .core{position:absolute;inset:31%;border-radius:50%;display:grid;place-items:center;background:var(--surface);box-shadow:var(--shadow)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .authcard{padding:24px;max-width:440px;width:100%;justify-self:center}
 .authcard .seg{width:100%;margin-bottom:18px}.authcard .seg button{flex:1}

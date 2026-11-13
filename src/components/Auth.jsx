@@ -126,7 +126,6 @@ export default function Auth() {
         </p>
         <div className="orbit" aria-hidden="true">
           <div className="spin">{orbs}</div>
-          <div className="core" />
         </div>
       </section>
 
