@@ -1,0 +1,30 @@
+# Fly.io — Arena do Caos (servidor Colyseus).
+# Região GRU = São Paulo (menor ping para jogadores brasileiros).
+# WebSocket (wss://) é suportado nativamente pelo http_service do Fly.
+
+app = "fluxo-arena"
+primary_region = "gru"
+
+[build]
+
+[env]
+  PORT = "2567"
+  # Ajuste depois para o domínio do site, ex.: https://seu-fluxo.netlify.app
+  ARENA_ALLOWED_ORIGIN = "*"
+
+[http_service]
+  internal_port = 2567
+  force_https = true
+  # Servidor de jogo precisa ficar sempre ligado (sem dormir/cold start).
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 250
+    soft_limit = 200
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

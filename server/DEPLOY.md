@@ -1,5 +1,9 @@
 # Deploy da Arena do Caos na Oracle Cloud (Always Free)
 
+> **Nota:** a produção atual usa o **Fly.io** (região São Paulo). Veja
+> `DEPLOY-FLY.md` para o caminho realmente em uso. Este guia cobre a alternativa
+> gratuita na Oracle Cloud.
+
 Guia para colocar o servidor Colyseus no ar numa VM **Ampere A1 (ARM) Always Free**,
 com **HTTPS/WSS** na frente via Caddy. O servidor da Arena é um processo Node
 sempre ligado; o Caddy cuida do certificado e do upgrade de WebSocket.
