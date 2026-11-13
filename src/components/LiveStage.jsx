@@ -244,40 +244,51 @@ export default function LiveStage({ channel, owner, clock, hearts }) {
     if (!room || busy || !camOn) return;
     setBusy('flip');
     setNotice('');
-    const next = facing === 'user' ? 'environment' : 'user';
     try {
-      await room.localParticipant.setCameraEnabled(false);
-      const publication = await room.localParticipant.setCameraEnabled(true, {
-        facingMode: next,
-      });
+      const devices = await navigator.mediaDevices?.enumerateDevices?.();
+      const cameras = (devices || []).filter(
+        (device) => device.kind === 'videoinput' && device.deviceId
+      );
+      const currentTrack =
+        room.localParticipant.getTrackPublication(Track.Source.Camera)?.track
+          ?.mediaStreamTrack || null;
+      const currentId = currentTrack?.getSettings?.().deviceId || null;
+      const currentLabel = String(currentTrack?.label || '').toLowerCase();
+      const currentRear = /(back|rear|traseira|environment|trás|tras|wide)/.test(
+        currentLabel
+      );
+      const options = cameras.filter((device) => device.deviceId !== currentId);
+      if (!options.length) {
+        setNotice('Este dispositivo não tem outra câmera disponível.');
+        return;
+      }
+      const target =
+        options.find((device) => {
+          const label = String(device.label || '').toLowerCase();
+          const rear = /(back|rear|traseira|environment|trás|tras|wide)/.test(label);
+          return currentRear ? !rear : rear;
+        }) || options[0];
+
+      await room.switchActiveDevice('videoinput', target.deviceId, true);
       const cameraTrack =
-        publication?.track ||
         room.localParticipant.getTrackPublication(Track.Source.Camera)?.track ||
         null;
-      if (cameraTrack) {
-        setLocalCamera(cameraTrack);
-        setFacing(next);
-        setCamOn(true);
-      } else {
-        setLocalCamera(null);
-        setCamOn(false);
-        setNotice('Não foi possível trocar a câmera.');
+      const actualId =
+        cameraTrack?.mediaStreamTrack?.getSettings?.().deviceId || null;
+      if (!cameraTrack || (actualId && actualId === currentId)) {
+        setNotice('Não foi possível trocar para a outra câmera neste dispositivo.');
+        return;
       }
+      setLocalCamera(cameraTrack);
+      setCamOn(true);
+      setFacing(
+        /(back|rear|traseira|environment|trás|tras|wide)/.test(
+          String(cameraTrack.mediaStreamTrack?.label || '').toLowerCase()
+        )
+          ? 'environment'
+          : 'user'
+      );
     } catch (cameraError) {
-      try {
-        const restore = await room.localParticipant.setCameraEnabled(true, {
-          facingMode: facing,
-        });
-        const cameraTrack =
-          restore?.track ||
-          room.localParticipant.getTrackPublication(Track.Source.Camera)?.track ||
-          null;
-        setLocalCamera(cameraTrack || null);
-        setCamOn(Boolean(cameraTrack));
-      } catch {
-        setLocalCamera(null);
-        setCamOn(false);
-      }
       setNotice('Não foi possível trocar a câmera.');
     } finally {
       setBusy('');

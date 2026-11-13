@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { art } from '../lib/art';
 import { mediaOf } from '../lib/media';
+import * as remote from '../lib/remote';
 import { roleOf, userOf } from '../lib/selectors';
 import { ago, fmt } from '../lib/utils';
 import { useApp } from '../store/AppContext';
@@ -146,9 +147,30 @@ function CommunityCard({ community }) {
 }
 
 export default function Profile() {
-  const { data, ui, actions } = useApp();
+  const { data, ui, actions, session } = useApp();
   const [scrap, setScrap] = useState('');
+  const [arena, setArena] = useState(null);
   const me = data.me;
+  const arenaUserId = session?.id || (me?.id !== 'me' ? me?.id : null);
+
+  useEffect(() => {
+    let active = true;
+    if (!arenaUserId) {
+      setArena({ stats: null, history: [], hasData: false });
+      return undefined;
+    }
+    remote
+      .loadArenaProfile(arenaUserId)
+      .then((profile) => {
+        if (active) setArena(profile);
+      })
+      .catch(() => {
+        if (active) setArena({ stats: null, history: [], hasData: false });
+      });
+    return () => {
+      active = false;
+    };
+  }, [arenaUserId]);
   const mine = data.posts
     .filter((p) => p.by === 'me' && p.kind !== 'story')
     .sort((a, b) => b.ts - a.ts);
@@ -389,6 +411,67 @@ export default function Profile() {
                 </dd>
               </div>
             </dl>
+          </section>
+
+          <section className="card arena-profile">
+            <div className="arena-profile-head">
+              <h3>
+                <Icon name="game" /> Arena do Caos
+              </h3>
+              <button
+                type="button"
+                className="btn tonal sm"
+                onClick={() => actions.openArena('')}
+              >
+                <Icon name="play" /> Jogar agora
+              </button>
+            </div>
+            {arena?.hasData && arena.stats ? (
+              <>
+                <div className="arena-stats-grid">
+                  <div className="arena-stat">
+                    <strong>{arena.stats.matches}</strong>
+                    <span>Partidas</span>
+                  </div>
+                  <div className="arena-stat">
+                    <strong>{arena.stats.wins}</strong>
+                    <span>Vitórias</span>
+                  </div>
+                  <div className="arena-stat">
+                    <strong>{arena.stats.kills}</strong>
+                    <span>Eliminações</span>
+                  </div>
+                  <div className="arena-stat">
+                    <strong>{arena.stats.best ? `#${arena.stats.best}` : '—'}</strong>
+                    <span>Melhor posição</span>
+                  </div>
+                </div>
+                {arena.history?.length ? (
+                  <div className="arena-history">
+                    {arena.history.slice(0, 5).map((match) => (
+                      <div
+                        className={`arena-history-item ${match.isWinner ? 'win' : ''}`}
+                        key={match.matchId}
+                      >
+                        <span className="pos">
+                          {match.isWinner ? '🏆' : `#${match.placement || '-'}`}
+                        </span>
+                        <span className="grow muted sm">
+                          {match.kills || 0} abates • {match.damage || 0} dano
+                        </span>
+                        <span className="muted sm">{ago(match.playedAt)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <p className="muted sm">
+                {arenaUserId
+                  ? 'Nenhuma partida registrada ainda. Entre na Arena e dispute o ranking.'
+                  : 'Entre com sua conta para registrar partidas e aparecer no ranking.'}
+              </p>
+            )}
           </section>
 
           <section className="card pad">

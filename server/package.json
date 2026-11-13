@@ -1,0 +1,19 @@
+{
+  "name": "fluxo-arena-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@colyseus/schema": "^5.0.48",
+    "@colyseus/ws-transport": "^0.18.5",
+    "colyseus": "^0.18.12"
+  }
+}

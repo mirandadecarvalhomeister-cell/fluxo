@@ -11,6 +11,7 @@ import Empty from './Empty';
 import { Icon } from './Icon';
 
 const LiveStage = lazy(() => import('./LiveStage'));
+const Arena = lazy(() => import('../games/arena/Arena'));
 
 const visibleChannels = (data) =>
   data.chans.filter(
@@ -456,6 +457,20 @@ export default function Connections() {
     actionsRef.current.clearRoom();
   }, [missingRoom]);
 
+  if (ui.arenaCode !== null && ui.arenaCode !== undefined) {
+    return (
+      <Suspense
+        fallback={
+          <div className="card" style={{ padding: 24 }}>
+            Carregando a Arena…
+          </div>
+        }
+      >
+        <Arena code={ui.arenaCode} />
+      </Suspense>
+    );
+  }
+
   if (currentRoom) return <Room channel={currentRoom} />;
 
   const visible = visibleChannels(data);
@@ -479,7 +494,7 @@ export default function Connections() {
       <div className="pagehead">
         <div>
           <h1>Conexões</h1>
-          <p className="muted">Canais e transmissões de quem você segue.</p>
+          <p className="muted">Canais, transmissões e jogos de quem você segue.</p>
         </div>
         <div className="row" style={{ flexWrap: 'wrap' }}>
           <button className="btn tonal" onClick={actions.openNewChannel}>
@@ -490,6 +505,22 @@ export default function Connections() {
           </button>
         </div>
       </div>
+
+      <section className="card arena-entry" style={{ marginBottom: 22 }}>
+        <div className="arena-entry-copy">
+          <span className="pill acc">
+            <Icon name="game" /> Jogos Online
+          </span>
+          <h3>ARENA DO CAOS</h3>
+          <p className="muted sm">
+            Batalha multiplayer real para 2–8 jogadores. Último sobrevivente,
+            salas públicas e privadas, ranking e resultados no Feed.
+          </p>
+        </div>
+        <button type="button" className="btn primary" onClick={() => actions.openArena('')}>
+          <Icon name="play" /> Jogar agora
+        </button>
+      </section>
 
       <section style={{ marginBottom: 22 }}>
         <h2 className="h2" style={{ marginBottom: 10 }}>

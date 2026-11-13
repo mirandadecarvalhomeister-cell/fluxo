@@ -17,6 +17,7 @@ const ATTACH_LABEL = {
   post: 'Publicação compartilhada',
   story: 'Resposta ao story',
   sticker: 'Figurinha',
+  arena: 'Convite para Arena do Caos',
 };
 
 const SWIPE_LIMIT = 58;
@@ -152,6 +153,24 @@ function StoryAttachment({ attachment }) {
   );
 }
 
+function ArenaAttachment({ attachment, onOpenArena }) {
+  const code = String(attachment.code || '').trim().toUpperCase();
+  return (
+    <button
+      type="button"
+      className="att-file arena"
+      onClick={() => code && onOpenArena?.(code)}
+      disabled={!code}
+    >
+      <Icon name="game" />
+      <span>
+        <strong>{attachment.title || 'Arena do Caos'}</strong>
+        <small>{code ? `Entrar na sala ${code}` : 'Sala indisponível'}</small>
+      </span>
+    </button>
+  );
+}
+
 function AudioMessage({ src }) {
   const audioRef = useRef(null);
   const [playing, setPlaying] = useState(false);
@@ -233,12 +252,15 @@ function AudioMessage({ src }) {
   );
 }
 
-function Attachment({ attachment, onOpen, onForward }) {
+function Attachment({ attachment, onOpen, onForward, onOpenArena }) {
   if (attachment.kind === 'post') {
     return <PostAttachment attachment={attachment} />;
   }
   if (attachment.kind === 'story') {
     return <StoryAttachment attachment={attachment} />;
+  }
+  if (attachment.kind === 'arena') {
+    return <ArenaAttachment attachment={attachment} onOpenArena={onOpenArena} />;
   }
   if (attachment.kind === 'sticker') {
     return (
@@ -497,11 +519,23 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia, onForw
               <TagText text={message.text} />
             </p>
           ) : null}
+          {(() => {
+            const match = !message.attachment && typeof message.text === 'string'
+              ? message.text.match(/\[\[arena:([A-Z0-9]{4,6})\]\]/i)
+              : null;
+            return match ? (
+              <Attachment
+                attachment={{ kind: 'arena', code: match[1].toUpperCase(), title: 'Arena do Caos' }}
+                onOpenArena={actions.openArena}
+              />
+            ) : null;
+          })()}
           {message.attachment ? (
             <Attachment
               attachment={message.attachment}
               onOpen={openMedia}
               onForward={forwardMessage}
+              onOpenArena={actions.openArena}
             />
           ) : null}
           <span className="meta">
@@ -669,24 +703,34 @@ function CameraCapture({ onClose, onCapture }) {
     }
   };
 
-  const openStream = async (next) => {
+  const openStream = async (next, { initial = false } = {}) => {
     setError('');
-    setReady(false);
+    if (initial) setReady(false);
+
+    const before = streamRef.current;
+    const beforeTrack = before?.getVideoTracks?.()[0];
+    const beforeSettings = beforeTrack?.getSettings?.() || {};
+    const currentId = beforeSettings.deviceId || null;
+    const currentFacing = beforeSettings.facingMode || facingRef.current;
+    const currentLabel = String(beforeTrack?.label || '');
+
+    // Depois da primeira permissão o navegador revela os rótulos e os
+    // deviceIds. Preferimos trocar pelo dispositivo físico exato, porque
+    // vários aparelhos ignoram facingMode e devolvem a mesma câmera.
     const cameras = await listCameras();
-    const currentId =
-      streamRef.current?.getVideoTracks?.()[0]?.getSettings?.().deviceId || null;
     const wantsRear = next === 'environment';
     const rank = (camera) => {
       const label = String(camera.label || '').toLowerCase();
-      const rear = /(back|rear|traseira|environment|trás|tras)/.test(label);
+      const rear = /(back|rear|traseira|environment|trás|tras|wide)/.test(label);
       const front = /(front|user|frontal|selfie)/.test(label);
       if (wantsRear) return rear ? 2 : front ? -2 : 0;
       return front ? 2 : rear ? -2 : 0;
     };
-    // Depois da primeira permissão o navegador revela os rótulos; usar o
-    // deviceId exato garante a troca real entre frontal e traseira.
-    const others = cameras
-      .filter((camera) => camera.deviceId && camera.deviceId !== currentId)
+    const candidates = cameras
+      .filter(
+        (camera) =>
+          camera.deviceId && (!currentId || camera.deviceId !== currentId)
+      )
       .sort((a, b) => rank(b) - rank(a));
 
     const high = {
@@ -694,7 +738,7 @@ function CameraCapture({ onClose, onCapture }) {
       height: { ideal: 1080 },
     };
     const attempts = [];
-    others.forEach((camera) => {
+    candidates.forEach((camera) => {
       attempts.push({ video: { deviceId: { exact: camera.deviceId }, ...high }, audio: true });
       attempts.push({ video: { deviceId: { exact: camera.deviceId } }, audio: true });
     });
@@ -702,35 +746,68 @@ function CameraCapture({ onClose, onCapture }) {
       { video: { facingMode: { exact: next }, ...high }, audio: true },
       { video: { facingMode: { exact: next } }, audio: true },
       { video: { facingMode: { ideal: next }, ...high }, audio: true },
-      { video: { facingMode: { ideal: next } }, audio: true },
-      { video: true, audio: true }
+      { video: { facingMode: { ideal: next } }, audio: true }
     );
+    if (initial || !currentId) attempts.push({ video: true, audio: true });
+
+    // Confirma que a nova faixa realmente veio de outra câmera. Sem essa
+    // checagem o navegador podia devolver a frontal de novo e o app apenas
+    // invertia o espelhamento, dando a impressão falsa de troca.
+    const actuallyChanged = (stream) => {
+      if (initial) return true;
+      const track = stream.getVideoTracks?.()[0];
+      if (!track) return false;
+      const settings = track.getSettings?.() || {};
+      if (currentId && settings.deviceId && settings.deviceId !== currentId) return true;
+      if (
+        currentFacing &&
+        settings.facingMode &&
+        settings.facingMode !== currentFacing
+      ) {
+        return true;
+      }
+      const label = String(track.label || '');
+      return Boolean(currentLabel && label && label !== currentLabel);
+    };
 
     let stream = null;
     for (const constraints of attempts) {
+      let candidate = null;
       try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-        break;
+        candidate = await navigator.mediaDevices.getUserMedia(constraints);
       } catch {
         /* tenta a próxima combinação */
+        continue;
       }
+      if (actuallyChanged(candidate)) {
+        stream = candidate;
+        break;
+      }
+      candidate.getTracks().forEach((track) => track.stop());
     }
+
     if (!stream) {
-      setError('Não foi possível acessar a câmera.');
+      setError(
+        initial
+          ? 'Não foi possível acessar a câmera.'
+          : 'Este dispositivo não tem outra câmera disponível.'
+      );
+      if (initial) setReady(false);
       return false;
     }
+
     stopStream();
     streamRef.current = stream;
-    facingRef.current = next;
-    setFacing(next);
     setZoom(1);
     setTorch(false);
     const track = stream.getVideoTracks()[0];
     const actualFacing = track?.getSettings?.().facingMode;
-    if (actualFacing === 'user' || actualFacing === 'environment') {
-      facingRef.current = actualFacing;
-      setFacing(actualFacing);
-    }
+    const resolvedFacing =
+      actualFacing === 'user' || actualFacing === 'environment'
+        ? actualFacing
+        : next;
+    facingRef.current = resolvedFacing;
+    setFacing(resolvedFacing);
     setTorchable(!!track?.getCapabilities?.().torch);
     if (videoRef.current) {
       videoRef.current.srcObject = stream;
@@ -743,7 +820,7 @@ function CameraCapture({ onClose, onCapture }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const ok = await openStream('user');
+      const ok = await openStream('user', { initial: true });
       if (!ok && !cancelled) setReady(false);
     })();
 
@@ -934,8 +1011,7 @@ function CameraCapture({ onClose, onCapture }) {
       return;
     }
     const next = facingRef.current === 'user' ? 'environment' : 'user';
-    const ok = await openStream(next);
-    if (!ok) setError('Não foi possível trocar a câmera.');
+    await openStream(next);
   };
 
   const toggleTorch = async () => {

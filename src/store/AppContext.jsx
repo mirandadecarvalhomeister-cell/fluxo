@@ -573,23 +573,36 @@ const demoAccounts = () => {
 
 const readHash = () => {
   const raw = (location.hash || '#feed').slice(1);
-  const [route, param] = raw.split('/');
+  const [route, param, extra] = raw.split('/');
   const valid = ['feed', 'perfil', 'mensagens', 'conexoes'].includes(route)
     ? route
     : 'feed';
   let room = null;
+  let arenaCode = null;
   if (valid === 'conexoes' && param) {
-    try {
-      room = decodeURIComponent(param);
-    } catch {
-      room = param;
+    if (param === 'arena') {
+      arenaCode = extra
+        ? (() => {
+            try {
+              return decodeURIComponent(extra).trim().toUpperCase();
+            } catch {
+              return extra.trim().toUpperCase();
+            }
+          })()
+        : '';
+    } else {
+      try {
+        room = decodeURIComponent(param);
+      } catch {
+        room = param;
+      }
     }
   }
-  return { route: valid, room };
+  return { route: valid, room, arenaCode };
 };
 
 const initialUi = () => {
-  const { route, room } = readHash();
+  const { route, room, arenaCode } = readHash();
   return {
     route,
     draft: {
@@ -608,6 +621,7 @@ const initialUi = () => {
     chatQ: '',
     typing: {},
     room,
+    arenaCode,
     chanFilter: 'all',
     myLive: null,
     authTab: 'in',
@@ -710,9 +724,11 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     const onHash = () => {
-      const { route, room } = readHash();
+      const { route, room, arenaCode } = readHash();
       setUi((u) =>
-        u.route === route && u.room === room ? u : { ...u, route, room }
+        u.route === route && u.room === room && u.arenaCode === arenaCode
+          ? u
+          : { ...u, route, room, arenaCode }
       );
       window.scrollTo(0, 0);
     };
@@ -1029,6 +1045,84 @@ export function AppProvider({ children }) {
         };
       });
     });
+  }, [session?.id, ui.room]);
+
+  // Reforço por polling para o canal aberto. O Realtime depende de a
+  // publicação estar habilitada nas tabelas; o polling garante que mensagens
+  // da live e o encerramento apareçam para quem assiste mesmo sem isso.
+  useEffect(() => {
+    if (!isSupabaseEnabled || !session?.id || !ui.room) return undefined;
+    const channelId = ui.room;
+    let cancelled = false;
+    let running = false;
+
+    const merge = async () => {
+      if (cancelled || running || document.hidden) return;
+      running = true;
+      try {
+        const [row, rows] = await Promise.all([
+          remote.fetchChannelSnapshot(channelId),
+          remote.fetchChannelMessages(channelId),
+        ]);
+        if (cancelled) return;
+        setData((cur) => {
+          if (!cur) return cur;
+          const channel = cur.chans.find((item) => item.id === channelId);
+          if (!channel) return cur;
+          let next = channel;
+          if (row) {
+            next = {
+              ...next,
+              name: row.name || next.name,
+              desc: row.description ?? next.desc,
+              kind: row.kind || next.kind,
+              live: !!row.is_live,
+              livekit: !!row.livekit,
+              title: row.title || '',
+              viewers: row.viewers || 0,
+              seed: row.seed || next.seed,
+            };
+          }
+          const known = new Set(next.msgs.map((item) => item.id));
+          const incoming = rows
+            .filter((item) => item && item.id && !known.has(item.id))
+            .map((item) => ({
+              id: item.id,
+              by: item.author_id === session.id ? 'me' : item.author_id,
+              text: item.text || '',
+              ts: item.created_at
+                ? new Date(item.created_at).getTime()
+                : Date.now(),
+            }));
+          if (incoming.length) {
+            next = {
+              ...next,
+              msgs: [...next.msgs, ...incoming].sort((a, b) => a.ts - b.ts),
+            };
+          }
+          return {
+            ...cur,
+            chans: cur.chans.map((item) =>
+              item.id === channelId ? next : item
+            ),
+          };
+        });
+      } finally {
+        running = false;
+      }
+    };
+
+    merge();
+    const timer = window.setInterval(merge, 4500);
+    const onVisible = () => {
+      if (!document.hidden) merge();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [session?.id, ui.room]);
 
   useEffect(() => {
@@ -2393,6 +2487,98 @@ export function AppProvider({ children }) {
     else if (result === 'error') toast('Não foi possível compartilhar.');
   }
 
+  // -------------------------------------------------------------------------
+  // Arena do Caos (Conexões → Jogos Online)
+  // -------------------------------------------------------------------------
+
+  function openArena(code = '') {
+    const clean = String(code || '').trim().toUpperCase();
+    const hash = clean
+      ? `#conexoes/arena/${encodeURIComponent(clean)}`
+      : '#conexoes/arena';
+    setUi((u) => ({
+      ...u,
+      route: 'conexoes',
+      room: null,
+      arenaCode: clean,
+    }));
+    if (location.hash !== hash) location.hash = hash;
+  }
+
+  function openArenaCode(code) {
+    openArena(code);
+  }
+
+  function closeArena() {
+    setUi((u) => ({ ...u, arenaCode: null }));
+    if (location.hash !== '#conexoes') location.hash = '#conexoes';
+  }
+
+  function inviteToArena(userId, code) {
+    const clean = String(code || '').trim().toUpperCase();
+    if (!userId || !clean) return false;
+    const chat = ensureChat(userId);
+    if (!chat) return false;
+    const meName = dataRef.current?.me?.name || 'Um amigo';
+    sendMessageTo(
+      chat.id,
+      `${meName} te chamou para a Arena do Caos!`,
+      {
+        kind: 'arena',
+        code: clean,
+        title: 'Arena do Caos',
+        host: meName,
+      }
+    );
+    toast('Convite enviado no chat');
+    return true;
+  }
+
+  function shareArenaResult(result = {}) {
+    const placement = Number(result.placement) || 0;
+    const total = Number(result.total) || 0;
+    const kills = Number(result.kills) || 0;
+    const damage = Number(result.damage) || 0;
+    const winner = result.winnerName || '';
+    const title =
+      placement === 1
+        ? '🏆 Venci a Arena do Caos!'
+        : placement > 0
+          ? `🎮 Fiquei em ${placement}º na Arena do Caos`
+          : '🎮 Joguei a Arena do Caos';
+    const lines = [title];
+    if (kills || damage) {
+      lines.push(`${kills} eliminação${kills === 1 ? '' : 'ões'} • ${damage} de dano`);
+    }
+    if (total) lines.push(`${total} jogadores na partida`);
+    if (placement !== 1 && winner) lines.push(`Campeão: ${winner}`);
+    if (result.code) lines.push(`Sala ${result.code}`);
+    const post = {
+      id: uid(),
+      by: 'me',
+      ts: Date.now(),
+      text: lines.join('\n'),
+      kind: 'text',
+      media: [],
+      src: undefined,
+      seed: undefined,
+      likes: 0,
+      liked: false,
+      myReaction: null,
+      reactionCounts: {},
+      saved: false,
+      commentsDisabled: false,
+      comments: [],
+      interactive: null,
+      interactions: [],
+      communityId: null,
+    };
+    setData((cur) => ({ ...cur, posts: [post, ...cur.posts] }));
+    if (sessionRef.current?.id) remote.savePost(post, sessionRef.current.id);
+    toast('Resultado compartilhado no Feed');
+    return post.id;
+  }
+
   function follow(id) {
     const cur = dataRef.current;
     if (!cur) return;
@@ -3616,6 +3802,11 @@ export function AppProvider({ children }) {
     setChanFilter: (chanFilter) => setUi((u) => ({ ...u, chanFilter })),
     openRoom,
     backRoom,
+    openArena,
+    openArenaCode,
+    closeArena,
+    inviteToArena,
+    shareArenaResult,
     clearRoom: () => {
       setUi((u) => ({ ...u, room: null }));
       if (location.hash !== '#conexoes') location.hash = '#conexoes';

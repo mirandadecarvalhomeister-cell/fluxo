@@ -71,6 +71,12 @@ export default function IconSprite() {
         <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2.5" /><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" /></symbol>
         <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.4 2.4 3.6 5.4 3.6 9S14.4 18.6 12 21c-2.4-2.4-3.6-5.4-3.6-9S9.6 5.4 12 3z" /></symbol>
         <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.1 5.4L20 10.5l-5.9 2.1L12 18l-2.1-5.4L4 10.5l5.9-2.1z" /><path d="M18.5 16.5 19 18l1.5.5L19 19l-.5 1.5L18 19l-1.5-.5L18 18z" /></symbol>
+        <symbol id="i-game" viewBox="0 0 24 24"><path d="M7 8h10a5 5 0 0 1 4.8 6.4l-1 3.4a2.4 2.4 0 0 1-4.2.8L15 16H9l-1.6 2.6a2.4 2.4 0 0 1-4.2-.8l-1-3.4A5 5 0 0 1 7 8z" /><path d="M8 11v3M6.5 12.5h3M15.5 11.5h.01M17.5 13.5h.01" /></symbol>
+        <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z" /><path d="M8 5H5a1 1 0 0 0-1 1v1a3 3 0 0 0 4 3M16 5h3a1 1 0 0 1 1 1v1a3 3 0 0 1-4 3" /><path d="M12 13v4M8 21h8M9.5 21c0-2 .8-3.5 2.5-4 1.7.5 2.5 2 2.5 4" /></symbol>
+        <symbol id="i-sword" viewBox="0 0 24 24"><path d="M14.5 3.5 21 3l-.5 6.5-9 9-4-4z" /><path d="m3 21 5.5-5.5M7 17l-1.5-1.5M6 21h1M3 18v1" /></symbol>
+        <symbol id="i-skull" viewBox="0 0 24 24"><path d="M12 3a8 8 0 0 0-5 14.2V20a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.8A8 8 0 0 0 12 3z" /><circle cx="9" cy="11" r="1.5" /><circle cx="15" cy="11" r="1.5" /><path d="M10 17h4M11 20v1M13 20v1" /></symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></symbol>
+        <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M15 9V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4" /></symbol>
       </defs>
     </svg>
   );

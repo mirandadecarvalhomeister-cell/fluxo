@@ -9,8 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@colyseus/schema": "^5.0.48",
+    "@colyseus/sdk": "^0.18.10",
     "@supabase/supabase-js": "^2.119.0",
     "livekit-client": "^2.23.0",
+    "phaser": "^3.90.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

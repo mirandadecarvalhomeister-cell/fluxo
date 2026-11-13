@@ -51,6 +51,17 @@ export async function getSession() {
   }
 }
 
+export async function getAccessToken() {
+  if (!enabled()) return null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token || null;
+  } catch (error) {
+    warn(error);
+    return null;
+  }
+}
+
 export function onAuthChange(callback) {
   if (!enabled()) return () => {};
   const { data } = supabase.auth.onAuthStateChange((event, session) =>
@@ -925,6 +936,48 @@ export async function deleteChannel(id) {
   }
 }
 
+// Consultas usadas como reforço das assinaturas Realtime. Se a publicação
+// Realtime ainda não foi aplicada no projeto, o canal aberto continua
+// recebendo mensagens e mudanças de estado por polling.
+export async function fetchChannelSnapshot(channelId) {
+  if (!enabled() || !channelId) return null;
+  try {
+    const { data, error } = await supabase
+      .from('channels')
+      .select('*')
+      .eq('id', channelId)
+      .maybeSingle();
+    if (error) {
+      warn(error);
+      return null;
+    }
+    return data || null;
+  } catch (error) {
+    warn(error);
+    return null;
+  }
+}
+
+export async function fetchChannelMessages(channelId, limit = 120) {
+  if (!enabled() || !channelId) return [];
+  try {
+    const { data, error } = await supabase
+      .from('channel_messages')
+      .select('*')
+      .eq('channel_id', channelId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) {
+      warn(error);
+      return [];
+    }
+    return (data || []).slice().reverse();
+  } catch (error) {
+    warn(error);
+    return [];
+  }
+}
+
 export async function addChannelMessage(message, channelId, uid) {
   if (!enabled()) return;
   try {
@@ -1282,3 +1335,139 @@ export async function uploadMedia(file, uid) {
     return null;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Arena do Caos: estatísticas, histórico e ranking lidos das tabelas reais
+// gravadas pelo servidor da Arena (game_matches / game_match_players).
+// ---------------------------------------------------------------------------
+
+const EMPTY_ARENA_STATS = {
+  matches: 0,
+  wins: 0,
+  kills: 0,
+  damage: 0,
+  best: null,
+  points: 0,
+};
+
+function arenaPoints(row) {
+  const placement = Number(row.placement) || 8;
+  return Math.max(0, 11 - placement) + (row.is_winner ? 5 : 0) + (Number(row.kills) || 0) * 2;
+}
+
+function aggregateArenaRows(rows) {
+  const stats = { ...EMPTY_ARENA_STATS };
+  rows.forEach((row) => {
+    stats.matches += 1;
+    if (row.is_winner) stats.wins += 1;
+    stats.kills += Number(row.kills) || 0;
+    stats.damage += Number(row.damage) || 0;
+    const placement = Number(row.placement) || 0;
+    if (placement > 0 && (stats.best === null || placement < stats.best)) {
+      stats.best = placement;
+    }
+    stats.points += arenaPoints(row);
+  });
+  return stats;
+}
+
+export async function loadArenaProfile(userId) {
+  if (!enabled() || !userId) {
+    return { stats: { ...EMPTY_ARENA_STATS }, weekly: { ...EMPTY_ARENA_STATS }, history: [], hasData: false };
+  }
+  try {
+    const rows = await safe(
+      supabase
+        .from('game_match_players')
+        .select('match_id,placement,kills,damage,survived_ms,is_winner,played_at')
+        .eq('user_id', userId)
+        .order('played_at', { ascending: false })
+        .limit(300)
+    );
+    const list = Array.isArray(rows) ? rows : [];
+    const weekStart = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const weeklyRows = list.filter(
+      (row) => new Date(row.played_at || 0).getTime() >= weekStart
+    );
+    const ids = [...new Set(list.slice(0, 12).map((row) => row.match_id).filter(Boolean))];
+    let matches = [];
+    if (ids.length) {
+      matches = await safe(
+        supabase
+          .from('game_matches')
+          .select('id,room_code,visibility,player_count,winner_id,winner_name,duration_ms,ended_at')
+          .in('id', ids)
+          .order('ended_at', { ascending: false })
+      );
+    }
+    const matchMap = new Map((matches || []).map((match) => [match.id, match]));
+    const history = list.slice(0, 12).map((row) => {
+      const match = matchMap.get(row.match_id) || {};
+      return {
+        matchId: row.match_id,
+        placement: row.placement || null,
+        kills: row.kills || 0,
+        damage: row.damage || 0,
+        survivedMs: row.survived_ms || 0,
+        isWinner: !!row.is_winner,
+        playedAt: new Date(row.played_at || Date.now()).getTime(),
+        playerCount: match.player_count || null,
+        durationMs: match.duration_ms || 0,
+        visibility: match.visibility || 'public',
+        winnerName: match.winner_name || '',
+      };
+    });
+    return {
+      stats: aggregateArenaRows(list),
+      weekly: aggregateArenaRows(weeklyRows),
+      history,
+      hasData: list.length > 0,
+    };
+  } catch (error) {
+    warn(error);
+    return { stats: { ...EMPTY_ARENA_STATS }, weekly: { ...EMPTY_ARENA_STATS }, history: [], hasData: false };
+  }
+}
+
+export async function loadArenaRanking(period = 'week') {
+  if (!enabled()) return [];
+  try {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    let query = supabase
+      .from('game_match_players')
+      .select('user_id,name,handle,placement,kills,is_winner,played_at')
+      .not('user_id', 'is', null)
+      .order('played_at', { ascending: false })
+      .limit(4000);
+    if (period === 'week') query = query.gte('played_at', since);
+    const rows = await safe(query);
+    const map = new Map();
+    (rows || []).forEach((row) => {
+      if (!row.user_id) return;
+      const entry =
+        map.get(row.user_id) || {
+          userId: row.user_id,
+          name: row.name || 'Jogador',
+          handle: row.handle || '',
+          matches: 0,
+          wins: 0,
+          kills: 0,
+          points: 0,
+        };
+      entry.matches += 1;
+      entry.wins += row.is_winner ? 1 : 0;
+      entry.kills += Number(row.kills) || 0;
+      entry.points += arenaPoints(row);
+      if (row.name) entry.name = row.name;
+      if (row.handle) entry.handle = row.handle;
+      map.set(row.user_id, entry);
+    });
+    return [...map.values()]
+      .sort((a, b) => b.points - a.points || b.wins - a.wins || b.kills - a.kills)
+      .slice(0, 50);
+  } catch (error) {
+    warn(error);
+    return [];
+  }
+}
+
