@@ -26,7 +26,7 @@ const answer = (by, text) => ({
 });
 const comment = (by, text) => ({ id: `${by}:c`, by, text, ts: now - 15 * 60_000 });
 
-test('Pulso prioriza conversa de conexões em vez de curtidas vazias', () => {
+test('Fluxo prioriza conversa de conexões em vez de curtidas vazias', () => {
   const connected = {
     id: 'a',
     by: 'friend',
@@ -59,7 +59,7 @@ test('Pulso prioriza conversa de conexões em vez de curtidas vazias', () => {
   assert.ok(ranked[0].pulse.score > ranked[1].pulse.score);
 });
 
-test('Pulso não altera as publicações originais e é determinístico', () => {
+test('Fluxo não altera as publicações originais e é determinístico', () => {
   const posts = [
     {
       id: 'p1',

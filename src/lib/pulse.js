@@ -244,7 +244,7 @@ export function pulseForPost(post, ctx = {}) {
   if (wave.stage !== 'quiet' && wave.stage !== 'starting') reasons.push(wave.label);
   else if (interest > 0.34) reasons.push('Ligado aos seus interesses');
   if (conversation > 0.8) reasons.push('Conversa em potencial');
-  if (!reasons.length) reasons.push('Descoberta pelo seu pulso');
+  if (!reasons.length) reasons.push('Descoberta pelo Fluxo');
 
   return {
     score: Math.round(score * 1000) / 1000,

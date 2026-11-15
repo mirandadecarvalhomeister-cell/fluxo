@@ -4,7 +4,7 @@ import { applyPulse, applyWaves } from './pulse';
 export const FEED_MODES = [
   {
     id: 'forYou',
-    label: 'Fluxo Pulso',
+    label: 'Fluxo',
     hint: 'Recomendações por interesses, conexões e conversas — não só popularidade.',
   },
   {
