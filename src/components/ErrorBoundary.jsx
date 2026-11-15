@@ -12,7 +12,7 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('FluXo travou:', error, info);
+    console.error('Fluxo travou:', error, info);
   }
 
   render() {

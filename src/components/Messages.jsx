@@ -1080,7 +1080,7 @@ function CameraCapture({ onClose, onCapture }) {
             <Icon name="x" />
           </button>
           <span className={`cam-timer${recording ? ' on' : ''}`}>
-            {recording ? `● ${fmtTime(seconds)}` : 'FluXo Câmera'}
+            {recording ? `● ${fmtTime(seconds)}` : 'Fluxo Câmera'}
           </span>
           <div className="cam-top-actions">
             {torchable ? (

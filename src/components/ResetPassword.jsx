@@ -12,7 +12,7 @@ export default function ResetPassword() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    document.title = 'Nova senha · FluXo';
+    document.title = 'Nova senha · Fluxo';
   }, []);
 
   async function submit(event) {

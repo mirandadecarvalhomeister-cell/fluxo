@@ -34,7 +34,7 @@ export default function Auth() {
   }, [ui.authTab]);
 
   useEffect(() => {
-    document.title = 'Entrar · FluXo';
+    document.title = 'Entrar · Fluxo';
     const raw = window.location.hash.startsWith('#')
       ? window.location.hash.slice(1)
       : '';

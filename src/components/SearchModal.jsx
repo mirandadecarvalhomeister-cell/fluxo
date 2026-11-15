@@ -313,7 +313,7 @@ export default function SearchModal() {
   return (
     <div className="searchmodal">
       <div className="search-head">
-        <h2>Radar FluXo</h2>
+        <h2>Radar Fluxo</h2>
         <button
           type="button"
           className="icon-btn"
@@ -331,7 +331,7 @@ export default function SearchModal() {
           type="search"
           value={query}
           placeholder="Buscar pessoas, publicações, comunidades e assuntos"
-          aria-label="Buscar no FluXo"
+          aria-label="Buscar no Fluxo"
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter') remember(query);

@@ -38,7 +38,8 @@ export function LogoMark({ size = 32 }) {
   return (
     <img
       src={`/assets/fluxo-icon.png?v=${ASSET_VERSION}`}
-      alt="FluXo"
+      alt=""
+      aria-hidden="true"
       className="fluxo-icon"
       width={size}
       height={size}
@@ -49,34 +50,12 @@ export function LogoMark({ size = 32 }) {
 }
 
 export function Logo({ size = 32, className = 'logo' }) {
-  const [failed, setFailed] = useState(false);
-  const width = Math.round(size * 3.2);
-  if (!failed) {
-    return (
-      <div className={className}>
-        <img
-          src={`/assets/fluxo-logo.png?v=${ASSET_VERSION}`}
-          alt="FluXo"
-          className="fluxo-logo logo-for-dark"
-          width={width}
-          style={{ width }}
-          onError={() => setFailed(true)}
-        />
-        <img
-          src={`/assets/fluxo-logo-dark.png?v=${ASSET_VERSION}`}
-          alt="FluXo"
-          className="fluxo-logo logo-for-light"
-          width={width}
-          style={{ width }}
-          onError={() => setFailed(true)}
-        />
-      </div>
-    );
-  }
   return (
     <div className={className}>
       <LogoMark size={size} />
-      <span>FluXo</span>
+      <span className="logo-word" style={{ fontSize: Math.round(size * 0.68) }}>
+        Fluxo
+      </span>
     </div>
   );
 }

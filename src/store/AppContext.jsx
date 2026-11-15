@@ -1057,7 +1057,7 @@ export function AppProvider({ children }) {
         document.hidden &&
         row.sender_id !== session.id
       ) {
-        showDeviceNotification('Nova mensagem no FluXo', {
+        showDeviceNotification('Nova mensagem no Fluxo', {
           body: row.text || 'Você recebeu um anexo.',
           tag: `dm:${row.sender_id}`,
           data: { url: '/#mensagens' },
@@ -1104,7 +1104,7 @@ export function AppProvider({ children }) {
       const person = dataRef.current?.users?.[followerId];
       const label = person?.name || 'Alguém';
       if (settings.notifications && document.hidden) {
-        showDeviceNotification('Novo seguidor no FluXo', {
+        showDeviceNotification('Novo seguidor no Fluxo', {
           body: `${label} começou a seguir você`,
           tag: `follow:${followerId}`,
           data: { url: '/#perfil' },
@@ -1491,7 +1491,7 @@ export function AppProvider({ children }) {
       if (!settings.notifications || !interested) return;
       if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
       try {
-        new Notification('Live no ar no FluXo', {
+        new Notification('Live no ar no Fluxo', {
           body: `${payload.new.title || payload.new.name || 'Um canal'} está ao vivo agora.`,
           icon: '/assets/icon-192.png',
           tag: `live-${row.id}`,
@@ -1772,7 +1772,7 @@ export function AppProvider({ children }) {
         ? cur.posts.find((p) => p.id === notification.postId)
         : null;
       try {
-        new Notification('FluXo', {
+        new Notification('Fluxo', {
           body: `${actor?.name || 'Alguém'} ${notificationText(notification, post)}`,
           icon: '/assets/icon-192.png',
           tag: notification.id,
@@ -2005,7 +2005,7 @@ export function AppProvider({ children }) {
     if (!skipLiveGuard && live && route !== 'conexoes') {
       requestConfirm({
         title: 'Encerrar a live?',
-        text: 'Para sair do palco e navegar pelo FluXo, a transmissão precisa ser encerrada.',
+        text: 'Para sair do palco e navegar pelo Fluxo, a transmissão precisa ser encerrada.',
         confirmLabel: 'Encerrar e sair',
         tone: 'hot',
         action: () => {
@@ -2787,9 +2787,9 @@ export function AppProvider({ children }) {
     if (!post) return;
     const url = location.href.split('#')[0] + '#feed';
     const text = post.text
-      ? `${post.text}\n\nVeja no FluXo:`
-      : 'Veja esta publicação no FluXo:';
-    const result = await shareLink({ title: 'FluXo', text, url });
+      ? `${post.text}\n\nVeja no Fluxo:`
+      : 'Veja esta publicação no Fluxo:';
+    const result = await shareLink({ title: 'Fluxo', text, url });
     if (result === 'copied') toast('Link da publicação copiado');
     else if (result === 'shared') toast('Publicação compartilhada');
     else if (result === 'error') toast('Não foi possível compartilhar.');
@@ -2872,9 +2872,9 @@ export function AppProvider({ children }) {
     const url =
       location.href.split('#')[0] + '#conexoes/' + encodeURIComponent(id);
     const text = channel.live
-      ? `Assista à live "${channel.title || channel.name}" no FluXo:`
-      : `Participe do canal "${channel.name}" no FluXo:`;
-    const result = await shareLink({ title: 'FluXo', text, url });
+      ? `Assista à live "${channel.title || channel.name}" no Fluxo:`
+      : `Participe do canal "${channel.name}" no Fluxo:`;
+    const result = await shareLink({ title: 'Fluxo', text, url });
     if (result === 'copied') toast('Link do canal copiado');
     else if (result === 'shared') toast('Canal compartilhado');
     else if (result === 'error') toast('Não foi possível compartilhar.');

@@ -1,4 +1,4 @@
-const CACHE = 'fluxo-v6';
+const CACHE = 'fluxo-v7';
 const CORE = [
   '/',
   '/manifest.webmanifest',
@@ -8,7 +8,6 @@ const CORE = [
   '/assets/tab-icon.png',
   '/assets/apple-touch-icon.png',
   '/assets/fluxo-icon.png',
-  '/assets/fluxo-logo.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -91,10 +90,10 @@ self.addEventListener('push', (event) => {
   } catch {
     payload = { body: event.data ? event.data.text() : '' };
   }
-  const title = payload.title || 'FluXo';
+  const title = payload.title || 'Fluxo';
   event.waitUntil(
     self.registration.showNotification(title, {
-      body: payload.body || 'Você tem uma novidade no FluXo.',
+      body: payload.body || 'Você tem uma novidade no Fluxo.',
       icon: '/assets/icon-192.png',
       badge: '/assets/icon-192.png',
       vibrate: [90, 45, 120],

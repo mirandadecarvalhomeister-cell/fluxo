@@ -1,5 +1,5 @@
 -- Notificações em tempo real: publica curtidas, seguidores e comentários
--- no canal realtime do Supabase para o sino do FluXo funcionar ao vivo.
+-- no canal realtime do Supabase para o sino do Fluxo funcionar ao vivo.
 -- Execute este script no SQL Editor do projeto Supabase.
 
 do $$

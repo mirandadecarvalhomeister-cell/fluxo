@@ -135,7 +135,7 @@ export default function Shell() {
   );
 
   useEffect(() => {
-    document.title = `${TITLES[ui.route] || 'FluXo'} · FluXo`;
+    document.title = `${TITLES[ui.route] || 'Fluxo'} · Fluxo`;
   }, [ui.route]);
 
   useEffect(() => {
@@ -317,7 +317,7 @@ export default function Shell() {
           <button
             className="search-trigger"
             onClick={actions.openSearch}
-            aria-label="Buscar no FluXo (atalho /)"
+            aria-label="Buscar no Fluxo (atalho /)"
           >
             <Icon name="search" />
             <span>Buscar</span>

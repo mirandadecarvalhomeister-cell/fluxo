@@ -11,7 +11,7 @@ sempre ligado; o Caddy cuida do certificado e do upgrade de WebSocket.
 ## Arquitetura
 
 ```
-Navegador (FluXo, https://)
+Navegador (Fluxo, https://)
         │  wss://arena.seudominio.com  (WebSocket seguro)
         ▼
    Caddy :443  ──proxy──►  Node/Colyseus 127.0.0.1:2567
@@ -20,7 +20,7 @@ Navegador (FluXo, https://)
         └── portas 80/443 públicas
 ```
 
-> **Importante:** como o FluXo roda em HTTPS, o jogo precisa de **`wss://`**.
+> **Importante:** como o Fluxo roda em HTTPS, o jogo precisa de **`wss://`**.
 > Navegador bloqueia `ws://` (inseguro) em página HTTPS. Por isso o Caddy + domínio.
 
 ## O que você precisa ter
@@ -29,7 +29,7 @@ Navegador (FluXo, https://)
 - **Domínio ou subdomínio** para a Arena (ex.: `arena.seudominio.com`).
   Sem domínio? Veja "Alternativas sem domínio" no fim.
 - As chaves do Supabase: `SUPABASE_URL`, `SUPABASE_ANON_KEY` e
-  `SUPABASE_SERVICE_ROLE_KEY` (as mesmas do projeto FluXo).
+  `SUPABASE_SERVICE_ROLE_KEY` (as mesmas do projeto Fluxo).
 
 ---
 
@@ -95,7 +95,7 @@ node -v && caddy version
 
 ## Passo 5 — Copiar o servidor
 
-Do seu computador (na pasta do FluXo), envie a pasta `server/` para a VM:
+Do seu computador (na pasta do Fluxo), envie a pasta `server/` para a VM:
 
 ```bash
 # rode no SEU computador (troque IP e chave)
@@ -158,9 +158,9 @@ curl -s https://arena.seudominio.com/arena/rooms
 # esperado: {"rooms":[]}
 ```
 
-## Passo 9 — Configurar o cliente (FluXo)
+## Passo 9 — Configurar o cliente (Fluxo)
 
-No `.env` do projeto FluXo (e no painel do host do site, ex. Netlify):
+No `.env` do projeto Fluxo (e no painel do host do site, ex. Netlify):
 
 ```env
 VITE_ARENA_URL=wss://arena.seudominio.com

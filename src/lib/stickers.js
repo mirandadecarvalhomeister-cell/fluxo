@@ -3,7 +3,7 @@
 export const STICKER_PACKS = [
   {
     id: 'fluxo',
-    label: 'FluXo',
+    label: 'Fluxo',
     icon: '🫧',
     stickers: ['🫧', '🌊', '✨', '💜', '🔥', '🚀', '🌈', '🪩', '🎧', '💫', '🌙', '⚡'],
   },

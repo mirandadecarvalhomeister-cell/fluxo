@@ -1487,7 +1487,7 @@ function SharePostModal({ modal }) {
           })
         ) : (
           <p className="muted sm">
-            Nenhuma outra conta por aqui ainda. Convide alguém para o FluXo.
+            Nenhuma outra conta por aqui ainda. Convide alguém para o Fluxo.
           </p>
         )}
       </div>
@@ -1554,7 +1554,7 @@ function NewChatModal() {
           ))
         ) : (
           <p className="muted sm">
-            Nenhuma outra conta por aqui ainda. Quando alguém entrar no FluXo, aparece nesta
+            Nenhuma outra conta por aqui ainda. Quando alguém entrar no Fluxo, aparece nesta
             lista.
           </p>
         )}
@@ -1944,7 +1944,7 @@ function SettingsModal() {
       </section>
 
       <p className="muted sm settings-foot">
-        FluXo 1.0.0 · {mode === 'supabase' ? 'Conectado' : 'Modo local'} · ©{' '}
+        Fluxo 1.0.0 · {mode === 'supabase' ? 'Conectado' : 'Modo local'} · ©{' '}
         {new Date().getFullYear()}
       </p>
     </div>
@@ -2022,7 +2022,7 @@ function ObsModal({ modal }) {
     <div className="obs-modal">
       <p className="muted">
         Transmita pelo OBS no computador e mantenha o chat, os corações e as
-        notificações do palco funcionando no FluXo.
+        notificações do palco funcionando no Fluxo.
       </p>
       <span className={`obs-status${ready ? ' on' : ''}`}>
         <Icon name={ready ? 'check' : 'radio'} />{' '}
@@ -2107,7 +2107,7 @@ function ObsModal({ modal }) {
             o jogo ou a câmera.
           </li>
           <li>
-            Inicie a transmissão no OBS e abra o palco no FluXo para conferir.
+            Inicie a transmissão no OBS e abra o palco no Fluxo para conferir.
           </li>
         </ol>
         <p className="muted sm">
@@ -2345,7 +2345,7 @@ const MODAL_LABELS = {
   obs: 'Transmitir com OBS',
   profilelist: 'Conexões',
   user: 'Perfil',
-  search: 'Radar FluXo',
+  search: 'Radar Fluxo',
 };
 
 const FOCUSABLE =

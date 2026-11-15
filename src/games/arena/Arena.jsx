@@ -132,7 +132,7 @@ function InviteList({ code }) {
       <SectionHead
         icon="users"
         title="Convidar amigos"
-        note="O convite chega no chat do FluXo."
+        note="O convite chega no chat do Fluxo."
       />
       <div className="arena-invite-link">
         <code>{code}</code>

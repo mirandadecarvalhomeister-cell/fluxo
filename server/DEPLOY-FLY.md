@@ -9,7 +9,7 @@ domínio próprio, Caddy nem abrir portas.
 ## Arquitetura
 
 ```
-Navegador (FluXo, https://vibefluxo.com)
+Navegador (Fluxo, https://vibefluxo.com)
         │  wss://fluxo-arena.fly.dev  (WebSocket seguro)
         ▼
    Fly.io proxy ──► Node/Colyseus 0.0.0.0:2567
@@ -17,7 +17,7 @@ Navegador (FluXo, https://vibefluxo.com)
         └──► Supabase (auth + resultados das partidas)
 ```
 
-> Como o FluXo roda em HTTPS, o jogo exige **`wss://`**. O proxy do Fly.io cuida
+> Como o Fluxo roda em HTTPS, o jogo exige **`wss://`**. O proxy do Fly.io cuida
 > do certificado TLS e do upgrade de WebSocket automaticamente.
 
 ## Arquivos
@@ -76,7 +76,7 @@ curl https://fluxo-arena.fly.dev/arena/rooms
 # esperado: {"rooms":[]}
 ```
 
-## Passo 6 — Cliente (FluXo)
+## Passo 6 — Cliente (Fluxo)
 
 No `.env` local e nas variáveis de ambiente do Cloudflare Pages:
 
