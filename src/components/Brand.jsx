@@ -3,7 +3,7 @@ import { logo } from '../lib/art';
 import { splitTags } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 
-const ASSET_VERSION = '5';
+const ASSET_VERSION = '6';
 
 // Selo de conta oficial. Hoje apenas o perfil @fluxooficial é verificado.
 export const OFFICIAL_HANDLE = 'fluxooficial';
