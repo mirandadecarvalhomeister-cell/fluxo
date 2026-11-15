@@ -10,6 +10,7 @@ import tecnologia from './tecnologia.js';
 import literatura from './literatura.js';
 import artes from './artes.js';
 import games from './games.js';
+import animes from './animes.js';
 import gerais from './gerais.js';
 
 export const CATEGORIES = [
@@ -24,5 +25,6 @@ export const CATEGORIES = [
   { id: 'literatura', name: 'Literatura', emoji: '📚', color: '#c9a227', questions: literatura },
   { id: 'artes', name: 'Artes', emoji: '🎨', color: '#ff6ec7', questions: artes },
   { id: 'games', name: 'Games', emoji: '🎮', color: '#8a7dff', questions: games },
+  { id: 'animes', name: 'Animes', emoji: '🍥', color: '#ff4d6d', questions: animes },
   { id: 'gerais', name: 'Conhecimentos Gerais', emoji: '🧠', color: '#ffc93c', questions: gerais },
 ];
