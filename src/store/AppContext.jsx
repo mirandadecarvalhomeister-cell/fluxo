@@ -21,9 +21,20 @@ import {
 } from '../lib/media';
 import {
   DEFAULT_REACTIONS,
+  DEFAULT_SCHEDULE,
+  MAX_SCHEDULE_MINUTES,
+  MIN_SCHEDULE_MINUTES,
+  SCHEDULE_UNITS,
   buildInteractive,
+  isLocked,
+  isSchedulable,
+  livePollStatus,
+  myInteraction,
   normalizeInteractive,
   optionsForFormat,
+  resultsReleased,
+  scheduleFromDraft,
+  scheduleOf,
   syncImageVoteOptions,
 } from '../lib/interactive';
 import { COVERS, STATE_VERSION, newState } from '../lib/seed';
@@ -96,6 +107,43 @@ function writeCache(email, data) {
   }
 }
 
+function localPoll(row, myId) {
+  if (!row) return null;
+  let options = row.options || [];
+  if (typeof options === 'string') {
+    try {
+      options = JSON.parse(options);
+    } catch {
+      options = [];
+    }
+  }
+  return {
+    id: row.id,
+    channelId: row.channel_id || row.channelId,
+    createdBy: row.created_by === myId || row.createdBy === myId ? 'me' : row.created_by || row.createdBy,
+    question: row.question || '',
+    options: Array.isArray(options) ? options : [],
+    mode: row.mode === 'fluxo' ? 'fluxo' : 'chat',
+    status: row.status === 'closed' ? 'closed' : 'open',
+    postId: row.post_id || row.postId || null,
+    closesAt: row.closes_at
+      ? new Date(row.closes_at).getTime()
+      : row.closesAt || null,
+    closedAt: row.closed_at
+      ? new Date(row.closed_at).getTime()
+      : row.closedAt || null,
+    ts: row.created_at
+      ? new Date(row.created_at).getTime()
+      : row.ts || Date.now(),
+    votes: (row.votes || []).map((vote) => ({
+      id: vote.id || `${vote.poll_id || row.id}:${vote.user_id}`,
+      by: vote.user_id === myId ? 'me' : vote.user_id || vote.by,
+      optionId: vote.option_id || vote.optionId || null,
+      ts: vote.created_at ? new Date(vote.created_at).getTime() : vote.ts || Date.now(),
+    })),
+  };
+}
+
 function mergeWorkspace(base, ws, user) {
   const uidv = user.id;
   const asPerson = (id) => (id === uidv ? 'me' : id);
@@ -165,6 +213,34 @@ function mergeWorkspace(base, ws, user) {
     });
   });
 
+  // Enquetes de live no modo Fluxo: os votos do chat são a fonte principal e
+  // entram também na publicação, para feed e chat mostrarem o mesmo resultado.
+  const liveVotesByPoll = new Map();
+  (ws.channelPollVotes || []).forEach((row) => {
+    if (!row?.poll_id) return;
+    if (!liveVotesByPoll.has(row.poll_id)) liveVotesByPoll.set(row.poll_id, []);
+    liveVotesByPoll.get(row.poll_id).push({
+      id: row.id || `${row.poll_id}:${row.user_id}`,
+      by: asPerson(row.user_id),
+      kind: 'vote',
+      optionId: row.option_id || null,
+      text: '',
+      ts: new Date(row.created_at || Date.now()).getTime(),
+    });
+  });
+
+  const postInteractions = (postId, interactive) => {
+    let rows = (interactionsByPost[postId] || []).slice();
+    const pollId = interactive?.live?.pollId;
+    if (!pollId) return rows.sort((a, b) => a.ts - b.ts);
+    const votes = new Map(
+      rows.filter((row) => row.kind === 'vote').map((row) => [row.by, row])
+    );
+    (liveVotesByPoll.get(pollId) || []).forEach((vote) => votes.set(vote.by, vote));
+    rows = [...rows.filter((row) => row.kind !== 'vote'), ...votes.values()];
+    return rows.sort((a, b) => a.ts - b.ts);
+  };
+
   const reactionCountsByPost = {};
   (ws.likeRows || []).forEach((row) => {
     if (!row?.post_id) return;
@@ -191,6 +267,7 @@ function mergeWorkspace(base, ws, user) {
       const isStory =
         p.kind === 'story' || String(p.seed || '').startsWith('story:');
       const normalizedInteractive = normalizeInteractive(p.interactive);
+      const interactionRows = postInteractions(p.id, normalizedInteractive);
       return {
         id: p.id,
         by: asPerson(p.author_id),
@@ -215,9 +292,9 @@ function mergeWorkspace(base, ws, user) {
               invited: normalizedInteractive.invited.map(asPerson),
             }
           : null,
-        interactions: (interactionsByPost[p.id] || []).sort((a, b) => a.ts - b.ts),
-        views: (interactionsByPost[p.id] || []).filter((row) => row.kind === 'view').length,
-        viewed: (interactionsByPost[p.id] || []).some(
+        interactions: interactionRows,
+        views: interactionRows.filter((row) => row.kind === 'view').length,
+        viewed: interactionRows.some(
           (row) => row.kind === 'view' && row.by === 'me'
         ),
       };
@@ -320,6 +397,18 @@ function mergeWorkspace(base, ws, user) {
     (reactsByMsg[r.message_id] ||= {})[r.emoji] = true;
   });
 
+  const pollVotesByPoll = new Map();
+  (ws.channelPollVotes || []).forEach((row) => {
+    if (!row?.poll_id) return;
+    if (!pollVotesByPoll.has(row.poll_id)) pollVotesByPoll.set(row.poll_id, []);
+    pollVotesByPoll.get(row.poll_id).push({
+      id: row.id || `${row.poll_id}:${row.user_id}`,
+      by: asPerson(row.user_id),
+      optionId: row.option_id || null,
+      ts: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+    });
+  });
+
   const chans = (ws.allChannels || [])
     .map((c) => ({
       id: c.id,
@@ -334,6 +423,33 @@ function mergeWorkspace(base, ws, user) {
       viewers: c.viewers || 0,
       joined: ws.chanMembers.has(c.id),
       seed: c.seed || c.id + '-palco',
+      polls: (ws.channelPolls || [])
+        .filter((poll) => poll.channel_id === c.id)
+        .map((poll) => {
+          let options = poll.options || [];
+          if (typeof options === 'string') {
+            try {
+              options = JSON.parse(options);
+            } catch {
+              options = [];
+            }
+          }
+          return {
+            id: poll.id,
+            channelId: poll.channel_id,
+            createdBy: asPerson(poll.created_by),
+            question: poll.question || '',
+            options: Array.isArray(options) ? options : [],
+            mode: poll.mode === 'fluxo' ? 'fluxo' : 'chat',
+            status: poll.status === 'closed' ? 'closed' : 'open',
+            postId: poll.post_id || null,
+            closesAt: poll.closes_at ? new Date(poll.closes_at).getTime() : null,
+            closedAt: poll.closed_at ? new Date(poll.closed_at).getTime() : null,
+            ts: poll.created_at ? new Date(poll.created_at).getTime() : Date.now(),
+            votes: (pollVotesByPoll.get(poll.id) || []).slice(),
+          };
+        })
+        .sort((a, b) => b.ts - a.ts),
       msgs: (ws.chanMsgs || [])
         .filter((m) => m.channel_id === c.id)
         .map((m) => {
@@ -579,6 +695,7 @@ const readHash = () => {
     : 'feed';
   let room = null;
   let arenaCode = null;
+  let quizOpen = false;
   if (valid === 'conexoes' && param) {
     if (param === 'arena') {
       arenaCode = extra
@@ -590,6 +707,8 @@ const readHash = () => {
             }
           })()
         : '';
+    } else if (param === 'quiz') {
+      quizOpen = true;
     } else {
       try {
         room = decodeURIComponent(param);
@@ -598,11 +717,11 @@ const readHash = () => {
       }
     }
   }
-  return { route: valid, room, arenaCode };
+  return { route: valid, room, arenaCode, quizOpen };
 };
 
 const initialUi = () => {
-  const { route, room, arenaCode } = readHash();
+  const { route, room, arenaCode, quizOpen } = readHash();
   return {
     route,
     draft: {
@@ -613,6 +732,8 @@ const initialUi = () => {
       reactions: DEFAULT_REACTIONS,
       invited: [],
       communityId: null,
+      schedule: DEFAULT_SCHEDULE,
+      live: null,
     },
     open: {},
     profTab: 'posts',
@@ -622,6 +743,7 @@ const initialUi = () => {
     typing: {},
     room,
     arenaCode,
+    quizOpen,
     chanFilter: 'all',
     myLive: null,
     authTab: 'in',
@@ -641,6 +763,7 @@ export function AppProvider({ children }) {
   const [data, setData] = useState(null);
   const [ui, setUi] = useState(initialUi);
   const [ready, setReady] = useState(false);
+  const [resultsTick, setResultsTick] = useState(0);
   const [session, setSession] = useState(null);
   const [recovery, setRecovery] = useState(isRecoveryLink);
   const [toastMsg, setToastMsg] = useState('');
@@ -663,6 +786,8 @@ export function AppProvider({ children }) {
   const typingTimersRef = useRef({});
   const lastTypingRef = useRef({});
   const viewedRef = useRef(new Set());
+  const resultsNotifiedRef = useRef(new Set());
+  const resultsHydratedRef = useRef(new Set());
   uiRef.current = ui;
   dataRef.current = data;
   sessionRef.current = session;
@@ -724,11 +849,14 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     const onHash = () => {
-      const { route, room, arenaCode } = readHash();
+      const { route, room, arenaCode, quizOpen } = readHash();
       setUi((u) =>
-        u.route === route && u.room === room && u.arenaCode === arenaCode
+        u.route === route &&
+        u.room === room &&
+        u.arenaCode === arenaCode &&
+        u.quizOpen === quizOpen
           ? u
-          : { ...u, route, room, arenaCode }
+          : { ...u, route, room, arenaCode, quizOpen }
       );
       window.scrollTo(0, 0);
     };
@@ -1060,9 +1188,10 @@ export function AppProvider({ children }) {
       if (cancelled || running || document.hidden) return;
       running = true;
       try {
-        const [row, rows] = await Promise.all([
+        const [row, rows, pollRows] = await Promise.all([
           remote.fetchChannelSnapshot(channelId),
           remote.fetchChannelMessages(channelId),
+          remote.fetchChannelPolls(channelId),
         ]);
         if (cancelled) return;
         setData((cur) => {
@@ -1100,6 +1229,17 @@ export function AppProvider({ children }) {
               msgs: [...next.msgs, ...incoming].sort((a, b) => a.ts - b.ts),
             };
           }
+          const incomingPolls = (pollRows || [])
+            .map((poll) => localPoll(poll, session.id))
+            .filter(Boolean);
+          if (incomingPolls.length) {
+            const map = new Map((next.polls || []).map((poll) => [poll.id, poll]));
+            incomingPolls.forEach((poll) => map.set(poll.id, poll));
+            next = {
+              ...next,
+              polls: [...map.values()].sort((a, b) => b.ts - a.ts),
+            };
+          }
           return {
             ...cur,
             chans: cur.chans.map((item) =>
@@ -1124,6 +1264,172 @@ export function AppProvider({ children }) {
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [session?.id, ui.room]);
+
+  // Enquetes da live: Realtime + polling mantêm chat e feed sincronizados.
+  useEffect(() => {
+    if (!isSupabaseEnabled || !session?.id || !ui.room) return undefined;
+    const channelId = ui.room;
+    let cancelled = false;
+    let timer = null;
+    const refresh = async () => {
+      const rows = await remote.fetchChannelPolls(channelId);
+      if (cancelled) return;
+      const polls = (rows || []).map((row) => localPoll(row, session.id)).filter(Boolean);
+      if (!polls.length) return;
+      setData((cur) => {
+        if (!cur) return cur;
+        const channel = cur.chans.find((item) => item.id === channelId);
+        if (!channel) return cur;
+        const map = new Map((channel.polls || []).map((poll) => [poll.id, poll]));
+        polls.forEach((poll) => map.set(poll.id, poll));
+        return {
+          ...cur,
+          chans: cur.chans.map((item) =>
+            item.id === channelId
+              ? { ...item, polls: [...map.values()].sort((a, b) => b.ts - a.ts) }
+              : item
+          ),
+        };
+      });
+    };
+    // O Realtime cobre o uso normal. A verificação periódica garante que, quando
+    // o prazo termina, os votos liberados apareçam mesmo sem novo evento.
+    const interval = window.setInterval(refresh, 10_000);
+    const unsubscribe = remote.subscribeChannelPolls(channelId, () => {
+      if (timer) clearTimeout(timer);
+      timer = window.setTimeout(refresh, 350);
+    });
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      window.clearInterval(interval);
+      unsubscribe();
+    };
+  }, [session?.id, ui.room]);
+
+  // Avisa uma única vez quando uma publicação programada libera resultados.
+  // O que já foi avisado fica no navegador para não repetir a cada abertura.
+  useEffect(() => {
+    const key = `fluxo:results-notified:${session?.id || 'local'}`;
+    try {
+      const raw = window.localStorage.getItem(key);
+      const list = raw ? JSON.parse(raw) : [];
+      resultsNotifiedRef.current = new Set(Array.isArray(list) ? list : []);
+    } catch {
+      resultsNotifiedRef.current = new Set();
+    }
+    resultsHydratedRef.current = new Set();
+  }, [session?.id]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setResultsTick((value) => value + 1), 15_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!data) return;
+    const now = Date.now();
+    const key = `fluxo:results-notified:${session?.id || 'local'}`;
+    const persist = () => {
+      try {
+        window.localStorage.setItem(
+          key,
+          JSON.stringify([...resultsNotifiedRef.current].slice(-500))
+        );
+      } catch {
+        /* armazenamento indisponível */
+      }
+    };
+    const due = [];
+    (data.posts || []).forEach((post) => {
+      const interactive = normalizeInteractive(post.interactive);
+      const schedule = scheduleOf(interactive);
+      if (!schedule || !resultsReleased(interactive, now)) return;
+      if (resultsNotifiedRef.current.has(post.id)) return;
+      // Janela de 24h: quem estava offline ainda recebe uma vez; publicações
+      // muito antigas não geram enxurrada de avisos.
+      if (!schedule.resultsAt || now - schedule.resultsAt > 24 * 3_600_000) {
+        resultsNotifiedRef.current.add(post.id);
+        persist();
+        return;
+      }
+      const mine =
+        post.by === 'me' ||
+        (post.interactions || []).some(
+          (row) => row.by === 'me' && row.kind !== 'view'
+        );
+      if (!mine) return;
+      resultsNotifiedRef.current.add(post.id);
+      persist();
+      due.push(post);
+    });
+    due.slice(0, 2).forEach((post) => {
+      const label = String(post.text || 'Sua experiência interativa').slice(0, 70);
+      toast(`Resultados disponíveis: ${label}`);
+      if (uiRef.current.settings?.notifications) {
+        showDeviceNotification('Resultados disponíveis no Fluxo', {
+          body: label,
+          tag: `fluxo-results-${post.id}`,
+        });
+      }
+    });
+  }, [data, toast, session?.id, resultsTick]);
+
+  // Quando um prazo termina, recarrega as participações liberadas. Isso mantém
+  // o feed com os mesmos votos/respostas que o chat e libera os resultados sem
+  // precisar recarregar a página. Antes do prazo o RLS não devolve nada.
+  useEffect(() => {
+    if (!isSupabaseEnabled || !session?.id || !data) return;
+    const now = Date.now();
+    const due = (data.posts || []).filter((post) => {
+      const interactive = normalizeInteractive(post.interactive);
+      if (!scheduleOf(interactive) || !resultsReleased(interactive, now)) return false;
+      return !resultsHydratedRef.current.has(post.id);
+    });
+    if (!due.length) return;
+    const ids = due.map((post) => post.id);
+    ids.forEach((id) => resultsHydratedRef.current.add(id));
+    let cancelled = false;
+    (async () => {
+      const rows = await remote.fetchPostInteractions(ids);
+      if (cancelled || !rows?.length) return;
+      const byPost = new Map();
+      rows.forEach((row) => {
+        if (!row?.post_id) return;
+        if (!byPost.has(row.post_id)) byPost.set(row.post_id, []);
+        byPost.get(row.post_id).push({
+          id: row.id,
+          by: row.user_id === session.id ? 'me' : row.user_id,
+          kind: row.kind,
+          optionId: row.option_id || null,
+          text: row.text || '',
+          ts: new Date(row.created_at || Date.now()).getTime(),
+        });
+      });
+      setData((cur) => {
+        if (!cur) return cur;
+        return {
+          ...cur,
+          posts: cur.posts.map((post) => {
+            const fetched = byPost.get(post.id);
+            if (!fetched) return post;
+            const map = new Map();
+            (post.interactions || []).forEach((row) => map.set(row.by + ':' + row.kind, row));
+            fetched.forEach((row) => map.set(row.by + ':' + row.kind, row));
+            const interactions = [...map.values()].sort((a, b) => a.ts - b.ts);
+            return {
+              ...post,
+              interactions,
+              views: interactions.filter((row) => row.kind === 'view').length,
+            };
+          }),
+        };
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [data, session?.id, resultsTick]);
 
   useEffect(() => {
     if (!isSupabaseEnabled || !session?.id) return undefined;
@@ -1157,6 +1463,7 @@ export function AppProvider({ children }) {
             viewers: row.viewers || 0,
             joined: false,
             seed: row.seed || `${row.id}-palco`,
+            polls: [],
             msgs: [],
           };
           return { ...cur, chans: [channel, ...cur.chans] };
@@ -1812,9 +2119,23 @@ export function AppProvider({ children }) {
           format,
           options,
           invited: format === 'challenge' ? u.draft.invited || [] : [],
+          schedule: isSchedulable(format)
+            ? u.draft.schedule || DEFAULT_SCHEDULE
+            : DEFAULT_SCHEDULE,
+          live: null,
         },
       };
     });
+  }
+
+  function setDraftSchedule(patch) {
+    setUi((u) => ({
+      ...u,
+      draft: {
+        ...u.draft,
+        schedule: { ...DEFAULT_SCHEDULE, ...(u.draft.schedule || {}), ...(patch || {}) },
+      },
+    }));
   }
 
   function setDraftOption(index, label) {
@@ -2044,7 +2365,14 @@ export function AppProvider({ children }) {
     const media = draft.media || [];
     const format = draft.format || 'classic';
     const communityId = draft.communityId || null;
+    const scheduled = draft.schedule?.mode === 'scheduled';
+    if (scheduled && !isSchedulable(format)) {
+      toast('Publicações programadas são para enquetes, perguntas, votações e desafios.');
+      return;
+    }
+    const schedule = scheduled ? scheduleFromDraft(draft.schedule) : null;
     const interactive = buildInteractive(format, draft, media);
+    if (interactive && schedule) interactive.schedule = schedule;
 
     if (format === 'poll' && (interactive?.options?.length || 0) < 2) {
       toast('Escreva pelo menos duas alternativas para a enquete.');
@@ -2089,15 +2417,37 @@ export function AppProvider({ children }) {
         reactions: DEFAULT_REACTIONS,
         invited: [],
         communityId: null,
+        schedule: DEFAULT_SCHEDULE,
+        live: null,
       },
     }));
     if (sessionRef.current?.id) remote.savePost(post, sessionRef.current.id);
-    toast('Publicado');
+    toast(
+      schedule
+        ? `Programado — fecha em ${Math.round(schedule.durationMinutes / 60 * 10) / 10}h e libera os resultados automaticamente`
+        : 'Publicado'
+    );
   }
 
   function saveInteraction(postId, kind, fields = {}) {
     const post = dataRef.current?.posts.find((p) => p.id === postId);
     if (!post) return null;
+    const interactive = normalizeInteractive(post.interactive);
+    const schedule = scheduleOf(interactive);
+    if (kind !== 'view') {
+      if (isLocked(interactive)) {
+        toast(
+          resultsReleased(interactive)
+            ? 'Esta experiência já foi encerrada.'
+            : 'O prazo terminou. Aguarde a liberação dos resultados.'
+        );
+        return null;
+      }
+      if (schedule && myInteraction(post, kind)) {
+        toast('Participação confirmada — não pode ser alterada depois de enviada.');
+        return null;
+      }
+    }
     const uidv = sessionRef.current?.id || null;
     const id = uidv ? `${postId}:${uidv}:${kind}` : `local:${postId}:${kind}`;
     const entry = {
@@ -2123,6 +2473,23 @@ export function AppProvider({ children }) {
           viewed: kind === 'view' ? true : p.viewed,
         };
       }),
+      chans:
+        kind === 'vote' && interactive?.live?.pollId
+          ? cur.chans.map((c) => ({
+              ...c,
+              polls: (c.polls || []).map((poll) =>
+                poll.id === interactive.live.pollId
+                  ? {
+                      ...poll,
+                      votes: [
+                        ...(poll.votes || []).filter((vote) => vote.by !== 'me'),
+                        { id: `${poll.id}:me`, by: 'me', optionId: entry.optionId, ts: entry.ts },
+                      ],
+                    }
+                  : poll
+              ),
+            }))
+          : cur.chans,
     }));
     if (uidv) {
       remote.saveInteraction({
@@ -2133,6 +2500,13 @@ export function AppProvider({ children }) {
         optionId: entry.optionId,
         text: entry.text,
       });
+      if (kind === 'vote' && interactive?.live?.pollId) {
+        remote.castChannelPollVote({
+          pollId: interactive.live.pollId,
+          userId: uidv,
+          optionId: entry.optionId,
+        });
+      }
     }
     return entry;
   }
@@ -2159,8 +2533,13 @@ export function AppProvider({ children }) {
       toast('Essa alternativa não está mais disponível.');
       return;
     }
-    saveInteraction(postId, 'vote', { optionId });
-    toast('Voto registrado');
+    const entry = saveInteraction(postId, 'vote', { optionId });
+    if (!entry) return;
+    toast(
+      scheduleOf(interactive)
+        ? 'Voto confirmado — não pode ser alterado depois de enviado.'
+        : 'Voto registrado'
+    );
   }
 
   function answerPost(postId, text) {
@@ -2169,13 +2548,27 @@ export function AppProvider({ children }) {
       toast('Escreva a sua resposta.');
       return;
     }
-    saveInteraction(postId, 'answer', { text: trimmed.slice(0, 280) });
-    toast('Resposta enviada');
+    const post = dataRef.current?.posts.find((p) => p.id === postId);
+    const interactive = normalizeInteractive(post?.interactive);
+    const entry = saveInteraction(postId, 'answer', { text: trimmed.slice(0, 280) });
+    if (!entry) return;
+    toast(
+      scheduleOf(interactive)
+        ? 'Resposta enviada — não pode ser alterada depois de enviar.'
+        : 'Resposta enviada'
+    );
   }
 
   function joinChallenge(postId) {
-    saveInteraction(postId, 'join');
-    toast('Você entrou no desafio');
+    const post = dataRef.current?.posts.find((p) => p.id === postId);
+    const interactive = normalizeInteractive(post?.interactive);
+    const entry = saveInteraction(postId, 'join');
+    if (!entry) return;
+    toast(
+      scheduleOf(interactive)
+        ? 'Participação confirmada — não pode ser desfeita.'
+        : 'Você entrou no desafio'
+    );
   }
 
   function inviteToChallenge(postId, ids) {
@@ -2500,6 +2893,7 @@ export function AppProvider({ children }) {
       ...u,
       route: 'conexoes',
       room: null,
+      quizOpen: false,
       arenaCode: clean,
     }));
     if (location.hash !== hash) location.hash = hash;
@@ -2511,6 +2905,22 @@ export function AppProvider({ children }) {
 
   function closeArena() {
     setUi((u) => ({ ...u, arenaCode: null }));
+    if (location.hash !== '#conexoes') location.hash = '#conexoes';
+  }
+
+  function openQuiz() {
+    setUi((u) => ({
+      ...u,
+      route: 'conexoes',
+      room: null,
+      arenaCode: null,
+      quizOpen: true,
+    }));
+    if (location.hash !== '#conexoes/quiz') location.hash = '#conexoes/quiz';
+  }
+
+  function closeQuiz() {
+    setUi((u) => ({ ...u, quizOpen: false }));
     if (location.hash !== '#conexoes') location.hash = '#conexoes';
   }
 
@@ -2877,7 +3287,30 @@ export function AppProvider({ children }) {
     toast(joined ? 'Você entrou em ' + community.name : 'Você saiu de ' + community.name);
   }
 
-  function createComm({ name, cat, desc, rules, seed, private: isPrivate, iconUrl, coverUrl }) {
+  async function createComm({
+    name,
+    cat,
+    desc,
+    rules,
+    seed,
+    private: isPrivate,
+    iconUrl,
+    coverUrl,
+    iconFile,
+    coverFile,
+  }) {
+    let finalIcon = iconUrl || null;
+    let finalCover = coverUrl || null;
+    if (sessionRef.current?.id) {
+      if (iconFile) {
+        const uploaded = await remote.uploadMedia(iconFile, sessionRef.current.id);
+        if (uploaded) finalIcon = uploaded;
+      }
+      if (coverFile) {
+        const uploaded = await remote.uploadMedia(coverFile, sessionRef.current.id);
+        if (uploaded) finalCover = uploaded;
+      }
+    }
     const community = {
       id: uid(),
       name,
@@ -2890,8 +3323,8 @@ export function AppProvider({ children }) {
       pending: false,
       invited: null,
       private: !!isPrivate,
-      iconUrl: iconUrl || null,
-      coverUrl: coverUrl || null,
+      iconUrl: finalIcon,
+      coverUrl: finalCover,
       seed: (seed || COVERS[0]) + '-c',
       rules: rules?.length ? rules : ['Respeite todo mundo no fluxo.'],
       members: ['me'],
@@ -3181,7 +3614,7 @@ export function AppProvider({ children }) {
   }
 
   function applyOpenRoom(id) {
-    setUi((u) => ({ ...u, room: id, route: 'conexoes' }));
+    setUi((u) => ({ ...u, room: id, route: 'conexoes', quizOpen: false }));
     const target = '#conexoes/' + encodeURIComponent(id);
     if (location.hash !== target) location.hash = target;
   }
@@ -3258,6 +3691,7 @@ export function AppProvider({ children }) {
       viewers: 0,
       joined: true,
       msgs: [],
+      polls: [],
       seed: name + '-palco',
     };
     setData((cur) => ({ ...cur, chans: [channel, ...cur.chans] }));
@@ -3323,6 +3757,7 @@ export function AppProvider({ children }) {
         viewers: 1,
         joined: true,
         msgs: [],
+        polls: [],
         seed: cur.me.name + '-palco',
       };
     } else {
@@ -3388,19 +3823,275 @@ export function AppProvider({ children }) {
     if (!channelId) return;
     const channel = dataRef.current?.chans.find((c) => c.id === channelId);
     const peak = live?.peak || channel?.viewers || 0;
+    const now = Date.now();
+    const chatPolls = (channel?.polls || []).filter(
+      (poll) => poll.mode === 'chat' && poll.status === 'open'
+    );
+    const chatPollIds = new Set(chatPolls.map((poll) => poll.id));
     if (channel) {
-      const updated = { ...channel, live: false, livekit: false };
+      const updated = {
+        ...channel,
+        live: false,
+        livekit: false,
+        polls: (channel.polls || []).map((poll) =>
+          chatPollIds.has(poll.id)
+            ? { ...poll, status: 'closed', closedAt: now }
+            : poll
+        ),
+      };
       setData((cur) => ({
         ...cur,
         chans: cur.chans.map((c) => (c.id === channelId ? updated : c)),
       }));
       if (sessionRef.current?.id) remote.saveChannel(updated, sessionRef.current.id);
+      chatPolls.forEach((poll) => remote.closeChannelPoll(poll.id));
     }
     setUi((u) => ({
       ...u,
       myLive: u.myLive && u.myLive.id !== channelId ? u.myLive : null,
     }));
     if (!silent) toast('Live encerrada. Pico de ' + fmt(peak) + ' espectadores.');
+  }
+
+  // Cria enquete no chat da live. "fluxo" também publica no feed e mantém o
+  // vínculo com a transmissão; "chat" fica exclusiva de quem está assistindo.
+  function createLivePoll({
+    question,
+    options,
+    mode = 'chat',
+    durationValue = 30,
+    durationUnit = 'minutes',
+  }) {
+    const channelId = uiRef.current.room;
+    const channel = dataRef.current?.chans.find((c) => c.id === channelId);
+    if (!channel || channel.owner !== 'me') {
+      toast('Só o criador da live pode criar enquetes.');
+      return null;
+    }
+    if (!channel.live) {
+      toast('Inicie a live para criar enquetes no chat.');
+      return null;
+    }
+    const trimmed = String(question || '').trim();
+    const list = (options || [])
+      .map((label, index) => ({
+        id: `opt-${index + 1}`,
+        label: String(label || '').trim(),
+      }))
+      .filter((option) => option.label)
+      .slice(0, 6);
+    if (!trimmed) {
+      toast('Escreva a pergunta da enquete.');
+      return null;
+    }
+    if (list.length < 2) {
+      toast('Escreva pelo menos duas alternativas.');
+      return null;
+    }
+    const unit = SCHEDULE_UNITS.find((item) => item.id === durationUnit) || SCHEDULE_UNITS[0];
+    const amount = Math.max(1, Math.round(Number(durationValue) || 1));
+    const durationMinutes = Math.min(
+      MAX_SCHEDULE_MINUTES,
+      Math.max(MIN_SCHEDULE_MINUTES, Math.round(amount * unit.factor))
+    );
+    const now = Date.now();
+    const closesAt = now + durationMinutes * 60_000;
+    const poll = {
+      id: uid(),
+      channelId,
+      createdBy: 'me',
+      question: trimmed,
+      options: list,
+      mode: mode === 'fluxo' ? 'fluxo' : 'chat',
+      status: 'open',
+      postId: null,
+      closesAt,
+      closedAt: null,
+      ts: now,
+      votes: [],
+    };
+
+    let post = null;
+    if (poll.mode === 'fluxo') {
+      const iso = (value) => new Date(value).toISOString();
+      post = {
+        id: uid(),
+        by: 'me',
+        ts: now,
+        text: trimmed,
+        kind: 'text',
+        media: [],
+        likes: 0,
+        liked: false,
+        myReaction: null,
+        reactionCounts: {},
+        saved: false,
+        commentsDisabled: false,
+        comments: [],
+        interactions: [],
+        communityId: null,
+        interactive: {
+          format: 'poll',
+          options: list.map((option) => ({ id: option.id, label: option.label })),
+          reactions: [],
+          invited: [],
+          schedule: {
+            mode: 'scheduled',
+            durationMinutes,
+            releaseMinutes: 0,
+            opensAt: iso(now),
+            closesAt: iso(closesAt),
+            resultsAt: iso(closesAt),
+          },
+          live: {
+            channelId,
+            pollId: poll.id,
+            onlyChat: false,
+            title: channel.title || channel.name,
+          },
+        },
+      };
+      poll.postId = post.id;
+    }
+
+    setData((cur) => ({
+      ...cur,
+      posts: post ? [post, ...cur.posts] : cur.posts,
+      chans: cur.chans.map((c) =>
+        c.id === channelId ? { ...c, polls: [poll, ...(c.polls || [])] } : c
+      ),
+    }));
+
+    const uidv = sessionRef.current?.id || null;
+    if (uidv) {
+      remote.saveChannelPoll(poll, channelId, uidv);
+      if (post) remote.savePost(post, uidv);
+    }
+    toast(
+      poll.mode === 'fluxo'
+        ? 'Enquete publicada no chat e no Fluxo'
+        : 'Enquete exclusiva do chat criada'
+    );
+    return poll;
+  }
+
+  function voteLivePoll(pollId, optionId) {
+    const channelId = uiRef.current.room;
+    const cur = dataRef.current;
+    const channel = cur?.chans.find((c) => c.id === channelId);
+    const poll = (channel?.polls || []).find((item) => item.id === pollId);
+    if (!poll) return null;
+    if (livePollStatus(poll) !== 'open') {
+      toast('Esta enquete já foi encerrada.');
+      return null;
+    }
+    if ((poll.votes || []).some((vote) => vote.by === 'me')) {
+      toast('Voto confirmado — não pode ser alterado depois de enviado.');
+      return null;
+    }
+    if (!(poll.options || []).some((option) => option.id === optionId)) {
+      toast('Essa alternativa não está mais disponível.');
+      return null;
+    }
+
+    const vote = { id: `${pollId}:me`, by: 'me', optionId, ts: Date.now() };
+    // Mostra o voto na hora. No modo Supabase o Realtime confirma em seguida
+    // com os mesmos dados e sem duplicar (a limpeza remove o voto anterior).
+    const applyLocalVote = () =>
+      setData((state) => ({
+        ...state,
+        chans: state.chans.map((c) =>
+          c.id === channelId
+            ? {
+                ...c,
+                polls: (c.polls || []).map((item) =>
+                  item.id === pollId
+                    ? {
+                        ...item,
+                        votes: [
+                          ...(item.votes || []).filter((row) => row.by !== 'me'),
+                          vote,
+                        ],
+                      }
+                    : item
+                ),
+              }
+            : c
+        ),
+      }));
+
+    const linked = (cur.posts || []).find(
+      (post) => normalizeInteractive(post.interactive)?.live?.pollId === pollId
+    );
+    if (linked) {
+      // saveInteraction espelha o voto no chat e no post_interactions.
+      const entry = saveInteraction(linked.id, 'vote', { optionId });
+      if (!entry) return null;
+      applyLocalVote();
+    } else {
+      const uidv = sessionRef.current?.id || null;
+      applyLocalVote();
+      if (uidv) remote.castChannelPollVote({ pollId, userId: uidv, optionId });
+    }
+    toast('Voto registrado — não pode ser alterado');
+    return true;
+  }
+
+  function closeLivePoll(pollId) {
+    const channelId = uiRef.current.room;
+    const cur = dataRef.current;
+    const channel = cur?.chans.find((c) => c.id === channelId);
+    const poll = (channel?.polls || []).find((item) => item.id === pollId);
+    if (!poll || channel?.owner !== 'me') return;
+    const now = Date.now();
+    const closedPost = poll.postId
+      ? (cur.posts || []).find((post) => post.id === poll.postId)
+      : null;
+    const closedInteractive = closedPost
+      ? normalizeInteractive(closedPost.interactive)
+      : null;
+    const nextInteractive =
+      closedInteractive?.schedule
+        ? {
+            ...closedInteractive,
+            schedule: {
+              ...closedInteractive.schedule,
+              closesAt: new Date(now).toISOString(),
+              resultsAt: new Date(now).toISOString(),
+            },
+          }
+        : null;
+
+    setData((state) => ({
+      ...state,
+      posts:
+        poll.postId && nextInteractive
+          ? state.posts.map((post) =>
+              post.id === poll.postId ? { ...post, interactive: nextInteractive } : post
+            )
+          : state.posts,
+      chans: state.chans.map((c) =>
+        c.id === channelId
+          ? {
+              ...c,
+              polls: (c.polls || []).map((item) =>
+                item.id === pollId
+                  ? { ...item, status: 'closed', closedAt: now }
+                  : item
+              ),
+            }
+          : c
+      ),
+    }));
+
+    const uidv = sessionRef.current?.id || null;
+    if (uidv) {
+      remote.closeChannelPoll(pollId);
+      if (closedPost && nextInteractive) {
+        remote.savePost({ ...closedPost, interactive: nextInteractive }, uidv);
+      }
+    }
+    toast('Enquete encerrada — resultados liberados');
   }
 
   function sendRoomMessage(text) {
@@ -3698,6 +4389,7 @@ export function AppProvider({ children }) {
     go,
     setDraftText: (text) => setUi((u) => ({ ...u, draft: { ...u.draft, text } })),
     setDraftFormat,
+    setDraftSchedule,
     setDraftCommunity: (communityId) =>
       setUi((u) => ({ ...u, draft: { ...u.draft, communityId: communityId || null } })),
     setDraftOption,
@@ -3805,6 +4497,8 @@ export function AppProvider({ children }) {
     openArena,
     openArenaCode,
     closeArena,
+    openQuiz,
+    closeQuiz,
     inviteToArena,
     shareArenaResult,
     clearRoom: () => {
@@ -3819,6 +4513,9 @@ export function AppProvider({ children }) {
     startLive,
     endLive,
     sendRoomMessage,
+    createLivePoll,
+    voteLivePoll,
+    closeLivePoll,
     reactNotice,
     openEditProfile: () => setUi((u) => ({ ...u, modal: { type: 'profile' } })),
     openNewComm: () => setUi((u) => ({ ...u, modal: { type: 'newcomm' } })),

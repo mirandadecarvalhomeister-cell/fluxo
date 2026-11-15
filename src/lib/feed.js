@@ -1,10 +1,16 @@
 import { normalizeInteractive } from './interactive';
+import { applyPulse, applyWaves } from './pulse';
 
 export const FEED_MODES = [
   {
     id: 'forYou',
-    label: 'Para você',
-    hint: 'Recomendações com base nos seus interesses e conversas.',
+    label: 'Fluxo Pulso',
+    hint: 'Recomendações por interesses, conexões e conversas — não só popularidade.',
+  },
+  {
+    id: 'waves',
+    label: 'Ondas sociais',
+    hint: 'Publicações que começaram a ganhar participação e estão sendo distribuídas para interesses parecidos.',
   },
   {
     id: 'following',
@@ -188,34 +194,55 @@ export function applyFeedPreferences(posts, ctx) {
   if (prefs.mode === 'recent') {
     return list
       .sort((a, b) => b.ts - a.ts)
-      .map((post) => ({ ...post, feedReason: null }));
+      .map((post) => ({ ...post, feedReason: null, feedReasons: [] }));
+  }
+
+  if (prefs.mode === 'waves') {
+    return applyWaves(list, {
+      follows,
+      comms,
+      terms: ctx.terms,
+      level: ctx.level,
+      meId: ctx.meId,
+      showReasons: prefs.showReasons,
+    });
   }
 
   if (prefs.mode === 'trending') {
-    return list
-      .filter((post) => engagement(post) > 0)
+    return applyPulse(list, {
+      follows,
+      comms,
+      terms: ctx.terms,
+      level: ctx.level,
+      meId: ctx.meId,
+      showReasons: prefs.showReasons,
+    })
+      .filter((post) => post.wave.stage !== 'quiet' || engagement(post) > 0)
       .sort(
         (a, b) =>
-          engagement(b) / Math.sqrt(hoursSince(b.ts)) -
-          engagement(a) / Math.sqrt(hoursSince(a.ts))
+          b.wave.velocity - a.wave.velocity ||
+          b.pulse.score - a.pulse.score
       )
-      .map((post) => ({ ...post, feedReason: 'Em alta agora' }));
+      .map((post) => ({
+        ...post,
+        feedReason: prefs.showReasons ? 'Em alta agora' : null,
+      }));
   }
 
   if (prefs.mode === 'following') {
     return list
       .sort((a, b) => b.ts - a.ts)
-      .map((post) => ({ ...post, feedReason: null }));
+      .map((post) => ({ ...post, feedReason: null, feedReasons: [] }));
   }
 
-  return list
-    .map((post) => ({
-      post,
-      score: feedScore(post, ctx),
-      feedReason: prefs.showReasons ? reasonFor(post, ctx) : null,
-    }))
-    .sort((a, b) => b.score - a.score)
-    .map((entry) => ({ ...entry.post, feedReason: entry.feedReason }));
+  return applyPulse(list, {
+    follows,
+    comms,
+    terms: ctx.terms,
+    level: ctx.level,
+    meId: ctx.meId,
+    showReasons: prefs.showReasons,
+  });
 }
 
 export function communityActivity(community, posts) {  const communityPosts = posts.filter((post) => post.communityId === community.id);

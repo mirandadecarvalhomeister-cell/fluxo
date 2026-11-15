@@ -5,16 +5,22 @@ import {
   countAnswers,
   formatMeta,
   interactionsOfKind,
+  liveOf,
   myInteraction,
   normalizeInteractive,
   participantsOf,
+  scheduleInfo,
+  scheduleOf,
   tallyVotes,
 } from '../lib/interactive';
 import { mediaDisplayStyle } from '../lib/mediaEdit';
 import { userOf } from '../lib/selectors';
 import { ago, fmt } from '../lib/utils';
+import { useNow } from '../lib/useNow';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
+import { Verified } from './Brand';
+import { Icon } from './Icon';
 
 function People({ rows, label, one }) {
   const { data } = useApp();
@@ -44,11 +50,15 @@ function People({ rows, label, one }) {
   );
 }
 
-function Poll({ post }) {
+function Poll({ post, info }) {
   const { actions } = useApp();
   const { options, total } = tallyVotes(post);
   const mine = myInteraction(post, 'vote');
-  const reveal = !!mine || post.by === 'me';
+  const scheduled = info.scheduled;
+  const released = !scheduled || info.phase === 'results';
+  const locked = scheduled && info.phase !== 'open';
+  const reveal = scheduled ? released : !!mine || post.by === 'me';
+  const canVote = !locked && !(scheduled && mine);
 
   return (
     <>
@@ -62,8 +72,12 @@ function Poll({ post }) {
               className={`poll-opt${chosen ? ' on' : ''}${
                 reveal && option.leading ? ' win' : ''
               }`}
-              onClick={() => actions.votePost(post.id, option.id)}
+              onClick={() => {
+                if (!canVote) return;
+                actions.votePost(post.id, option.id);
+              }}
               aria-pressed={chosen}
+              disabled={!canVote}
             >
               {reveal ? (
                 <span
@@ -88,20 +102,32 @@ function Poll({ post }) {
       <p className="int-meta">
         <People rows={interactionsOfKind(post, 'vote')} label="votaram" one="votou" />
         <span className="int-hint">
-          {reveal
-            ? `${fmt(total)} ${total === 1 ? 'voto' : 'votos'} · toque para trocar o seu`
-            : 'Toque em uma alternativa para votar e ver os resultados'}
+          {locked
+            ? info.phase === 'closed'
+              ? `Encerrada. ${info.label}`
+              : 'Resultados liberados.'
+            : scheduled
+              ? mine
+                ? `Voto confirmado — não pode ser alterado. ${info.label}`
+                : `Voto único · ${info.label}`
+              : reveal
+                ? `${fmt(total)} ${total === 1 ? 'voto' : 'votos'} · toque para trocar o seu`
+                : 'Toque em uma alternativa para votar e ver os resultados'}
         </span>
       </p>
     </>
   );
 }
 
-function ImageVote({ post }) {
+function ImageVote({ post, info }) {
   const { actions } = useApp();
   const { options, total } = tallyVotes(post);
   const mine = myInteraction(post, 'vote');
-  const reveal = !!mine || post.by === 'me';
+  const scheduled = info.scheduled;
+  const released = !scheduled || info.phase === 'results';
+  const locked = scheduled && info.phase !== 'open';
+  const reveal = scheduled ? released : !!mine || post.by === 'me';
+  const canVote = !locked && !(scheduled && mine);
   const media = post.media || [];
 
   return (
@@ -118,8 +144,12 @@ function ImageVote({ post }) {
               className={`imgvote-opt${chosen ? ' on' : ''}${
                 reveal && option.leading ? ' win' : ''
               }`}
-              onClick={() => actions.votePost(post.id, option.id)}
+              onClick={() => {
+                if (!canVote) return;
+                actions.votePost(post.id, option.id);
+              }}
               aria-pressed={chosen}
+              disabled={!canVote}
             >
               <span className="imgvote-pic">
                 {item?.kind === 'video' && item.src ? (
@@ -160,21 +190,33 @@ function ImageVote({ post }) {
       <p className="int-meta">
         <People rows={interactionsOfKind(post, 'vote')} label="votaram" one="votou" />
         <span className="int-hint">
-          {reveal
-            ? `${fmt(total)} ${total === 1 ? 'voto' : 'votos'} · você pode trocar seu voto`
-            : 'Escolha a sua imagem favorita para ver o resultado'}
+          {locked
+            ? info.phase === 'closed'
+              ? `Encerrada. ${info.label}`
+              : 'Resultados liberados.'
+            : scheduled
+              ? mine
+                ? `Voto confirmado — não pode ser alterado. ${info.label}`
+                : `Voto único · ${info.label}`
+              : reveal
+                ? `${fmt(total)} ${total === 1 ? 'voto' : 'votos'} · você pode trocar seu voto`
+                : 'Escolha a sua imagem favorita para ver o resultado'}
         </span>
       </p>
     </>
   );
 }
 
-function Question({ post }) {
+function Question({ post, info }) {
   const { data, actions } = useApp();
   const [text, setText] = useState('');
   const answers = interactionsOfKind(post, 'answer').sort((a, b) => b.ts - a.ts);
   const mine = myInteraction(post, 'answer');
-  const reveal = !!mine || post.by === 'me';
+  const scheduled = info.scheduled;
+  const released = !scheduled || info.phase === 'results';
+  const locked = scheduled && info.phase !== 'open';
+  const reveal = scheduled ? released : !!mine || post.by === 'me';
+  const canAnswer = !locked && !(scheduled && mine);
 
   useEffect(() => {
     if (mine?.text) setText(mine.text);
@@ -186,7 +228,7 @@ function Question({ post }) {
         className="int-form"
         onSubmit={(event) => {
           event.preventDefault();
-          if (!text.trim()) return;
+          if (!canAnswer || !text.trim()) return;
           actions.answerPost(post.id, text);
           setText('');
         }}
@@ -195,12 +237,21 @@ function Question({ post }) {
           className="in"
           type="text"
           maxLength={MAX_ANSWER}
-          placeholder={mine ? 'Atualize a sua resposta…' : 'Escreva a sua resposta…'}
+          placeholder={
+            scheduled && mine
+              ? 'Resposta enviada — não pode ser alterada.'
+              : locked
+                ? 'Esta pergunta já foi encerrada.'
+                : mine
+                  ? 'Atualize a sua resposta…'
+                  : 'Escreva a sua resposta…'
+          }
           value={text}
           onChange={(event) => setText(event.target.value)}
           aria-label="Sua resposta"
+          disabled={!canAnswer}
         />
-        <button className="btn primary sm" type="submit" disabled={!text.trim()}>
+        <button className="btn primary sm" type="submit" disabled={!canAnswer || !text.trim()}>
           {mine ? 'Atualizar' : 'Responder'}
         </button>
       </form>
@@ -210,7 +261,17 @@ function Question({ post }) {
           {countAnswers(post) === 1 ? 'resposta' : 'respostas'}
         </b>
         <span className="int-hint">
-          {reveal ? 'Atualizadas em tempo real' : 'Responda para ver o que a comunidade disse'}
+          {locked
+            ? info.phase === 'closed'
+              ? `Encerrada. ${info.label}`
+              : 'Respostas liberadas.'
+            : scheduled
+              ? mine
+                ? `Resposta confirmada — não pode ser alterada. ${info.label}`
+                : `Resposta única · ${info.label}`
+              : reveal
+                ? 'Atualizadas em tempo real'
+                : 'Responda para ver o que a comunidade disse'}
         </span>
       </div>
       {reveal ? (
@@ -222,7 +283,9 @@ function Question({ post }) {
                 <div className="int-answer" key={row.id}>
                   <Avatar user={person} size={28} />
                   <div>
-                    <b>{person.name}</b>{' '}
+                    <b>
+                      {person.name} <Verified user={person} />
+                    </b>{' '}
                     <span className="muted sm">{ago(row.ts)}</span>
                     <p>{row.text}</p>
                   </div>
@@ -238,11 +301,14 @@ function Question({ post }) {
   );
 }
 
-function Challenge({ post }) {
+function Challenge({ post, info }) {
   const { data, actions } = useApp();
   const interactive = normalizeInteractive(post.interactive);
   const joins = participantsOf(post, 'join');
   const mine = myInteraction(post, 'join');
+  const scheduled = info.scheduled;
+  const locked = scheduled && info.phase !== 'open';
+  const canJoin = !locked && !(scheduled && mine);
   const invited = interactive?.invited || [];
   const invitedMe = invited.includes('me');
   const joinedIds = new Set(joins.map((row) => row.by));
@@ -261,18 +327,30 @@ function Challenge({ post }) {
             {joins.length === 1 ? 'participante' : 'participantes'}
           </b>
           <span className="int-hint">
-            {invitedMe && !mine
-              ? 'Você foi convidado a participar deste desafio.'
-              : 'Entre no desafio e acompanhe quem topou.'}
+            {locked
+              ? info.phase === 'closed'
+                ? `Desafio encerrado. ${info.label}`
+                : 'Participação encerrada.'
+              : invitedMe && !mine
+                ? 'Você foi convidado a participar deste desafio.'
+                : scheduled
+                  ? mine
+                    ? `Participação confirmada — não pode ser desfeita. ${info.label}`
+                    : `Participação única · ${info.label}`
+                  : 'Entre no desafio e acompanhe quem topou.'}
           </span>
         </div>
         <button
           type="button"
           className={`btn sm ${mine ? 'tonal' : 'primary'}`}
-          onClick={() => actions.joinChallenge(post.id)}
+          onClick={() => {
+            if (!canJoin) return;
+            actions.joinChallenge(post.id);
+          }}
           aria-pressed={!!mine}
+          disabled={!canJoin}
         >
-          {mine ? 'Participando' : invitedMe ? 'Aceitar desafio' : 'Participar'}
+          {mine ? 'Participando' : locked ? 'Encerrado' : invitedMe ? 'Aceitar desafio' : 'Participar'}
         </button>
       </div>
       {joins.length ? (
@@ -283,6 +361,7 @@ function Challenge({ post }) {
               <span className="chal-person" key={row.by} title={person.name}>
                 <Avatar user={person} size={30} />
                 <span>{person.name.split(' ')[0]}</span>
+                <Verified user={person} />
               </span>
             );
           })}
@@ -364,9 +443,15 @@ function Reactions({ post }) {
 }
 
 export default function Interactive({ post }) {
+  const { data, actions } = useApp();
   const interactive = normalizeInteractive(post.interactive);
+  const schedule = scheduleOf(interactive);
+  const live = liveOf(interactive);
+  const now = useNow(Boolean(schedule) || Boolean(live), 1000);
   if (!interactive) return null;
+  const info = scheduleInfo(interactive, now);
   const meta = formatMeta(interactive.format);
+  const channel = live ? (data.chans || []).find((item) => item.id === live.channelId) : null;
   const participants =
     interactive.format === 'question'
       ? countAnswers(post)
@@ -379,6 +464,27 @@ export default function Interactive({ post }) {
       className={`interactive int-${interactive.format}`}
       aria-label={`Publicação interativa: ${meta.label}`}
     >
+      {live ? (
+        <div className={`int-origin${live.onlyChat ? ' chat' : ''}`}>
+          <span className="int-origin-tag">
+            <Icon name="radio" /> {live.onlyChat ? 'Enquete do chat' : 'Enquete da live'}
+          </span>
+          {live.onlyChat ? (
+            <span className="int-origin-note">Só quem está assistindo participa</span>
+          ) : channel?.live ? (
+            <button
+              type="button"
+              className="int-origin-link"
+              onClick={() => actions.openRoom(channel.id)}
+            >
+              <Icon name="play" /> Assistir à live
+            </button>
+          ) : (
+            <span className="int-origin-note">Live encerrada · enquete segue no Fluxo</span>
+          )}
+        </div>
+      ) : null}
+
       <div className="int-head">
         <span className={`int-badge int-badge-${interactive.format}`}>
           <svg className="ic" aria-hidden="true">
@@ -397,19 +503,29 @@ export default function Interactive({ post }) {
                   : 'Toque em uma reação para participar'}
           </span>
         </div>
-        {(interactive.format === 'poll' ||
+        {info.scheduled ? (
+          <span
+            className={`int-count${info.phase === 'results' ? ' done' : ''}${
+              info.phase === 'closed' ? ' closed' : ''
+            }`}
+            title={info.scheduled ? 'Experiência programada' : ''}
+          >
+            <Icon name={info.phase === 'results' ? 'check' : info.phase === 'closed' ? 'lock' : 'clock'} />
+            {info.label}
+          </span>
+        ) : interactive.format === 'poll' ||
           interactive.format === 'imageVote' ||
-          interactive.format === 'question') && (
+          interactive.format === 'question' ? (
           <span className="int-live" title="Atualiza em tempo real">
             <i aria-hidden="true" /> ao vivo
           </span>
-        )}
+        ) : null}
       </div>
 
-      {interactive.format === 'poll' ? <Poll post={post} /> : null}
-      {interactive.format === 'imageVote' ? <ImageVote post={post} /> : null}
-      {interactive.format === 'question' ? <Question post={post} /> : null}
-      {interactive.format === 'challenge' ? <Challenge post={post} /> : null}
+      {interactive.format === 'poll' ? <Poll post={post} info={info} /> : null}
+      {interactive.format === 'imageVote' ? <ImageVote post={post} info={info} /> : null}
+      {interactive.format === 'question' ? <Question post={post} info={info} /> : null}
+      {interactive.format === 'challenge' ? <Challenge post={post} info={info} /> : null}
       {interactive.format === 'reactions' ? <Reactions post={post} /> : null}
     </section>
   );

@@ -1,4 +1,6 @@
 drop table if exists public.direct_messages cascade;
+drop table if exists public.channel_poll_votes cascade;
+drop table if exists public.channel_polls cascade;
 drop table if exists public.scraps cascade;
 drop table if exists public.message_reactions cascade;
 drop table if exists public.channel_messages cascade;

@@ -235,6 +235,8 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
     communityChannels,
     stickerPacks,
     stickerRows,
+    channelPolls,
+    channelPollVotes,
   ] = await Promise.all([
     safe(
       supabase
@@ -280,6 +282,8 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
     safe(supabase.from('community_channels').select('*')),
     safe(supabase.from('sticker_packs').select('*').eq('user_id', uid)),
     safe(supabase.from('stickers').select('*')),
+    safe(supabase.from('channel_polls').select('*')),
+    safe(supabase.from('channel_poll_votes').select('*')),
   ]);
 
   const follows = allFollows
@@ -329,6 +333,8 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
     communityChannels,
     stickerPacks,
     stickerRows,
+    channelPolls,
+    channelPollVotes,
     localPostIds,
     localChanIds,
   };
@@ -500,6 +506,20 @@ export async function saveInteraction({ id, postId, userId, kind, optionId, text
     if (error) warn(error);
   } catch (error) {
     warn(error);
+  }
+}
+
+// Recarrega participações já liberadas. O RLS só devolve os votos/respostas
+// depois de resultsAt, então chamar antes do prazo não revela nada.
+export async function fetchPostInteractions(postIds = []) {
+  if (!enabled()) return [];
+  try {
+    let query = supabase.from('post_interactions').select('*');
+    if (postIds.length) query = query.in('post_id', postIds);
+    return await safe(query);
+  } catch (error) {
+    warn(error);
+    return [];
   }
 }
 
@@ -991,6 +1011,133 @@ export async function addChannelMessage(message, channelId, uid) {
     if (error) warn(error);
   } catch (error) {
     warn(error);
+  }
+}
+
+// Enquetes de live/chat. As de modo "fluxo" também existem como publicação no
+// feed (post_id) e os votos entram em post_interactions; as de modo "chat"
+// só valem para quem está assistindo à transmissão.
+export async function saveChannelPoll(poll, channelId, uid) {
+  if (!enabled()) return;
+  try {
+    const { error } = await supabase.from('channel_polls').upsert({
+      id: poll.id,
+      channel_id: channelId,
+      created_by: uid,
+      question: poll.question,
+      options: poll.options,
+      mode: poll.mode === 'fluxo' ? 'fluxo' : 'chat',
+      status: poll.status === 'closed' ? 'closed' : 'open',
+      post_id: poll.postId || null,
+      closes_at: poll.closesAt ? new Date(poll.closesAt).toISOString() : null,
+      closed_at: poll.closedAt ? new Date(poll.closedAt).toISOString() : null,
+      created_at: new Date(poll.ts || Date.now()).toISOString(),
+    });
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function fetchChannelPolls(channelId) {
+  if (!enabled() || !channelId) return [];
+  try {
+    const polls = await safe(
+      supabase
+        .from('channel_polls')
+        .select('*')
+        .eq('channel_id', channelId)
+        .order('created_at', { ascending: true })
+    );
+    const pollIds = (polls || []).map((poll) => poll.id).filter(Boolean);
+    const votes = pollIds.length
+      ? await safe(
+          supabase
+            .from('channel_poll_votes')
+            .select('*')
+            .in('poll_id', pollIds)
+            .order('created_at', { ascending: true })
+        )
+      : [];
+    const byPoll = new Map();
+    (votes || []).forEach((row) => {
+      if (!row?.poll_id) return;
+      if (!byPoll.has(row.poll_id)) byPoll.set(row.poll_id, []);
+      byPoll.get(row.poll_id).push(row);
+    });
+    return (polls || []).map((row) => ({
+      ...row,
+      options:
+        typeof row.options === 'string'
+          ? (() => {
+              try {
+                return JSON.parse(row.options);
+              } catch {
+                return [];
+              }
+            })()
+          : row.options || [],
+      votes: byPoll.get(row.id) || [],
+    }));
+  } catch (error) {
+    warn(error);
+    return [];
+  }
+}
+
+export async function castChannelPollVote({ pollId, userId, optionId }) {
+  if (!enabled() || !pollId || !userId) return;
+  try {
+    const { error } = await supabase.from('channel_poll_votes').upsert(
+      {
+        poll_id: pollId,
+        user_id: userId,
+        option_id: optionId,
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: 'poll_id,user_id' }
+    );
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export async function closeChannelPoll(pollId) {
+  if (!enabled() || !pollId) return;
+  try {
+    const { error } = await supabase
+      .from('channel_polls')
+      .update({ status: 'closed', closed_at: new Date().toISOString() })
+      .eq('id', pollId);
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
+export function subscribeChannelPolls(channelId, callback) {
+  if (!enabled() || !channelId) return () => {};
+  try {
+    const channel = supabase
+      .channel(`channel-polls-${channelId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'channel_polls', filter: `channel_id=eq.${channelId}` },
+        (payload) => callback(payload)
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'channel_poll_votes' },
+        (payload) => callback(payload)
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel).catch(() => {});
+    };
+  } catch (error) {
+    warn(error);
+    return () => {};
   }
 }
 

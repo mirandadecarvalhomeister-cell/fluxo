@@ -1,7 +1,7 @@
 // Publicações interativas: enquetes, perguntas, votações com imagens,
 // desafios e reações personalizadas. O formato fica em posts.interactive
 // (JSONB) e as participações em public.post_interactions.
-import { uid } from './utils';
+import { uid } from './utils.js';
 
 export const INTERACTIVE_FORMATS = [
   {
@@ -80,6 +80,190 @@ export const INTERACTIVE_KINDS = {
   join: 'participação',
 };
 
+// Experiências interativas podem ser publicadas na hora ("comum") ou com
+// prazo e liberação de resultados ("programada"). O prazo máximo é 24 horas.
+export const MAX_SCHEDULE_MINUTES = 24 * 60;
+export const MIN_SCHEDULE_MINUTES = 1;
+export const SCHEDULE_UNITS = [
+  { id: 'minutes', label: 'minutos', factor: 1 },
+  { id: 'hours', label: 'horas', factor: 60 },
+];
+export const RESULT_RELEASE_OPTIONS = [0, 5, 15, 30, 60];
+export const SCHEDULABLE_FORMATS = ['poll', 'question', 'imageVote', 'challenge'];
+
+export const DEFAULT_SCHEDULE = {
+  mode: 'now',
+  durationValue: 30,
+  durationUnit: 'minutes',
+  releaseMinutes: 0,
+};
+
+const toMs = (value) => {
+  if (!value) return null;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+export function isSchedulable(format) {
+  return SCHEDULABLE_FORMATS.includes(format);
+}
+
+export function scheduleFromDraft(raw, now = Date.now()) {
+  const value = { ...DEFAULT_SCHEDULE, ...(raw || {}) };
+  if (value.mode !== 'scheduled') return null;
+  const unit = SCHEDULE_UNITS.find((item) => item.id === value.durationUnit) || SCHEDULE_UNITS[0];
+  const amount = Math.max(1, Math.round(Number(value.durationValue) || 1));
+  const durationMinutes = clamp(
+    Math.round(amount * unit.factor),
+    MIN_SCHEDULE_MINUTES,
+    MAX_SCHEDULE_MINUTES
+  );
+  const releaseMinutes = clamp(
+    Math.round(Number(value.releaseMinutes) || 0),
+    0,
+    MAX_SCHEDULE_MINUTES - durationMinutes
+  );
+  const closesAt = now + durationMinutes * 60_000;
+  return {
+    mode: 'scheduled',
+    durationMinutes,
+    releaseMinutes,
+    opensAt: new Date(now).toISOString(),
+    closesAt: new Date(closesAt).toISOString(),
+    resultsAt: new Date(closesAt + releaseMinutes * 60_000).toISOString(),
+  };
+}
+
+export function normalizeSchedule(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const mode = raw.mode === 'scheduled' ? 'scheduled' : 'now';
+  if (mode !== 'scheduled') return null;
+  const durationMinutes = clamp(
+    Math.round(Number(raw.durationMinutes) || 0) || MIN_SCHEDULE_MINUTES,
+    MIN_SCHEDULE_MINUTES,
+    MAX_SCHEDULE_MINUTES
+  );
+  const releaseMinutes = clamp(
+    Math.round(Number(raw.releaseMinutes) || 0),
+    0,
+    MAX_SCHEDULE_MINUTES - durationMinutes
+  );
+  const closesAt = toMs(raw.closesAt);
+  const resultsAt = toMs(raw.resultsAt);
+  return {
+    mode,
+    durationMinutes,
+    releaseMinutes,
+    opensAt: toMs(raw.opensAt),
+    closesAt,
+    resultsAt: resultsAt ?? closesAt,
+  };
+}
+
+export function scheduleOf(interactive) {
+  return normalizeSchedule(interactive?.schedule);
+}
+
+// "open" enquanto aceita participação, "closed" entre o prazo e a liberação
+// dos resultados, "results" quando os resultados já podem aparecer.
+export function schedulePhase(interactive, now = Date.now()) {
+  const schedule = scheduleOf(interactive);
+  if (!schedule) return 'open';
+  if (schedule.closesAt && now < schedule.closesAt) return 'open';
+  if (schedule.resultsAt && now < schedule.resultsAt) return 'closed';
+  return 'results';
+}
+
+export function isLocked(interactive, now = Date.now()) {
+  return schedulePhase(interactive, now) !== 'open';
+}
+
+export function resultsReleased(interactive, now = Date.now()) {
+  const schedule = scheduleOf(interactive);
+  if (!schedule) return true;
+  return schedulePhase(interactive, now) === 'results';
+}
+
+export function remainingLabel(ms) {
+  if (ms == null || ms <= 0) return 'agora';
+  const total = Math.ceil(ms / 1000);
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  if (days) return `${days}d ${hours}h`;
+  if (hours) return `${hours}h ${String(minutes).padStart(2, '0')}min`;
+  if (minutes) return `${minutes}min ${String(seconds).padStart(2, '0')}s`;
+  return `${seconds}s`;
+}
+
+export function scheduleSummary(schedule) {
+  if (!schedule) return '';
+  const hours = schedule.durationMinutes / 60;
+  const duration =
+    schedule.durationMinutes % 60 === 0
+      ? `${hours} ${hours === 1 ? 'hora' : 'horas'}`
+      : `${schedule.durationMinutes} min`;
+  return schedule.releaseMinutes
+    ? `Fecha em ${duration} · resultados ${schedule.releaseMinutes} min depois`
+    : `Fecha em ${duration} · resultados na hora`;
+}
+
+// Estado pronto para a interface: fase, contagem regressiva e rótulos.
+export function scheduleInfo(interactive, now = Date.now()) {
+  const schedule = scheduleOf(interactive);
+  if (!schedule) {
+    return {
+      scheduled: false,
+      phase: 'open',
+      schedule: null,
+      closesAt: null,
+      resultsAt: null,
+      closesIn: null,
+      resultsIn: null,
+      label: '',
+    };
+  }
+  const phase = schedulePhase(interactive, now);
+  const closesIn = schedule.closesAt ? Math.max(0, schedule.closesAt - now) : null;
+  const resultsIn = schedule.resultsAt ? Math.max(0, schedule.resultsAt - now) : null;
+  let label = 'Aberta';
+  if (phase === 'closed') {
+    label = resultsIn != null ? `Resultados em ${remainingLabel(resultsIn)}` : 'Resultados em breve';
+  } else if (phase === 'results') {
+    label = 'Resultados liberados';
+  } else if (closesIn != null) {
+    label = `Fecha em ${remainingLabel(closesIn)}`;
+  }
+  return {
+    scheduled: true,
+    phase,
+    schedule,
+    closesAt: schedule.closesAt,
+    resultsAt: schedule.resultsAt,
+    closesIn,
+    resultsIn,
+    label,
+  };
+}
+
+export function liveOf(interactive) {
+  const live = interactive?.live;
+  if (!live?.channelId) return null;
+  return live;
+}
+
+export function livePollStatus(poll, now = Date.now()) {
+  if (!poll) return 'closed';
+  if (poll.status === 'closed') return 'closed';
+  if (poll.closesAt && now >= poll.closesAt) return 'closed';
+  return 'open';
+}
+
+
 export function formatMeta(format) {
   return (
     INTERACTIVE_FORMATS.find((item) => item.id === format) ||
@@ -133,11 +317,23 @@ export function normalizeInteractive(raw) {
       )
     : [];
 
+  const schedule = normalizeSchedule(value.schedule);
+  const live = value.live && typeof value.live === 'object'
+    ? {
+        channelId: String(value.live.channelId || ''),
+        pollId: String(value.live.pollId || ''),
+        onlyChat: !!value.live.onlyChat,
+        title: String(value.live.title || ''),
+      }
+    : null;
+
   return {
     format: meta.id,
     options,
     reactions,
     invited,
+    ...(schedule ? { schedule } : {}),
+    ...(live?.channelId ? { live } : {}),
   };
 }
 
@@ -239,6 +435,21 @@ export function syncImageVoteOptions(media = [], previous = []) {
 export function buildInteractive(format, draft, media = []) {
   if (!format || format === 'classic') return null;
   const reactions = (draft.reactions || DEFAULT_REACTIONS).slice(0, 8);
+  const schedule = isSchedulable(format) ? scheduleFromDraft(draft.schedule) : null;
+  const live =
+    draft.live && draft.live.channelId
+      ? {
+          channelId: String(draft.live.channelId),
+          pollId: String(draft.live.pollId || ''),
+          onlyChat: !!draft.live.onlyChat,
+          title: String(draft.live.title || ''),
+        }
+      : null;
+  const withExtras = (value) => ({
+    ...value,
+    ...(schedule ? { schedule } : {}),
+    ...(live ? { live } : {}),
+  });
   if (format === 'poll') {
     const options = (draft.options || [])
       .map((option, index) => ({
@@ -247,7 +458,7 @@ export function buildInteractive(format, draft, media = []) {
       }))
       .filter((option) => option.label)
       .slice(0, MAX_OPTIONS);
-    return { format, options, reactions: [], invited: [] };
+    return withExtras({ format, options, reactions: [], invited: [] });
   }
   if (format === 'imageVote') {
     const options = media.map((_, index) => {
@@ -259,18 +470,18 @@ export function buildInteractive(format, draft, media = []) {
         mediaIndex: index,
       };
     });
-    return { format, options, reactions: [], invited: [] };
+    return withExtras({ format, options, reactions: [], invited: [] });
   }
   if (format === 'reactions') {
-    return { format, options: [], reactions, invited: [] };
+    return withExtras({ format, options: [], reactions, invited: [] });
   }
   if (format === 'challenge') {
-    return {
+    return withExtras({
       format,
       options: [],
       reactions: [],
       invited: (draft.invited || []).slice(0, MAX_INVITES),
-    };
+    });
   }
-  return { format, options: [], reactions: [], invited: [] };
+  return withExtras({ format, options: [], reactions: [], invited: [] });
 }

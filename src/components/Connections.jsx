@@ -1,7 +1,9 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { art } from '../lib/art';
 import { KINDS } from '../lib/seed';
+import { livePollStatus, remainingLabel } from '../lib/interactive';
 import { ago, fmt, hm } from '../lib/utils';
+import { useNow } from '../lib/useNow';
 import { isLiveKitEnabled } from '../lib/livekit';
 import { userOf } from '../lib/selectors';
 import { useApp } from '../store/AppContext';
@@ -12,6 +14,7 @@ import { Icon } from './Icon';
 
 const LiveStage = lazy(() => import('./LiveStage'));
 const Arena = lazy(() => import('../games/arena/Arena'));
+const QuizBoom = lazy(() => import('../games/quiz/QuizBoom'));
 
 const visibleChannels = (data) =>
   data.chans.filter(
@@ -40,7 +43,7 @@ function LiveCard({ channel }) {
             {channel.title || channel.name}
           </b>
           <span className="muted sm ell" style={{ display: 'block' }}>
-            {owner.name}
+            {owner.name} <Verified user={owner} />
             {channel.owner === 'me' ? ' (você)' : ''}
           </span>
         </div>
@@ -62,7 +65,7 @@ function ChannelRow({ channel }) {
           {channel.name}
         </b>
         <span className="kind">
-          <Icon name={kind[0]} /> {kind[1]} · {owner.name}
+          <Icon name={kind[0]} /> {kind[1]} · {owner.name} <Verified user={owner} />
           {channel.owner === 'me' ? ' (você)' : ''}
         </span>
         <div className="muted sm ell">
@@ -82,6 +85,258 @@ function ChannelRow({ channel }) {
         </span>
       </div>
     </button>
+  );
+}
+
+function LivePollCard({ channel, poll }) {
+  const { actions } = useApp();
+  const open = livePollStatus(poll) === 'open';
+  const now = useNow(open, 1000);
+  const status = livePollStatus(poll, now);
+  const closed = status !== 'open';
+  const votes = poll.votes || [];
+  const total = votes.length;
+  const mine = votes.find((vote) => vote.by === 'me');
+  const counts = new Map();
+  votes.forEach((vote) => {
+    if (!vote?.optionId) return;
+    counts.set(vote.optionId, (counts.get(vote.optionId) || 0) + 1);
+  });
+  const top = Math.max(0, ...counts.values());
+  const owner = channel.owner === 'me';
+
+  return (
+    <article className={`livepoll${poll.mode === 'fluxo' ? ' fluxo' : ''}`}>
+      <header className="livepoll-head">
+        <span className="livepoll-tag">
+          <Icon name="chart" /> Enquete {poll.mode === 'fluxo' ? 'do Fluxo' : 'do chat'}
+        </span>
+        <span className={`livepoll-clock${closed ? ' closed' : ''}`}>
+          <Icon name={closed ? 'lock' : 'clock'} />
+          {closed
+            ? 'Encerrada'
+            : poll.closesAt
+              ? `Fecha em ${remainingLabel(poll.closesAt - now)}`
+              : 'Aberta'}
+        </span>
+      </header>
+      <b className="livepoll-question">{poll.question}</b>
+      <div className="poll-list" role="group" aria-label="Alternativas da enquete da live">
+        {(poll.options || []).map((option) => {
+          const count = counts.get(option.id) || 0;
+          const percent = total ? Math.round((count / total) * 100) : 0;
+          const chosen = mine?.optionId === option.id;
+          return (
+            <button
+              type="button"
+              key={option.id}
+              className={`poll-opt${chosen ? ' on' : ''}${closed && count === top ? ' win' : ''}`}
+              onClick={() => {
+                if (closed || mine) return;
+                actions.voteLivePoll(poll.id, option.id);
+              }}
+              aria-pressed={chosen}
+              disabled={closed || !!mine}
+            >
+              {closed ? (
+                <span
+                  className="poll-fill"
+                  style={{ width: `${Math.max(percent, count ? 2 : 0)}%` }}
+                  aria-hidden="true"
+                />
+              ) : null}
+              <span className="poll-label">{option.label}</span>
+              {closed ? (
+                <span className="poll-pct">
+                  {percent}%<small>{fmt(count)}</small>
+                </span>
+              ) : chosen ? (
+                <Icon name="check" />
+              ) : (
+                <span className="poll-dot" aria-hidden="true" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <div className="livepoll-foot">
+        <span className="muted sm">
+          {closed
+            ? `${fmt(total)} ${total === 1 ? 'voto' : 'votos'} · resultado liberado`
+            : mine
+              ? 'Voto registrado — não pode ser alterado'
+              : 'Cada pessoa vota uma vez'}
+        </span>
+        {poll.mode === 'fluxo' && poll.postId ? (
+          <button
+            type="button"
+            className="btn ghost sm"
+            onClick={() => actions.openPost(poll.postId)}
+          >
+            Ver no Fluxo
+          </button>
+        ) : null}
+        {owner && !closed ? (
+          <button
+            type="button"
+            className="btn ghost sm"
+            onClick={() => actions.closeLivePoll(poll.id)}
+          >
+            Encerrar
+          </button>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function NewPollForm({ channel }) {
+  const { actions } = useApp();
+  const [openForm, setOpenForm] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [options, setOptions] = useState(['', '']);
+  const [mode, setMode] = useState('chat');
+  const [duration, setDuration] = useState(15);
+  const [unit, setUnit] = useState('minutes');
+
+  if (!openForm) {
+    return (
+      <button
+        type="button"
+        className="btn ghost sm livepoll-new"
+        onClick={() => setOpenForm(true)}
+      >
+        <Icon name="plus" /> Criar enquete
+      </button>
+    );
+  }
+
+  return (
+    <form
+      className="livepoll-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const created = actions.createLivePoll({
+          question,
+          options,
+          mode,
+          durationValue: duration,
+          durationUnit: unit,
+        });
+        if (!created) return;
+        setQuestion('');
+        setOptions(['', '']);
+        setMode('chat');
+        setDuration(15);
+        setUnit('minutes');
+        setOpenForm(false);
+      }}
+    >
+      <div className="livepoll-modes" role="tablist" aria-label="Onde a enquete aparece">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === 'fluxo'}
+          className={mode === 'fluxo' ? 'on' : ''}
+          onClick={() => setMode('fluxo')}
+        >
+          <b>Integrada ao Fluxo</b>
+          <small>Também vira publicação no feed</small>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === 'chat'}
+          className={mode === 'chat' ? 'on' : ''}
+          onClick={() => setMode('chat')}
+        >
+          <b>Só no chat</b>
+          <small>Exclusiva de quem está assistindo</small>
+        </button>
+      </div>
+
+      <input
+        className="in"
+        type="text"
+        maxLength={140}
+        placeholder="Pergunta da enquete"
+        value={question}
+        onChange={(event) => setQuestion(event.target.value)}
+        aria-label="Pergunta da enquete"
+      />
+      {options.map((option, index) => (
+        <div className="opt-row" key={index}>
+          <span className={`opt-num${option.trim() ? ' filled' : ''}`}>{index + 1}</span>
+          <input
+            className="in"
+            type="text"
+            maxLength={90}
+            placeholder={`Alternativa ${index + 1}`}
+            value={option}
+            onChange={(event) =>
+              setOptions((list) =>
+                list.map((item, position) => (position === index ? event.target.value : item))
+              )
+            }
+          />
+          <button
+            type="button"
+            className="icon-btn sm"
+            aria-label={`Remover alternativa ${index + 1}`}
+            disabled={options.length <= 2}
+            onClick={() =>
+              setOptions((list) => list.filter((_, position) => position !== index))
+            }
+          >
+            <Icon name="x" />
+          </button>
+        </div>
+      ))}
+      {options.length < 6 ? (
+        <button
+          type="button"
+          className="btn ghost sm"
+          onClick={() => setOptions((list) => [...list, ''])}
+        >
+          <Icon name="plus" /> Alternativa
+        </button>
+      ) : null}
+
+      <div className="sched-row">
+        <label htmlFor="livepoll-duration">Duração</label>
+        <input
+          id="livepoll-duration"
+          className="in sched-num"
+          type="number"
+          min="1"
+          max={unit === 'hours' ? 24 : 1440}
+          value={duration}
+          onChange={(event) => setDuration(event.target.value)}
+        />
+        <select
+          className="in sched-unit"
+          value={unit}
+          onChange={(event) => setUnit(event.target.value)}
+          aria-label="Unidade de duração da enquete"
+        >
+          <option value="minutes">minutos</option>
+          <option value="hours">horas</option>
+        </select>
+      </div>
+
+      <p className="muted sm">
+        Máximo de 24 horas. Cada espectador vota uma vez.
+        {mode === 'chat' ? ' A enquete fecha junto com a live.' : ''}
+      </p>
+      <div className="row">
+        <button type="button" className="btn ghost sm" onClick={() => setOpenForm(false)}>
+          Cancelar
+        </button>
+        <button type="submit" className="btn primary sm">
+          Publicar enquete
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -218,7 +473,8 @@ function Room({ channel }) {
                   <div>
                     <b>Palco offline</b>
                     <div className="sm">
-                      A próxima transmissão de {author.name} aparece aqui.
+                      A próxima transmissão de {author.name}{' '}
+                      <Verified user={author} /> aparece aqui.
                     </div>
                   </div>
                 </div>
@@ -273,7 +529,9 @@ function Room({ channel }) {
                     <div className="cap">
                       <div>
                         <b>{channel.title || channel.name}</b>
-                        <div className="sm">{author.name}</div>
+                        <div className="sm">
+                          {author.name} <Verified user={author} />
+                        </div>
                       </div>
                       <div className="row">
                         <div className="eq" aria-hidden="true">
@@ -332,7 +590,11 @@ function Room({ channel }) {
               <span className="muted sm">{fmt(channel.msgs.length)}</span>
               {live ? <span className="livepill">AO VIVO</span> : null}
             </div>
+            {owner && live ? <NewPollForm channel={channel} /> : null}
             <div id="roomMsgs" ref={boxRef}>
+              {(channel.polls || []).slice(0, 6).map((poll) => (
+                <LivePollCard key={poll.id} channel={channel} poll={poll} />
+              ))}
               {channel.msgs.map((message) => {
                 const person = userOf(data, message.by);
                 const isOwner = message.by === channel.owner;
@@ -433,7 +695,9 @@ function Room({ channel }) {
             return (
               <div className="mrow" key={id}>
                 <Avatar user={person} size={32} />
-                <span className="ell">{person.name}</span>
+                <span className="ell">
+                  {person.name} <Verified user={person} />
+                </span>
                 {id === channel.owner ? <span className="tagc">Criador</span> : null}
               </div>
             );
@@ -456,6 +720,20 @@ export default function Connections() {
     actionsRef.current.notify('Esse canal não está mais disponível.');
     actionsRef.current.clearRoom();
   }, [missingRoom]);
+
+  if (ui.quizOpen) {
+    return (
+      <Suspense
+        fallback={
+          <div className="card" style={{ padding: 24 }}>
+            Carregando o Quiz BOOM!…
+          </div>
+        }
+      >
+        <QuizBoom />
+      </Suspense>
+    );
+  }
 
   if (ui.arenaCode !== null && ui.arenaCode !== undefined) {
     return (
@@ -506,21 +784,40 @@ export default function Connections() {
         </div>
       </div>
 
-      <section className="card arena-entry" style={{ marginBottom: 22 }}>
-        <div className="arena-entry-copy">
-          <span className="pill acc">
-            <Icon name="game" /> Jogos Online
-          </span>
-          <h3>ARENA DO CAOS</h3>
-          <p className="muted sm">
-            Batalha multiplayer real para 2–8 jogadores. Último sobrevivente,
-            salas públicas e privadas, ranking e resultados no Feed.
-          </p>
-        </div>
-        <button type="button" className="btn primary" onClick={() => actions.openArena('')}>
-          <Icon name="play" /> Jogar agora
-        </button>
-      </section>
+      <div className="games-entry-grid">
+        <section className="card arena-entry quiz-entry">
+          <div className="arena-entry-copy">
+            <span className="pill acc">
+              <Icon name="game" /> Jogo rápido
+            </span>
+            <h3>QUIZ BOOM!</h3>
+            <p className="muted sm">
+              12 categorias com 100 perguntas cada, 4 alternativas e 15 segundos
+              de pavio. Acerte, acumule pontos e desarme a bomba antes que ela
+              estoure.
+            </p>
+          </div>
+          <button type="button" className="btn primary" onClick={actions.openQuiz}>
+            <Icon name="play" /> Jogar agora
+          </button>
+        </section>
+
+        <section className="card arena-entry">
+          <div className="arena-entry-copy">
+            <span className="pill acc">
+              <Icon name="game" /> Jogos Online
+            </span>
+            <h3>ARENA DO CAOS</h3>
+            <p className="muted sm">
+              Batalha multiplayer real para 2–8 jogadores. Último sobrevivente,
+              salas públicas e privadas, ranking e resultados no Feed.
+            </p>
+          </div>
+          <button type="button" className="btn primary" onClick={() => actions.openArena('')}>
+            <Icon name="play" /> Jogar agora
+          </button>
+        </section>
+      </div>
 
       <section style={{ marginBottom: 22 }}>
         <h2 className="h2" style={{ marginBottom: 10 }}>

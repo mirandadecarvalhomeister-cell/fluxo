@@ -3,8 +3,14 @@ import {
   DEFAULT_REACTIONS,
   INTERACTIVE_FORMATS,
   MAX_OPTIONS,
+  MAX_SCHEDULE_MINUTES,
   REACTION_CHOICES,
+  RESULT_RELEASE_OPTIONS,
+  SCHEDULE_UNITS,
   formatMeta,
+  isSchedulable,
+  scheduleFromDraft,
+  scheduleSummary,
 } from '../lib/interactive';
 import {
   FEED_FORMATS,
@@ -17,7 +23,7 @@ import {
   spontaneousTopics,
 } from '../lib/feed';
 import { MAX_POST_MEDIA } from '../lib/media';
-import { art } from '../lib/art';
+import { commIcon } from '../lib/art';
 import { mediaDisplayStyle } from '../lib/mediaEdit';
 import { userOf } from '../lib/selectors';
 import { useApp } from '../store/AppContext';
@@ -96,6 +102,99 @@ function Composer() {
         ))}
       </div>
       <p className="fmt-hint">{meta.hint}</p>
+
+      {isSchedulable(format) ? (
+        <div className="sched">
+          <div className="sched-tabs" role="tablist" aria-label="Modo da publicação">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={draft.schedule?.mode !== 'scheduled'}
+              className={draft.schedule?.mode !== 'scheduled' ? 'on' : ''}
+              onClick={() => actions.setDraftSchedule({ mode: 'now' })}
+            >
+              Publicação comum
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={draft.schedule?.mode === 'scheduled'}
+              className={draft.schedule?.mode === 'scheduled' ? 'on' : ''}
+              onClick={() => actions.setDraftSchedule({ mode: 'scheduled' })}
+            >
+              Publicação programada
+            </button>
+          </div>
+
+          {draft.schedule?.mode === 'scheduled' ? (
+            <>
+              <div className="sched-row">
+                <label htmlFor="sched-duration">Encerra em</label>
+                <input
+                  id="sched-duration"
+                  className="in sched-num"
+                  type="number"
+                  min="1"
+                  max={
+                    (draft.schedule?.durationUnit || 'minutes') === 'hours'
+                      ? MAX_SCHEDULE_MINUTES / 60
+                      : MAX_SCHEDULE_MINUTES
+                  }
+                  value={draft.schedule?.durationValue ?? 30}
+                  onChange={(event) =>
+                    actions.setDraftSchedule({ durationValue: event.target.value })
+                  }
+                />
+                <select
+                  className="in sched-unit"
+                  value={draft.schedule?.durationUnit || 'minutes'}
+                  onChange={(event) =>
+                    actions.setDraftSchedule({ durationUnit: event.target.value })
+                  }
+                  aria-label="Unidade de duração"
+                >
+                  {SCHEDULE_UNITS.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="sched-row">
+                <label htmlFor="sched-release">Resultados</label>
+                <select
+                  id="sched-release"
+                  className="in"
+                  value={draft.schedule?.releaseMinutes ?? 0}
+                  onChange={(event) =>
+                    actions.setDraftSchedule({ releaseMinutes: Number(event.target.value) })
+                  }
+                >
+                  {RESULT_RELEASE_OPTIONS.map((minutes) => (
+                    <option key={minutes} value={minutes}>
+                      {minutes === 0 ? 'Liberar na hora' : `Liberar ${minutes} min depois`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="sched-summary">
+                <Icon name="clock" />
+                {scheduleSummary(scheduleFromDraft(draft.schedule))}
+                <span className="muted sm"> · máximo de 24 horas</span>
+              </p>
+              <p className="muted sm">
+                Participação única: cada pessoa vota ou responde uma vez e não pode
+                alterar depois de enviar.
+              </p>
+            </>
+          ) : (
+            <p className="muted sm">
+              Fica disponível normalmente no Fluxo, com as interações tradicionais da
+              modalidade.
+            </p>
+          )}
+        </div>
+      ) : null}
 
       {format === 'poll' ? (
         <div className="fmt-fields">
@@ -427,7 +526,7 @@ function FeedControls({ prefs, suggestions }) {
               >
                 <span
                   className="feed-suggest-cover"
-                  style={{ backgroundImage: `url('${art(item.seed, 240, 140)}')` }}
+                  style={{ backgroundImage: `url('${commIcon(item, 240)}')` }}
                 />
                 <b className="ell">{item.name}</b>
                 <small>
