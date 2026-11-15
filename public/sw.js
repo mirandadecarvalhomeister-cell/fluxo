@@ -1,9 +1,12 @@
-const CACHE = 'fluxo-v4';
+const CACHE = 'fluxo-v5';
 const CORE = [
   '/',
   '/manifest.webmanifest',
   '/assets/icon-192.png',
   '/assets/icon-512.png',
+  '/assets/icon-maskable-512.png',
+  '/assets/tab-icon.png',
+  '/assets/apple-touch-icon.png',
   '/assets/fluxo-icon.png',
   '/assets/fluxo-logo.png',
 ];
