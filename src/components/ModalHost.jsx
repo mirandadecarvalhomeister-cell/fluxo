@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { art } from '../lib/art';
+import { art, commCover, commIcon } from '../lib/art';
 import { fetchIngress, isLiveKitEnabled } from '../lib/livekit';
 import { MAX_POST_MEDIA, mediaOf } from '../lib/media';
 import { ALGO_LEVELS, FEED_FORMATS, FEED_MODES, communityActivity, feedPrefs } from '../lib/feed';
@@ -12,7 +12,7 @@ import {
   roleOf,
   userOf,
 } from '../lib/selectors';
-import { ago, fmt, slug } from '../lib/utils';
+import { ago, fileToDataURL, fmt, slug } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import { Verified } from './Brand';
@@ -251,19 +251,20 @@ function CommunityModal({ community }) {
       <div
         className="mcover"
         style={{
-          backgroundImage: `url('${community.coverUrl || art(community.seed, 800, 260)}')`,
+          backgroundImage: `url('${commCover(community, 800, 260)}')`,
         }}
       >
         {canManage ? (
           <div className="mcover-tools">
             <button
               type="button"
-              className="mcover-btn"
+              className="mcover-btn labeled"
               onClick={() => coverInputRef.current?.click()}
               title="Trocar capa"
               aria-label="Trocar capa"
             >
               <Icon name="image" />
+              <span>Alterar capa</span>
             </button>
             <input
               ref={coverInputRef}
@@ -292,9 +293,14 @@ function CommunityModal({ community }) {
               <img src={community.iconUrl} alt="" />
             ) : (
               <span
-                style={{ backgroundImage: `url('${art(community.seed + '-icone', 160, 160)}')` }}
+                style={{ backgroundImage: `url('${commIcon(community, 160)}')` }}
               />
             )}
+            {canManage ? (
+              <span className="comm-icon-edit" aria-hidden="true">
+                <Icon name="camera" />
+              </span>
+            ) : null}
           </button>
           {canManage ? (
             <input
@@ -348,6 +354,32 @@ function CommunityModal({ community }) {
 
         <p>{community.desc}</p>
 
+        {canManage ? (
+          <section>
+            <h3 className="h3">Aparência da comunidade</h3>
+            <div className="row wrap">
+              <button
+                type="button"
+                className="btn ghost sm"
+                onClick={() => coverInputRef.current?.click()}
+              >
+                <Icon name="image" /> Alterar capa
+              </button>
+              <button
+                type="button"
+                className="btn ghost sm"
+                onClick={() => iconInputRef.current?.click()}
+              >
+                <Icon name="camera" /> Alterar foto
+              </button>
+            </div>
+            <p className="muted sm" style={{ marginTop: 8 }}>
+              A capa aparece no topo da comunidade e a foto identifica a comunidade no Feed,
+              nas buscas e nos convites.
+            </p>
+          </section>
+        ) : null}
+
         <section>
           <h3 className="h3">Participantes</h3>
           {community.joined ? (
@@ -361,7 +393,7 @@ function CommunityModal({ community }) {
                     <div className="comm-member" key={memberId}>
                       <Avatar user={person} size={32} />
                       <span className="ell">
-                        {person.name}
+                        {person.name} <Verified user={person} />
                         {isOwner ? ' · criador' : isMod ? ' · moderador' : ''}
                       </span>
                     </div>
@@ -388,7 +420,9 @@ function CommunityModal({ community }) {
                 <div className="mrow" key={request.id}>
                   <Avatar user={person} size={34} />
                   <div className="grow">
-                    <b>{person.name}</b>
+                    <b>
+                      {person.name} <Verified user={person} />
+                    </b>
                     <div className="muted sm">Quer participar · {ago(request.ts)}</div>
                   </div>
                   <button
@@ -514,7 +548,9 @@ function CommunityModal({ community }) {
               <div className="mrow" key={modId}>
                 <Avatar user={person} size={36} />
                 <div className="grow">
-                  <b>{person.name}</b>
+                  <b>
+                    {person.name} <Verified user={person} />
+                  </b>
                   <div className="muted sm">
                     {modId === community.owner ? 'Criador' : 'Moderador'}
                   </div>
@@ -580,7 +616,8 @@ function CommunityModal({ community }) {
                 <div className="grow">
                   <b>{item.title}</b>
                   <div className="muted sm">
-                    {person.name} · {item.replies} respostas · {ago(item.ts)}
+                    {person.name} <Verified user={person} /> · {item.replies} respostas ·{' '}
+                    {ago(item.ts)}
                   </div>
                 </div>
                 {mod && (
@@ -637,7 +674,20 @@ function NewCommunityModal() {
   const [desc, setDesc] = useState('');
   const [rules, setRules] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
+  const [coverArt, setCoverArt] = useState(null);
+  const [iconArt, setIconArt] = useState(null);
   const seed = ui.commSeed;
+
+  const pickArt = async (kind, file) => {
+    if (!file) return;
+    try {
+      const preview = await fileToDataURL(file, kind === 'icon' ? 320 : 1400);
+      if (kind === 'icon') setIconArt({ file, preview });
+      else setCoverArt({ file, preview });
+    } catch {
+      actions.notify('Não foi possível usar essa imagem.');
+    }
+  };
 
   return (
     <form
@@ -654,6 +704,10 @@ function NewCommunityModal() {
             .filter(Boolean),
           seed,
           private: isPrivate,
+          iconUrl: iconArt?.preview || null,
+          coverUrl: coverArt?.preview || null,
+          iconFile: iconArt?.file || null,
+          coverFile: coverArt?.file || null,
         });
       }}
     >
@@ -661,11 +715,15 @@ function NewCommunityModal() {
       <div className="comm-preview">
         <span
           className="comm-preview-cover"
-          style={{ backgroundImage: `url('${art(seed, 600, 200)}')` }}
+          style={{
+            backgroundImage: `url('${coverArt?.preview || art(seed, 600, 200)}')`,
+          }}
         />
         <span
           className="comm-preview-icon"
-          style={{ backgroundImage: `url('${art(seed + '-icone', 160, 160)}')` }}
+          style={{
+            backgroundImage: `url('${iconArt?.preview || art(seed + '-icone', 160, 160)}')`,
+          }}
         />
         <b>{name.trim() || 'Sua nova comunidade'}</b>
         <small>{isPrivate ? 'Privada · entrada por aprovação' : 'Aberta · entre quem quiser'}</small>
@@ -752,13 +810,60 @@ function NewCommunityModal() {
             <button
               type="button"
               key={cover}
-              className={seed === cover ? 'on' : ''}
+              className={!coverArt && seed === cover ? 'on' : ''}
               style={{ backgroundImage: `url('${art(cover + '-c', 120, 80)}')` }}
-              onClick={() => actions.setCommSeed(cover)}
+              onClick={() => {
+                setCoverArt(null);
+                actions.setCommSeed(cover);
+              }}
               aria-label={`Capa ${cover}`}
             />
           ))}
         </div>
+      </div>
+      <div className="field">
+        <label>Foto e capa personalizadas</label>
+        <div className="row wrap">
+          <label className="btn ghost sm" style={{ cursor: 'pointer' }}>
+            <Icon name="image" /> Escolher capa
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(event) => {
+                pickArt('cover', event.target.files?.[0]);
+                event.target.value = '';
+              }}
+            />
+          </label>
+          <label className="btn ghost sm" style={{ cursor: 'pointer' }}>
+            <Icon name="camera" /> Escolher foto
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(event) => {
+                pickArt('icon', event.target.files?.[0]);
+                event.target.value = '';
+              }}
+            />
+          </label>
+          {coverArt || iconArt ? (
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => {
+                setCoverArt(null);
+                setIconArt(null);
+              }}
+            >
+              <Icon name="x" /> Remover imagens
+            </button>
+          ) : null}
+        </div>
+        <p className="muted sm">
+          A capa aparece no topo e a foto identifica a comunidade no Feed e nas buscas.
+        </p>
       </div>
       <p className="muted sm" style={{ marginBottom: 12 }}>
         Você será o criador e moderador. Depois, escolha outros moderadores entre quem
@@ -949,7 +1054,7 @@ function ProfileConnectionsModal({ modal }) {
         <div className="share-person conn-row" key={community.id}>
           <span
             className="cthumb"
-            style={{ backgroundImage: `url('${art(community.seed, 120, 120)}')` }}
+            style={{ backgroundImage: `url('${commIcon(community, 120)}')` }}
           />
           <span className="grow">
             <b className="ell" style={{ display: 'block' }}>
@@ -996,7 +1101,7 @@ function ProfileConnectionsModal({ modal }) {
               <Avatar user={person} size={40} />
               <span className="grow">
                 <b className="ell" style={{ display: 'block' }}>
-                  {person.name}
+                  {person.name} <Verified user={person} />
                 </b>
                 <span className="muted sm">
                   @{person.handle} · {fmt(person.followers || 0)} seguidores
@@ -1370,7 +1475,7 @@ function SharePostModal({ modal }) {
                 <Avatar user={person} size={38} />
                 <span className="grow">
                   <b className="ell" style={{ display: 'block' }}>
-                    {person.name}
+                    {person.name} <Verified user={person} />
                   </b>
                   <span className="muted sm">@{person.handle}</span>
                 </span>
@@ -1440,7 +1545,7 @@ function NewChatModal() {
               <Avatar user={person} size={38} />
               <span className="grow">
                 <b className="ell" style={{ display: 'block' }}>
-                  {person.name}
+                  {person.name} <Verified user={person} />
                 </b>
                 <span className="muted sm">@{person.handle}</span>
               </span>

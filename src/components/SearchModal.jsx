@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { art } from '../lib/art';
+import { art, commIcon } from '../lib/art';
 import { CATS } from '../lib/seed';
 import { userOf } from '../lib/selectors';
 import { ago, fmt, lsGet, lsSet } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
+import { Verified } from './Brand';
 import { Icon } from './Icon';
 
 const RECENT_KEY = 'fluxo.searches';
@@ -110,7 +111,7 @@ function PersonRow({ person, why, needle, onOpen }) {
       <Avatar user={person} size={38} />
       <span className="grow">
         <b className="ell">
-          <Highlight text={person.name} needle={needle} />
+          <Highlight text={person.name} needle={needle} /> <Verified user={person} />
         </b>
         <span className="muted sm ell">
           @{person.handle} · {fmt(person.followers)} seguidores
@@ -461,7 +462,8 @@ export default function SearchModal() {
                       <span className="grow">
                         <b className="ell">{channel.title || channel.name}</b>
                         <span className="muted sm ell">
-                          {owner.name} · <Icon name="eye" /> {fmt(channel.viewers)}
+                          {owner.name} <Verified user={owner} /> ·{' '}
+                          <Icon name="eye" /> {fmt(channel.viewers)}
                         </span>
                       </span>
                       <span className="tag-live">AO VIVO</span>
@@ -484,7 +486,7 @@ export default function SearchModal() {
                   >
                     <span
                       className="cthumb"
-                      style={{ backgroundImage: `url('${art(community.seed, 120, 120)}')` }}
+                      style={{ backgroundImage: `url('${commIcon(community, 120)}')` }}
                     />
                     <span className="grow">
                       <b className="ell">{community.name}</b>
@@ -517,7 +519,8 @@ export default function SearchModal() {
                       <span className="grow">
                         <b className="ell">{channel.title || channel.name}</b>
                         <span className="muted sm ell">
-                          {owner.name} · {fmt(channel.followers)} seguidores
+                          {owner.name} <Verified user={owner} /> ·{' '}
+                          {fmt(channel.followers)} seguidores
                         </span>
                       </span>
                       {channel.live ? (
@@ -563,6 +566,7 @@ export default function SearchModal() {
                       <span className="grow">
                         <b className="ell">
                           <Highlight text={author.name} needle={highlightTerm} />{' '}
+                          <Verified user={author} />{' '}
                           <span className="muted sm">· {ago(post.ts)}</span>
                         </b>
                         <span className="sr-snippet ell">
@@ -592,7 +596,7 @@ export default function SearchModal() {
                   >
                     <span
                       className="cthumb"
-                      style={{ backgroundImage: `url('${art(community.seed, 120, 120)}')` }}
+                      style={{ backgroundImage: `url('${commIcon(community, 120)}')` }}
                     />
                       <span className="grow">
                         <b className="ell">
@@ -629,7 +633,8 @@ export default function SearchModal() {
                           <Highlight text={channel.name} needle={highlightTerm} />
                         </b>
                         <span className="muted sm ell">
-                          {owner.name} · {fmt(channel.followers)} seguidores
+                          {owner.name} <Verified user={owner} /> ·{' '}
+                          {fmt(channel.followers)} seguidores
                         </span>
                       </span>
                       {channel.live ? <span className="tag-live">AO VIVO</span> : null}

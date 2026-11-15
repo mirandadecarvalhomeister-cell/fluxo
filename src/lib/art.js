@@ -47,3 +47,9 @@ export function logo(sz = 32) {
   }
   return `<svg width="${sz}" height="${sz}" viewBox="0 0 40 40" aria-hidden="true">${d}</svg>`;
 }
+
+export const commIcon = (community, w = 120) =>
+  community?.iconUrl || art(`${community?.seed || community?.id || 'fluXo'}-icone`, w, w);
+
+export const commCover = (community, w = 800, h = 260) =>
+  community?.coverUrl || art(community?.seed || community?.id || 'fluXo', w, h);

@@ -1,7 +1,8 @@
-import { art } from '../lib/art';
+import { commIcon } from '../lib/art';
 import { fmt } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
+import { Verified } from './Brand';
 
 export default function SidePanel() {
   const { data, actions, mode } = useApp();
@@ -19,7 +20,7 @@ export default function SidePanel() {
               <Avatar user={u} size={40} />
               <div className="grow">
                 <b className="ell" style={{ display: 'block' }}>
-                  {u.name}
+                  {u.name} <Verified user={u} />
                 </b>
                 <span className="muted sm">@{u.handle}</span>
               </div>
@@ -50,7 +51,7 @@ export default function SidePanel() {
           >
             <span
               className="cthumb"
-              style={{ backgroundImage: `url('${art(c.seed, 120, 120)}')` }}
+              style={{ backgroundImage: `url('${commIcon(c, 120)}')` }}
             />
             <div className="grow">
               <b className="ell" style={{ display: 'block' }}>

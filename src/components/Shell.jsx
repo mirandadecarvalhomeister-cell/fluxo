@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { unreadNotifications, unreadTotal } from '../lib/selectors';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
-import { Logo } from './Brand';
+import { Logo, Verified } from './Brand';
 import Connections from './Connections';
 import Feed from './Feed';
 import { Icon } from './Icon';
@@ -73,7 +73,9 @@ function AccountMenu({ compact = false }) {
         <div className="account-head">
           <Avatar user={data.me} size={36} />
           <div>
-            <b className="ell">{data.me.name}</b>
+            <b className="ell">
+              {data.me.name} <Verified user={data.me} />
+            </b>
             <span className="muted sm ell">@{data.me.handle}</span>
           </div>
         </div>
@@ -338,7 +340,7 @@ export default function Shell() {
             <Avatar user={data.me} size={38} />
             <div className="grow">
               <b className="ell" style={{ display: 'block' }}>
-                {data.me.name}
+                {data.me.name} <Verified user={data.me} />
               </b>
               <span className="muted sm ell" style={{ display: 'block' }}>
                 @{data.me.handle}

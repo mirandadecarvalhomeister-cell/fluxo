@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
+import { Verified } from './Brand';
 
 const normalize = (value) =>
   String(value || '')
@@ -145,7 +146,9 @@ export default function MentionField({
             >
               <Avatar user={person} size={26} />
               <span className="mention-meta">
-                <b className="ell">{person.name}</b>
+                <b className="ell">
+                  {person.name} <Verified user={person} />
+                </b>
                 <i className="ell">@{person.handle}</i>
               </span>
             </button>

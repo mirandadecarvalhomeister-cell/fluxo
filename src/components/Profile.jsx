@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { art } from '../lib/art';
+import { art, commCover, commIcon } from '../lib/art';
 import { mediaOf } from '../lib/media';
 import * as remote from '../lib/remote';
 import { roleOf, userOf } from '../lib/selectors';
@@ -80,15 +80,13 @@ function CommunityCard({ community }) {
       <div
         className="ccover"
         style={{
-          backgroundImage: `url('${community.coverUrl || art(community.seed, 600, 260)}')`,
+          backgroundImage: `url('${commCover(community, 600, 260)}')`,
         }}
       >
         <span
           className="ccover-ic"
           style={{
-            backgroundImage: `url('${
-              community.iconUrl || art(community.seed + '-icone', 160, 160)
-            }')`,
+            backgroundImage: `url('${commIcon(community, 160)}')`,
           }}
         />
         {community.private ? (
@@ -483,7 +481,9 @@ export default function Profile() {
                   <div className="scrap" key={item.id || index}>
                     <Avatar user={author} size={34} />
                     <div style={{ minWidth: 0 }}>
-                      <b className="sm">{author.name}</b>{' '}
+                      <b className="sm">
+                        {author.name} <Verified user={author} />
+                      </b>{' '}
                       <span className="muted sm">{ago(item.ts)}</span>
                       <p>
                         <TagText text={item.text} />

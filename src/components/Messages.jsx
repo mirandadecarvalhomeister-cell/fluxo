@@ -4,7 +4,7 @@ import { userOf } from '../lib/selectors';
 import { fileToDataURL, hm } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
-import { TagText } from './Brand';
+import { TagText, Verified } from './Brand';
 import ChatPicker from './ChatPicker';
 import { Icon } from './Icon';
 import { VideoViewer } from './VideoPlayer';
@@ -66,8 +66,16 @@ const fmtTime = (seconds) =>
     Math.floor(seconds % 60)
   ).padStart(2, '0')}`;
 
+const PREVIEW_MAX = 64;
+
+const shortText = (value) => {
+  const clean = String(value || '').replace(/\s+/g, ' ').trim();
+  if (clean.length <= PREVIEW_MAX) return clean;
+  return `${clean.slice(0, PREVIEW_MAX).trimEnd()}…`;
+};
+
 const previewOf = (message) => {
-  const text = (message.text || '').trim();
+  const text = shortText(message.text);
   if (text) return text;
   if (message.attachment) return ATTACH_LABEL[message.attachment.kind] || 'Mensagem';
   return 'Mensagem';
@@ -113,7 +121,9 @@ function PostAttachment({ attachment }) {
     >
       <span className="att-post-h">
         <Avatar user={author} size={26} />
-        <b className="ell">{author.name}</b>
+        <b className="ell">
+          {author.name} <Verified user={author} />
+        </b>
       </span>
       <span className="att-post-t">{text}</span>
       <span className="att-post-f">
@@ -136,7 +146,9 @@ function StoryAttachment({ attachment }) {
     >
       <span className="att-post-h">
         <Avatar user={author} size={26} />
-        <b className="ell">{author.name}</b>
+        <b className="ell">
+          {author.name} <Verified user={author} />
+        </b>
       </span>
       {attachment.media ? (
         isVideo ? (
@@ -516,7 +528,7 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia, onForw
         >
           {message.text ? (
             <p>
-              <TagText text={message.text} />
+              <TagText text={message.text} links />
             </p>
           ) : null}
           {(() => {
@@ -1608,9 +1620,7 @@ export default function Messages() {
 
   return (
     <>
-      <div className="pagehead">
-        <h1>Mensagens</h1>
-      </div>
+      <h1 className="sr-only">Mensagens</h1>
 
       <div className={`card chat-app ${ui.chatOpen ? 'open' : ''}`}>
         <div className="clist">
@@ -1663,6 +1673,7 @@ export default function Messages() {
                       <div className="t">
                         <b className="ell">
                           {item.name}
+                          <Verified user={item} />
                           {muted ? <Icon name="volumeoff" className="ci-mute" /> : null}
                         </b>
                         <span>{last ? hm(last.ts) : ''}</span>
@@ -1710,7 +1721,9 @@ export default function Messages() {
                 >
                   <Avatar user={person} size={42} online={onlineChat} />
                   <span>
-                    <b className="ell">{person.name}</b>
+                    <b className="ell">
+                      {person.name} <Verified user={person} />
+                    </b>
                     <span className={onlineChat ? 'online-label sm' : 'muted sm'}>
                       {onlineChat ? 'Online agora' : 'Conversa direta'}
                     </span>
@@ -2229,7 +2242,9 @@ export default function Messages() {
                   <button key={item.id} type="button" onClick={() => forwardTo(item)}>
                     <Avatar user={friend} size={40} />
                     <span className="grow">
-                      <b className="ell">{friend.name}</b>
+                      <b className="ell">
+                        {friend.name} <Verified user={friend} />
+                      </b>
                       <span className="muted sm ell">@{friend.handle}</span>
                     </span>
                     <Icon name="forward" />

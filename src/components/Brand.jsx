@@ -81,7 +81,7 @@ export function Logo({ size = 32, className = 'logo' }) {
   );
 }
 
-export function TagText({ text }) {
+export function TagText({ text, links = false }) {
   const { data, actions } = useApp();
   const personIdOf = (name) => {
     const value = String(name || '').toLowerCase();
@@ -97,7 +97,21 @@ export function TagText({ text }) {
 
   return (
     <>
-      {splitTags(text).map((part, i) => {
+      {splitTags(text, links).map((part, i) => {
+        if (part.url) {
+          return (
+            <a
+              className="chat-link"
+              href={part.href}
+              key={i}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {part.url}
+            </a>
+          );
+        }
         if (part.tag) {
           return (
             <span className="tag" key={i}>

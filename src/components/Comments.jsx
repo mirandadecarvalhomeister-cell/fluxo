@@ -3,7 +3,7 @@ import { userOf } from '../lib/selectors';
 import { ago } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
-import { TagText } from './Brand';
+import { TagText, Verified } from './Brand';
 import { Icon } from './Icon';
 import MentionField from './MentionField';
 
@@ -29,7 +29,9 @@ export function Comments({ post }) {
                 <Avatar user={author} size={34} />
                 <div className="cm-main">
                   <div className="cm-head">
-                    <b>{author.name}</b>
+                    <b>
+                      {author.name} <Verified user={author} />
+                    </b>
                     <span className="muted sm">{ago(c.ts)}</span>
                   </div>
                   <p>

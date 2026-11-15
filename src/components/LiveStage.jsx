@@ -9,6 +9,7 @@ import { fmt } from '../lib/utils';
 import { userOf } from '../lib/selectors';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
+import { Verified } from './Brand';
 import { Icon } from './Icon';
 
 function RemoteVideo({ track, className = 'lk-video' }) {
@@ -450,7 +451,9 @@ export default function LiveStage({ channel, owner, clock, hearts }) {
       <div className="cap">
         <div>
           <b>{channel.title || channel.name}</b>
-          <div className="sm">{author.name}</div>
+          <div className="sm">
+            {author.name} <Verified user={author} />
+          </div>
         </div>
         <div className="row">
           <div className="eq" aria-hidden="true">

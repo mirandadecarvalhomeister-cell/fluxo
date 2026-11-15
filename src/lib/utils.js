@@ -128,15 +128,31 @@ export async function shareLink({ title, text, url }) {
   }
 }
 
-export function splitTags(text) {
+export function splitTags(text, withLinks = false) {
   const parts = [];
-  const re = /([#@])([\p{L}\d_]+)/gu;
+  const re = withLinks
+    ? /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)|([#@])([\p{L}\d_]+)/giu
+    : /([#@])([\p{L}\d_]+)/gu;
   let last = 0;
   let m;
   const str = String(text || '');
   while ((m = re.exec(str))) {
     if (m.index > last) parts.push({ text: str.slice(last, m.index) });
-    parts.push(m[1] === '#' ? { tag: m[2] } : { mention: m[2] });
+    if (withLinks && m[1]) {
+      let url = m[1];
+      let trailing = '';
+      const punct = url.match(/[.,;:!?]+$/);
+      if (punct) {
+        trailing = punct[0];
+        url = url.slice(0, -trailing.length);
+      }
+      if (url) parts.push({ url, href: /^www\./i.test(url) ? `https://${url}` : url });
+      if (trailing) parts.push({ text: trailing });
+    } else {
+      const sigil = withLinks ? m[2] : m[1];
+      const name = withLinks ? m[3] : m[2];
+      parts.push(sigil === '#' ? { tag: name } : { mention: name });
+    }
     last = m.index + m[0].length;
   }
   if (last < str.length) parts.push({ text: str.slice(last) });
