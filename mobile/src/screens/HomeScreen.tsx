@@ -12,8 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
-import { useApp } from '../context/AppContext';
+import { Ionicons } from '@expo/vector-icons';import { useApp } from '../context/AppContext';
 import { AvatarView, EmptyState, IconButton } from '../components/Ui';
 import { colors, radius, spacing } from '../lib/theme';
 import { compactNumber, timeAgo } from '../lib/format';
@@ -164,7 +163,10 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <View style={styles.topBar}>
-        <Text style={styles.logo}>Fluxo</Text>
+        <View style={styles.brand}>
+          <Image source={require('../assets/fluxo-logo.png')} style={styles.brandLogo} contentFit="contain" />
+          <Text style={styles.logo}>Fluxo</Text>
+        </View>
         <View style={{ flexDirection: 'row' }}>
           <IconButton name="notifications-outline" label="Notificações" onPress={() => actions.push({ name: 'notifications' })} />
           <IconButton name="settings-outline" label="Configurações" onPress={() => actions.push({ name: 'settings' })} />
@@ -200,7 +202,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  logo: { color: colors.text, fontSize: 26, fontWeight: '900', letterSpacing: -0.5 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  brandLogo: { width: 30, height: 30 },
+  logo: { color: colors.text, fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   card: {
     paddingVertical: 12,

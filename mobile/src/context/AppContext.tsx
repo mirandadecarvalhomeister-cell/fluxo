@@ -86,6 +86,7 @@ type AppContextValue = {
     pop: () => void;
     resetStack: () => void;
     signIn: (email: string, password: string) => Promise<string | null>;
+    signInWithGoogle: () => Promise<string | null>;
     signUp: (name: string, email: string, password: string) => Promise<{ error: string | null; needsConfirmation: boolean }>;
     signOut: () => Promise<void>;
     requestReset: (email: string) => Promise<string | null>;
@@ -879,6 +880,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: 'fluxo://oauth' },
+      });
+      if (error) return error.message;
+      return null;
+    } catch (error: any) {
+      return error?.message || 'Não foi possível entrar com Google.';
+    }
+  }, []);
+
   const signUp = useCallback(async (name: string, email: string, password: string) => {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -950,6 +964,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       pop,
       resetStack,
       signIn,
+      signInWithGoogle,
       signUp,
       signOut,
       requestReset,

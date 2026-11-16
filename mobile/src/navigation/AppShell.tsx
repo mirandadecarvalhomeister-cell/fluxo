@@ -25,7 +25,7 @@ import QuizScreen from '../screens/QuizScreen';
 
 const TABS: { id: Tab; icon: React.ComponentProps<typeof Ionicons>['name']; label: string }[] = [
   { id: 'home', icon: 'home', label: 'Início' },
-  { id: 'explore', icon: 'compass', label: 'Explorar' },
+  { id: 'explore', icon: 'search', label: 'Buscar' },
   { id: 'create', icon: 'add', label: 'Criar' },
   { id: 'messages', icon: 'chatbubble', label: 'Mensagens' },
   { id: 'profile', icon: 'person', label: 'Perfil' },
