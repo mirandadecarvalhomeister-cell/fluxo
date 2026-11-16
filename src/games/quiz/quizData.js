@@ -114,18 +114,38 @@ export async function finishRun(runId, result, online) {
 
 export const readBest = () => Number(read(BEST_KEY, 0)) || 0;
 
+const PENDING_INVITE_KEY = 'fluxo.quiz.pendingInvite';
+
+export const readPendingInvite = () => read(PENDING_INVITE_KEY, '');
+export const clearPendingInvite = () => write(PENDING_INVITE_KEY, '');
+
 export async function claimInvite(inviter) {
   if (!inviter) return false;
+
+  // Só concede bônus a quem tem cadastro (sessão ativa no Supabase).
+  // Visitantes não ganham apenas por abrir o link: guardamos o convite como
+  // pendente e ele é aplicado assim que a pessoa se cadastrar/entrar.
+  const loggedIn = await remote.hasSession?.();
+  if (!loggedIn) {
+    // Não sobrescreve um convite pendente já guardado.
+    if (!read(PENDING_INVITE_KEY, '')) write(PENDING_INVITE_KEY, inviter);
+    return false;
+  }
+
+  // Evita repetir o mesmo convite para a mesma conta.
   const already = read(INVITE_KEY, '');
   if (already === inviter) return false;
-  write(INVITE_KEY, inviter);
+
   const remoteOk = await remote.quizClaimInvite?.(inviter);
-  if (remoteOk) return true;
-  activeWeek();
-  const bonus = read(BONUS_KEY, {}) || {};
-  bonus.rounds = (Number(bonus.rounds) || 0) + BONUS_ROUNDS;
-  write(BONUS_KEY, bonus);
-  return true;
+  if (remoteOk) {
+    write(INVITE_KEY, inviter);
+    clearPendingInvite();
+    return true;
+  }
+
+  // Modo demonstração (sem Supabase configurado): sem cadastro real, não há
+  // como validar o convidado — também não concede bônus apenas pelo link.
+  return false;
 }
 
 export async function saveMedal(categoryId, online) {

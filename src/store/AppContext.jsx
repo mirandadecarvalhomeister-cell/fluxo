@@ -42,6 +42,9 @@ import { mentionsHandle, notificationText } from '../lib/selectors';
 import { DEFAULT_FEED_PREFS, feedPrefs } from '../lib/feed';
 import {
   challengeLink as quizChallengeLink,
+  claimInvite as quizClaimInvite,
+  readPendingInvite as quizReadPendingInvite,
+  clearPendingInvite as quizClearPendingInvite,
   saveChallenge as saveQuizChallenge,
 } from '../games/quiz/quizData';
 import { quizCardImage } from '../lib/quizCard';
@@ -1006,6 +1009,18 @@ export function AppProvider({ children }) {
       }));
       writeCache(email, merged);
       setReady(true);
+
+      // Aplica convite de quiz que veio por link antes do cadastro: só agora,
+      // com sessão ativa, o bônus de +3 rodadas pode ser concedido.
+      const pendingInvite = quizReadPendingInvite();
+      if (pendingInvite) {
+        quizClaimInvite(pendingInvite).then((ok) => {
+          if (ok) {
+            quizClearPendingInvite();
+            toast('Convite aceito! Você ganhou +3 rodadas no Quiz BOOM.');
+          }
+        });
+      }
     },
     [toast]
   );

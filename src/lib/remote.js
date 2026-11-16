@@ -9,6 +9,18 @@ import {
 import { slug } from './utils';
 
 const enabled = () => isSupabaseEnabled && !!supabase;
+
+// Verdadeiro apenas quando há um usuário autenticado no Supabase.
+// Usado para não conceder bônus de convite a visitantes não cadastrados.
+export async function hasSession() {
+  if (!enabled()) return false;
+  try {
+    const { data } = await supabase.auth.getUser();
+    return !!(data && data.user);
+  } catch {
+    return false;
+  }
+}
 const warn = (error) => console.warn('[supabase]', error?.message || error);
 
 // Domínio público usado nos links de confirmação de e-mail, recuperação de

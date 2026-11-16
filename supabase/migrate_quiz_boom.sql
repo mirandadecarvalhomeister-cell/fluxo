@@ -210,7 +210,9 @@ begin
     return false;
   end if;
 
-  if not exists (select 1 from public.profiles where user_id = p_inviter) then
+  -- Qualquer usuário cadastrado pode ser convidado (auth.users é a fonte da
+  -- verdade; perfis podem não existir porque o cadastro não cria um).
+  if not exists (select 1 from auth.users where id::text = p_inviter) then
     return false;
   end if;
 
