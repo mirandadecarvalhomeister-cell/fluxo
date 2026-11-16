@@ -278,10 +278,63 @@ const STOP_WORDS = new Set([
   'vamos', 'pode', 'podem', 'quero', 'quer', 'todos', 'todas', 'outro', 'outra',
   'mais', 'menos', 'bem', 'mal', 'sim', 'nao', 'não', 'com', 'sem', 'por',
   'que', 'dos', 'das', 'uma', 'uns', 'umas', 'the', 'and', 'for', 'with',
+  // Verbos comuns que não são assuntos (evita "atingiu Brasil", "mudou tudo").
+  'atingiu', 'atingir', 'mudou', 'mudar', 'fizeram', 'fazer', 'fez', 'estao',
+  'estão', 'estava', 'foram', 'esses', 'sendo', 'sera', 'será', 'pode', 'podem',
 ]);
 
 // Assuntos que estao gerando conversa de verdade e ainda nao tem comunidade.
 // Serve para sugerir a criacao espontanea de comunidades a partir do feed.
+// Extrai "assuntos" de um texto. A ideia é captar o termo completo (ex.
+// "Apagão Global"), não pedaços separados (#Apagão + #Global). Hashtags
+// explícitas valem como assunto inteiro. Para texto corrido, priorizamos
+// sequências de 2-3 palavras e descartamos palavras que são só parte de um
+// termo maior já identificado.
+function extractTopics(text) {
+  const source = String(text || '');
+  const hashtags = source.match(/#[\p{L}\p{N}_]{2,}/gu) || [];
+  const explicit = hashtags.map((tag) => tag.replace(/^#/, '').trim()).filter(Boolean);
+
+  // Palavras válidas, em ordem, com stop words removidas.
+  const clean = source.replace(/#[\p{L}\p{N}_]{2,}/gu, ' ');
+  const tokens = clean
+    .split(/[^\p{L}\p{N}]+/u)
+    .map((word) => word.trim())
+    .filter((word) => word.length >= 3 && !STOP_WORDS.has(norm(word)));
+
+  // Candidatos: bigramas (2 palavras) e palavras isoladas. Bigramas são a
+  // unidade base do "assunto" — captam o termo completo (ex.: "Apagão Global")
+  // sem arrastar verbos/advérbios que aparecem depois (ex.: "Apagão Global
+  // atingiu"). Palavras isoladas só entram se não formarem um bigrama.
+  const phrases = [];
+  for (let size = 2; size >= 1; size -= 1) {
+    for (let i = 0; i + size <= tokens.length; i += 1) {
+      phrases.push(tokens.slice(i, i + size).join(' '));
+    }
+  }
+
+  // Mantém apenas os termos que não estão contidos num termo maior,
+  // preservando o mais completo (ex.: "apagao global" vence "apagao").
+  const normalized = phrases.map(norm);
+  const kept = [];
+  const usedTokens = new Set();
+  phrases.forEach((phrase, index) => {
+    const key = normalized[index];
+    if (key.length < 3) return;
+    // Não reaproveita palavras de um assunto já aceito (evita "Apagão Global"
+    // seguido de "Global atingiu" — o segundo começa com a palavra do primeiro).
+    const words = phrase.split(' ');
+    if (words.some((word) => usedTokens.has(norm(word)))) return;
+    if (kept.some((item) => norm(item) === key)) return;
+    kept.push(phrase);
+    words.forEach((word) => usedTokens.add(norm(word)));
+  });
+
+  // Hashtags explícitas primeiro, depois os bigramas mais completos (limita a
+  // 2 por post para não inflar o feed com assuntos rasos).
+  return [...explicit, ...kept.slice(0, 2)];
+}
+
 export function spontaneousTopics(posts, comms) {
   const existing = (comms || []).map((item) => norm(`${item.name} ${item.cat}`));
   const buckets = new Map();
@@ -298,17 +351,7 @@ export function spontaneousTopics(posts, comms) {
       (post.comments || []).length * 2 +
       (post.interactions || []).filter((row) => row.kind !== 'view').length;
 
-    const hashtags = text.match(/#[\p{L}\p{N}_]{3,}/gu) || [];
-    const words = text
-      .replace(/#[\p{L}\p{N}_]{3,}/gu, ' ')
-      .split(/[^\p{L}\p{N}]+/u)
-      .map((word) => word.trim())
-      .filter((word) => word.length >= 4 && !STOP_WORDS.has(norm(word)));
-
-    const terms = [
-      ...hashtags.map((tag) => tag.replace(/^#/, '')),
-      ...words,
-    ];
+    const terms = extractTopics(text);
     new Set(terms.map((term) => norm(term))).forEach((key) => {
       if (!key) return;
       if (existing.some((name) => name.includes(key))) return;

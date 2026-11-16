@@ -284,6 +284,15 @@ function AudioMessage({ src }) {
   );
 }
 
+// Só permite editar mensagens próprias nos primeiros 20 segundos após o envio.
+const EDIT_WINDOW_MS = 20_000;
+const canEditMessage = (message) => {
+  if (!message?.me || !String(message.text || '').trim()) return false;
+  const ts = Number(message.ts) || 0;
+  if (!ts) return false;
+  return Date.now() - ts <= EDIT_WINDOW_MS;
+};
+
 function QuizAttachment({ attachment }) {
   const { actions } = useApp();
   const mode = attachment.mode === 'insane' ? 'Insano' : 'Clássico';
@@ -1656,7 +1665,7 @@ export default function Messages() {
   const dismissMenu = () => closeLayer(() => setMenu(null));
 
   const startEdit = (message, chatRef) => {
-    if (!message?.me || !String(message.text || '').trim()) {
+    if (!canEditMessage(message)) {
       dismissMenu();
       return;
     }
@@ -1673,6 +1682,11 @@ export default function Messages() {
 
   const saveEdit = async () => {
     if (!editing || savingEdit) return;
+    if (!canEditMessage(editing.message)) {
+      actions.notify('O tempo para editar esta mensagem terminou.');
+      cancelEdit();
+      return;
+    }
     const clean = editText.trim();
     if (!clean) {
       actions.notify('A mensagem não pode ficar vazia.');
@@ -2256,7 +2270,7 @@ export default function Messages() {
                 <Icon name="file" /> Copiar texto
               </button>
             ) : null}
-            {menu.message.me && menu.message.text?.trim() ? (
+            {canEditMessage(menu.message) ? (
               <button type="button" role="menuitem" onClick={() => startEdit(menu.message, menu.chat)}>
                 <Icon name="edit" /> Editar mensagem
               </button>

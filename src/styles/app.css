@@ -1328,7 +1328,7 @@ html.video-open,body.video-open{overflow:hidden!important}
 .feed-filters button{flex:none;padding:6px 10px;border-radius:999px;border:1px solid var(--line);font:700 11.5px var(--f-body);color:var(--muted);background:transparent}
 .feed-filters button.on{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 35%,var(--line));color:var(--accent)}
 .feed-suggest{display:grid;gap:6px;padding:4px 0 2px}
-.feed-suggest-title{display:flex;align-items:center;gap:6px;font:800 11px var(--f-body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.feed-suggest-title{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font:800 11px var(--f-body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);overflow:visible;white-space:normal}
 .feed-suggest-title .ic{width:14px;height:14px;color:var(--accent)}
 .feed-suggest-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
 .feed-suggest-row::-webkit-scrollbar{display:none}
@@ -1380,7 +1380,7 @@ html.video-open,body.video-open{overflow:hidden!important}
 .feed-spontaneous-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
 .feed-spontaneous-row::-webkit-scrollbar{display:none}
 .feed-spontaneous-card{flex:none;width:190px;display:grid;gap:5px;padding:10px;border-radius:12px;background:var(--surface2);border:1px solid var(--line);text-align:left}
-.feed-spontaneous-card b{font-size:13px;color:var(--accent)}
+.feed-spontaneous-card b{font-size:13px;color:var(--accent);white-space:normal;overflow:visible;text-overflow:clip;word-break:break-word;line-height:1.3}
 .feed-spontaneous-card small{font-size:10.5px;color:var(--muted)}
 .feed-spontaneous-card .btn{justify-self:start;margin-top:2px}
 
