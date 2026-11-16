@@ -508,11 +508,37 @@ body.lock{overflow:hidden}
 /* reactions */
 .reaction-wrap{position:relative;display:flex}
 .reaction-emoji{font-size:16px;line-height:1}
-.react-picker{position:absolute;left:0;bottom:calc(100% + 8px);display:flex;gap:2px;padding:6px 8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;box-shadow:0 12px 34px rgba(0,0,0,.2);opacity:0;pointer-events:none;transform:translateY(6px);transition:.18s;z-index:25}
-.reaction-wrap:hover .react-picker,.reaction-wrap:focus-within .react-picker{opacity:1;pointer-events:auto;transform:translateY(0)}
-.react-picker button{width:32px;height:32px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:18px;background:transparent;color:inherit}
-.react-picker button:hover{background:var(--surface2);transform:scale(1.15)}
+.react-picker{position:absolute;left:0;bottom:100%;display:flex;gap:2px;padding:6px 8px;margin-bottom:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;box-shadow:0 12px 34px rgba(0,0,0,.2);opacity:0;pointer-events:none;transform:translateY(6px) scale(.96);transform-origin:bottom left;transition:opacity .18s ease,transform .18s cubic-bezier(.2,1.4,.5,1);z-index:25}
+.react-picker::after{content:"";position:absolute;left:0;right:0;bottom:-10px;height:10px}
+.reaction-wrap:hover .react-picker,.reaction-wrap:focus-within .react-picker{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
+.react-picker button{width:32px;height:32px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:18px;background:transparent;color:inherit;transition:background .16s ease,transform .16s cubic-bezier(.2,1.5,.5,1)}
+.react-picker button:hover{background:var(--surface2);transform:scale(1.22) translateY(-2px)}
 .react-picker button.on{background:var(--accent-soft)}
+/* Entrada escalonada: cada emoji "pula" um pouco após o anterior. */
+.reaction-wrap:hover .react-picker button,
+.reaction-wrap:focus-within .react-picker button{animation:react-pop-in .32s cubic-bezier(.2,1.5,.4,1) backwards}
+.react-picker button:nth-child(1){animation-delay:.02s}
+.react-picker button:nth-child(2){animation-delay:.05s}
+.react-picker button:nth-child(3){animation-delay:.08s}
+.react-picker button:nth-child(4){animation-delay:.11s}
+.react-picker button:nth-child(5){animation-delay:.14s}
+.react-picker button:nth-child(6){animation-delay:.17s}
+.react-picker button:nth-child(7){animation-delay:.2s}
+.react-picker button:nth-child(8){animation-delay:.23s}
+@keyframes react-pop-in{0%{opacity:0;transform:translateY(8px) scale(.5)}60%{transform:translateY(-2px) scale(1.18)}100%{opacity:1;transform:translateY(0) scale(1)}}
+/* Explosão suave ao escolher uma reação. */
+.react-picker button.burst,.act-like.burst .act-ic{animation:react-burst .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes react-burst{0%{transform:scale(1)}35%{transform:scale(1.55) rotate(-8deg)}65%{transform:scale(.9) rotate(5deg)}100%{transform:scale(1) rotate(0)}}
+.act-like{transition:transform .16s ease}
+.act-like:active{transform:scale(.9)}
+/* Reações do autor na publicação (Interactive.jsx). */
+.int-reacts button .int-react-emoji{display:inline-block;transition:transform .16s cubic-bezier(.2,1.5,.5,1)}
+.int-reacts button:hover .int-react-emoji{transform:scale(1.25)}
+.int-reacts button.on .int-react-emoji{animation:react-burst .5s cubic-bezier(.2,1.6,.4,1)}
+@media (prefers-reduced-motion:reduce){
+  .react-picker,.react-picker button,.act-like,.int-reacts button .int-react-emoji{transition:none!important;animation:none!important}
+  .reaction-wrap:hover .react-picker button,.reaction-wrap:focus-within .react-picker button,.react-picker button.burst,.act-like.burst .act-ic,.int-reacts button.on .int-react-emoji{animation:none!important}
+}
 
 /* account menu */
 .account-menu{position:relative;flex:none}

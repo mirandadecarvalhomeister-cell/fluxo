@@ -262,6 +262,18 @@ export default function Post({ post, detail = false }) {
   const detailCommentsRef = useRef(null);
   const cardRef = useRef(null);
   const [expanded, setExpanded] = useState(false);
+  const [reactBurst, setReactBurst] = useState(null);
+  const burstTimer = useRef(null);
+
+  const handleReact = (emoji) => {
+    actions.reactPost(post.id, emoji);
+    setReactBurst(emoji);
+    window.clearTimeout(burstTimer.current);
+    burstTimer.current = window.setTimeout(() => setReactBurst(null), 520);
+  };
+
+  useEffect(() => () => window.clearTimeout(burstTimer.current), []);
+
   const author = userOf(data, post.by);
   const open = !!ui.open[post.id];
   const following = data.follows.includes(post.by);
@@ -450,9 +462,9 @@ export default function Post({ post, detail = false }) {
         <div className="reaction-wrap">
           <button
             type="button"
-            className={`act-btn act-like ${post.myReaction ? 'on' : ''}`}
+            className={`act-btn act-like ${post.myReaction ? 'on' : ''} ${reactBurst ? 'burst' : ''}`}
             aria-pressed={!!post.myReaction}
-            onClick={() => actions.reactPost(post.id, post.myReaction || '❤️')}
+            onClick={() => handleReact(post.myReaction || '❤️')}
             aria-label={post.myReaction ? 'Remover reação' : 'Reagir'}
             title="Reagir"
           >
@@ -464,8 +476,8 @@ export default function Post({ post, detail = false }) {
               <button
                 key={emoji}
                 type="button"
-                className={post.myReaction === emoji ? 'on' : ''}
-                onClick={() => actions.reactPost(post.id, emoji)}
+                className={`${post.myReaction === emoji ? 'on' : ''} ${reactBurst === emoji ? 'burst' : ''}`}
+                onClick={() => handleReact(emoji)}
                 aria-label={`Reagir com ${emoji}`}
               >
                 {emoji}
