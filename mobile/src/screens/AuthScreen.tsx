@@ -137,7 +137,7 @@ export default function AuthScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.brand}>
-            <Image source={require('../assets/fluxo-logo.png')} style={styles.logoImg} contentFit="contain" />
+            <Image source={require('../../assets/fluxo-logo.png')} style={styles.logoImg} contentFit="contain" />
             <Text style={styles.logoWord}>Fluxo</Text>
             <Muted style={{ textAlign: 'center', color: colors.muted }}>
               Conversas, comunidades e lives em um só lugar.

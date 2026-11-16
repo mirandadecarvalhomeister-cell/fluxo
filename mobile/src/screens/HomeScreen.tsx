@@ -164,7 +164,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.root} edges={['top']}>
       <View style={styles.topBar}>
         <View style={styles.brand}>
-          <Image source={require('../assets/fluxo-logo.png')} style={styles.brandLogo} contentFit="contain" />
+          <Image source={require('../../assets/fluxo-logo.png')} style={styles.brandLogo} contentFit="contain" />
           <Text style={styles.logo}>Fluxo</Text>
         </View>
         <View style={{ flexDirection: 'row' }}>
