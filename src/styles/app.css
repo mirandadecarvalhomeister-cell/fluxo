@@ -1489,3 +1489,16 @@ html.video-open,body.video-open{overflow:hidden!important}
 @media (max-width:900px){
   .room-live .stage,.room-live .stage.lk-stage{height:clamp(240px,48vh,460px);min-height:240px}
 }
+
+/* Modo visitante: aviso discreto durante 10s e bloqueio para criar conta. */
+.guest-hint{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:900;display:flex;align-items:center;gap:8px;padding:9px 16px;border:1px solid var(--line,#2a2a33);border-radius:999px;background:rgba(12,10,20,.92);color:var(--text,#fff);font-size:13px;box-shadow:0 8px 30px -10px rgba(0,0,0,.7);backdrop-filter:blur(8px);white-space:nowrap}
+.guest-hint strong{color:var(--accent,#8b5cf6)}
+.guest-hint-dot{width:8px;height:8px;border-radius:50%;background:var(--accent,#8b5cf6);box-shadow:0 0 0 4px rgba(139,92,246,.18);animation:guest-pulse 1.6s ease-in-out infinite}
+@keyframes guest-pulse{50%{opacity:.35}}
+.guest-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(5,5,10,.78);backdrop-filter:blur(10px);animation:guest-in .25s ease-out}
+@keyframes guest-in{from{opacity:0}to{opacity:1}}
+.guest-card{width:min(100%,420px);display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:36px 28px;border:1px solid var(--line,#2a2a33);border-radius:22px;background:linear-gradient(160deg,rgba(30,22,50,.98),rgba(12,10,20,.98));box-shadow:0 30px 80px -20px rgba(0,0,0,.9)}
+.guest-card h2{margin:0;font-size:22px;line-height:1.2;color:var(--text,#fff)}
+.guest-card p{margin:0;font-size:14px;line-height:1.6;color:var(--muted,#9a95a8)}
+.guest-actions{display:flex;flex-direction:column;gap:10px;width:100%;margin-top:8px}
+.guest-actions .btn{width:100%;min-height:44px}

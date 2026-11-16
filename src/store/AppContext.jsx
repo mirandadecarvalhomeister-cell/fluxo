@@ -775,6 +775,7 @@ const initialUi = () => {
 
 export function AppProvider({ children }) {
   const [data, setData] = useState(null);
+  const [guest, setGuest] = useState(false);
   const [ui, setUi] = useState(initialUi);
   const [ready, setReady] = useState(false);
   const [resultsTick, setResultsTick] = useState(0);
@@ -883,7 +884,22 @@ export function AppProvider({ children }) {
     if (data?.email) writeCache(data.email, data);
   }, [data]);
 
+  // Visitante: navega pelo site com um estado local vazio por 10 segundos;
+  // o GuestGate bloqueia a interação e pede cadastro quando o tempo acaba.
+  const startGuest = useCallback(() => {
+    setGuest(true);
+    setSession(null);
+    setData(newState('Visitante', 'visitante@fluxo.app'));
+  }, []);
+
+  const exitGuest = useCallback(() => {
+    setGuest(false);
+    setData(null);
+    setSession(null);
+  }, []);
+
   const startLocal = useCallback((email, name) => {
+    setGuest(false);
     const cached = readCache(email);
     const state = cached || newState(name || email.split('@')[0], email);
     if (!cached) writeCache(email, state);
@@ -906,6 +922,7 @@ export function AppProvider({ children }) {
     async (user) => {
       if (lastUserId.current === user.id && dataRef.current) return;
       lastUserId.current = user.id;
+      setGuest(false);
       setSession(user);
       const email = user.email || 'conta';
       const cached = readCache(email);
@@ -954,17 +971,19 @@ export function AppProvider({ children }) {
         const s = await remote.getSession();
         if (cancelled) return;
         if (s?.user) await startSupabase(s.user);
-        else setReady(true);
+        else startGuest();
+        setReady(true);
       } else {
         const email = lsGet(SESSION_KEY);
         if (email) startLocal(email);
-        else setReady(true);
+        else startGuest();
+        setReady(true);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [startLocal, startSupabase]);
+  }, [startLocal, startSupabase, startGuest]);
 
   useEffect(() => {
     if (!isSupabaseEnabled) return undefined;
@@ -979,11 +998,10 @@ export function AppProvider({ children }) {
       if (s?.user) startSupabase(s.user);
       else {
         lastUserId.current = null;
-        setSession(null);
-        setData(null);
+        startGuest();
       }
     });
-  }, [startSupabase]);
+  }, [startSupabase, startGuest]);
 
   useEffect(() => {
     if (!isSupabaseEnabled || !session?.id) return undefined;
@@ -4558,6 +4576,7 @@ export function AppProvider({ children }) {
   const actions = {
     submitAuth,
     google,
+    exitGuest,
     requestPasswordReset,
     finishRecovery,
     cancelRecovery,
@@ -4713,6 +4732,7 @@ export function AppProvider({ children }) {
 
   const value = {
     data,
+    guest,
     ui,
     ready,
     session,
