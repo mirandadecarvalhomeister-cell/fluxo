@@ -937,6 +937,22 @@
   min-width: 180px;
 }
 
+.quiz-refresh-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 100% !important;
+  margin-top: 2px;
+  color: var(--accent, #8b5cf6) !important;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.quiz-refresh-hint .ic {
+  width: 14px;
+  height: 14px;
+}
+
 .quiz-invite-btn {
   display: inline-flex;
   align-items: center;

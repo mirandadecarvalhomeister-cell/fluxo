@@ -1230,7 +1230,7 @@ export async function sendDirectMessage(message, senderId, recipientId) {
 // ---------------------------------------------------------------------------
 
 export async function quizRoundStatus() {
-  const fallback = { used: 0, bonus: 0, free_rounds: 3, remaining: 3, online: false };
+  const fallback = { used: 0, bonus: 0, free_rounds: 3, remaining: 3, refresh_rounds: 0, online: false };
   if (!enabled()) return fallback;
   try {
     const { data, error } = await supabase.rpc('quiz_round_status');
@@ -1245,6 +1245,7 @@ export async function quizRoundStatus() {
       bonus: Number(row.bonus) || 0,
       free_rounds: Number(row.free_rounds) || 3,
       remaining: Number(row.remaining) || 0,
+      refresh_rounds: Number(row.refresh_rounds) || 0,
       online: true,
     };
   } catch (error) {

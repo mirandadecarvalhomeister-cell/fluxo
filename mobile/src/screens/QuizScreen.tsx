@@ -449,12 +449,15 @@ export default function QuizScreen({ challengeId, inviteId }: { challengeId?: st
           </View>
 
           <Card style={{ gap: 8 }}>
-            <Text style={styles.cardTitle}>🎮 {remaining} de {FREE_ROUNDS + (status?.bonus || 0)} rodadas</Text>
+            <Text style={styles.cardTitle}>🎮 {remaining} de {FREE_ROUNDS + (status?.bonus || 0) + (status?.refresh || 0)} rodadas</Text>
             <Text style={styles.muted}>
               {remaining > 0
-                ? `${FREE_ROUNDS} grátis por semana${status?.bonus ? ` + ${status.bonus} de convites` : ''}.`
-                : 'Convide um amigo para o Fluxo e desbloqueie mais 3 rodadas!'}
+                ? `${FREE_ROUNDS} grátis por semana${status?.bonus ? ` + ${status.bonus} de convites` : ''}${status?.refresh ? ` + ${status.refresh} de refresh` : ''}.`
+                : 'Convide um amigo ou volte em algumas horas para mais rodadas!'}
             </Text>
+            {status?.refreshIn ? (
+              <Text style={[styles.muted, { color: colors.primary }]}>⏱ +1 rodada em {status.refreshIn}h (a cada 3h, até 8 por dia)</Text>
+            ) : null}
             <GhostButton
               title={`Convidar e ganhar +${BONUS_ROUNDS}`}
               icon="people-outline"

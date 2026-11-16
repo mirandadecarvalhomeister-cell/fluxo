@@ -6,6 +6,8 @@ import * as remote from '../../lib/remote';
 
 export const FREE_ROUNDS = 3;
 export const BONUS_ROUNDS = 3;
+export const REFRESH_HOURS = 3;
+export const REFRESH_MAX_PER_DAY = 8;
 export const ROUND_SIZES = [10, 20, 30, 50, 100];
 export const CLASSIC_FUSE_SECONDS = 15;
 export const INSANE_SECONDS_PER_QUESTION = 8;
@@ -60,11 +62,16 @@ export const localRoundStatus = () => {
   activeWeek();
   const used = (read(ROUNDS_KEY, []) || []).length;
   const bonus = Number(read(BONUS_KEY, {})?.rounds) || 0;
+  const now = new Date();
+  const hours = now.getUTCHours();
+  const refresh = Math.min(REFRESH_MAX_PER_DAY, Math.floor(hours / REFRESH_HOURS));
   return {
     used,
     bonus,
     free: FREE_ROUNDS,
-    remaining: Math.max(0, FREE_ROUNDS + bonus - used),
+    refresh,
+    refreshIn: REFRESH_HOURS - (hours % REFRESH_HOURS),
+    remaining: Math.max(0, FREE_ROUNDS + bonus + refresh - used),
     online: false,
   };
 };
@@ -73,10 +80,14 @@ export async function roundStatus() {
   const local = localRoundStatus();
   const remoteStatus = await remote.quizRoundStatus?.();
   if (remoteStatus?.online) {
+    const refresh = remoteStatus.refresh_rounds || 0;
+    const hours = new Date().getUTCHours();
     return {
       ...remoteStatus,
       free: remoteStatus.free_rounds ?? FREE_ROUNDS,
       bonus: remoteStatus.bonus || 0,
+      refresh,
+      refreshIn: REFRESH_HOURS - (hours % REFRESH_HOURS),
       remaining: remoteStatus.remaining || 0,
       online: true,
     };

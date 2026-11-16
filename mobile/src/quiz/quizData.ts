@@ -6,6 +6,8 @@ import type { QuizCategory, QuizQuestion } from './bank';
 
 export const FREE_ROUNDS = 3;
 export const BONUS_ROUNDS = 3;
+export const REFRESH_HOURS = 3;
+export const REFRESH_MAX_PER_DAY = 8;
 export const ROUND_SIZES = [10, 20, 30, 50, 100];
 export const CLASSIC_FUSE_SECONDS = 15;
 export const INSANE_SECONDS_PER_QUESTION = 8;
@@ -61,6 +63,8 @@ export type QuizStatus = {
   used: number;
   bonus: number;
   free: number;
+  refresh: number;
+  refreshIn: number;
   remaining: number;
   online: boolean;
 };
@@ -69,11 +73,15 @@ export async function localRoundStatus(): Promise<QuizStatus> {
   await activeWeek();
   const used = (await read<number[]>(ROUNDS_KEY, [])).length;
   const bonus = Number((await read<{ rounds?: number }>(BONUS_KEY, {}))?.rounds) || 0;
+  const hours = new Date().getUTCHours();
+  const refresh = Math.min(REFRESH_MAX_PER_DAY, Math.floor(hours / REFRESH_HOURS));
   return {
     used,
     bonus,
     free: FREE_ROUNDS,
-    remaining: Math.max(0, FREE_ROUNDS + bonus - used),
+    refresh,
+    refreshIn: REFRESH_HOURS - (hours % REFRESH_HOURS),
+    remaining: Math.max(0, FREE_ROUNDS + bonus + refresh - used),
     online: false,
   };
 }
@@ -81,10 +89,14 @@ export async function localRoundStatus(): Promise<QuizStatus> {
 export async function roundStatus(): Promise<QuizStatus> {
   const remote = await api.quizRoundStatus();
   if (remote.online) {
+    const hours = new Date().getUTCHours();
+    const refresh = remote.refresh_rounds || 0;
     return {
       used: remote.used,
       bonus: remote.bonus,
       free: remote.free_rounds || FREE_ROUNDS,
+      refresh,
+      refreshIn: REFRESH_HOURS - (hours % REFRESH_HOURS),
       remaining: remote.remaining,
       online: true,
     };

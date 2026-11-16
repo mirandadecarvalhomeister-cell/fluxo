@@ -710,13 +710,18 @@ export default function QuizBoom() {
 
         <div className="quiz-quota">
           <span className="quiz-quota-pill">
-            <Icon name="game" /> {remaining} de {FREE_ROUNDS + (status?.bonus || 0)} rodadas
+            <Icon name="game" /> {remaining} de {FREE_ROUNDS + (status?.bonus || 0) + (status?.refresh || 0)} rodadas
           </span>
           <small>
             {remaining > 0
-              ? `${FREE_ROUNDS} grátis por semana${status?.bonus ? ` + ${status.bonus} de convites` : ''}.`
-              : 'Suas rodadas desta semana acabaram. Convide alguém para liberar mais.'}
+              ? `${FREE_ROUNDS} grátis por semana${status?.bonus ? ` + ${status.bonus} de convites` : ''}${status?.refresh ? ` + ${status.refresh} de refresh` : ''}.`
+              : 'Suas rodadas acabaram. Volte em algumas horas ou convide um amigo.'}
           </small>
+          {status?.refreshIn ? (
+            <small className="quiz-refresh-hint">
+              <Icon name="clock" /> +1 rodada em {status.refreshIn}h (a cada 3h, até 8 por dia)
+            </small>
+          ) : null}
           <button
             type="button"
             className="quiz-invite-btn"

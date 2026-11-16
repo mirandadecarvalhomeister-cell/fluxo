@@ -638,7 +638,7 @@ export async function updateDirectMessage(id: string, text: string) {
 // Quiz BOOM! — ranking, cota, medalhas, desafios e convites.
 // ---------------------------------------------------------------------------
 
-const QUIZ_OFFLINE = { used: 0, bonus: 0, free_rounds: 3, remaining: 3, online: false };
+const QUIZ_OFFLINE = { used: 0, bonus: 0, free_rounds: 3, remaining: 3, refresh_rounds: 0, online: false };
 
 export async function quizRoundStatus() {
   try {
@@ -651,6 +651,7 @@ export async function quizRoundStatus() {
       bonus: Number(row.bonus) || 0,
       free_rounds: Number(row.free_rounds) || 3,
       remaining: Number(row.remaining) || 0,
+      refresh_rounds: Number(row.refresh_rounds) || 0,
       online: true,
     };
   } catch {
