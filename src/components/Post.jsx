@@ -6,6 +6,7 @@ import { hasEdits, mediaDisplayStyle } from '../lib/mediaEdit';
 import { userOf } from '../lib/selectors';
 import { useCompact } from '../lib/useCompact';
 import { ago, fmt, fmtDur } from '../lib/utils';
+import { fxFor, REACTIONS as REACTIONS_PADRAO } from '../lib/reactionFx';
 import { useApp } from '../store/AppContext';
 import { LiveAvatar } from './Avatar';
 import { TagText, Verified } from './Brand';
@@ -16,7 +17,6 @@ import Interactive from './Interactive';
 import { EditWrap } from './MediaEditor';
 import { FeedVideo } from './VideoPlayer';
 
-const REACTIONS = ['❤️', '🔥', '👏', '😂', '😮', '😢', '🎉', '💜'];
 
 function MediaItem({ item, author, index }) {
   const [failedSrc, setFailedSrc] = useState(null);
@@ -291,7 +291,7 @@ export default function Post({ post, detail = false }) {
   const reactionChoices =
     interactive?.format === 'reactions' && interactive.reactions.length
       ? interactive.reactions
-      : REACTIONS;
+      : (ui.settings?.reactions || REACTIONS_PADRAO);
 
   // Publicação com foto/vídeo conta uma visualização depois de 50% visível
   // por pelo menos 1 segundo. O próprio autor não conta.
@@ -491,13 +491,26 @@ export default function Post({ post, detail = false }) {
               <button
                 key={emoji}
                 type="button"
-                className={`${post.myReaction === emoji ? 'on' : ''} ${reactBurst === emoji ? 'burst' : ''}`}
+                className={`fx-${fxFor(emoji)} ${post.myReaction === emoji ? 'on' : ''} ${reactBurst === emoji ? 'burst' : ''}`}
                 onClick={() => handleReact(emoji)}
                 aria-label={`Reagir com ${emoji}`}
               >
                 {emoji}
               </button>
             ))}
+            <button
+              type="button"
+              className="react-picker-add"
+              onClick={(event) => {
+                event.stopPropagation();
+                setPickerOpen(false);
+                actions.openReactions();
+              }}
+              aria-label="Personalizar reações"
+              title="Personalizar reações"
+            >
+              <Icon name="plus" />
+            </button>
           </div>
         </div>
         <button

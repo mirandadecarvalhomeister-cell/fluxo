@@ -48,6 +48,7 @@ import {
   saveChallenge as saveQuizChallenge,
 } from '../games/quiz/quizData';
 import { quizCardImage } from '../lib/quizCard';
+import { REACTIONS as REACTIONS_PADRAO } from '../lib/reactionFx';
 import { showDeviceNotification } from '../lib/notify';
 import { playMessageSound, playSentSound } from '../lib/sound';
 import {
@@ -80,6 +81,7 @@ const DEFAULT_SETTINGS = {
   liveChannels: [],
   chatWalls: {},
   feed: DEFAULT_FEED_PREFS,
+  reactions: REACTIONS_PADRAO,
 };
 
 const readSettings = () => {
@@ -4532,6 +4534,16 @@ export function AppProvider({ children }) {
     setUi((u) => ({ ...u, settings: { ...u.settings, [key]: value } }));
   }
 
+  // Personaliza as reações exibidas no picker das publicações.
+  function setReactions(emojis) {
+    const list = (emojis || []).filter(Boolean).slice(0, 12);
+    setSetting('reactions', list.length ? list : REACTIONS_PADRAO);
+  }
+
+  function openReactions() {
+    setUi((u) => ({ ...u, modal: { type: 'reactions' } }));
+  }
+
   function setFeedPref(patch) {
     const current = feedPrefs(uiRef.current.settings);
     const next = { ...current, ...(patch || {}) };
@@ -4740,6 +4752,8 @@ export function AppProvider({ children }) {
     setFeedPref,
     resetFeedPrefs,
     feedFeedback,
+    setReactions,
+    openReactions,
     addInterest,
     removeInterest,
     muteTopic,

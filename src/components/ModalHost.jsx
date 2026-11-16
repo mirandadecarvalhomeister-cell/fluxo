@@ -13,6 +13,7 @@ import {
   userOf,
 } from '../lib/selectors';
 import { ago, fileToDataURL, fmt, slug } from '../lib/utils';
+import { REACTION_CATALOG, REACTIONS as REACTIONS_PADRAO, fxFor } from '../lib/reactionFx';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import { Verified } from './Brand';
@@ -1810,6 +1811,74 @@ function FeedPrefsModal() {
   );
 }
 
+function ReactionsModal() {
+  const { ui, actions } = useApp();
+  const selected = ui.settings?.reactions || REACTIONS_PADRAO;
+  const toggle = (emoji) => {
+    const has = selected.includes(emoji);
+    if (has && selected.length <= 1) return;
+    actions.setReactions(
+      has ? selected.filter((item) => item !== emoji) : [...selected, emoji]
+    );
+  };
+  return (
+    <>
+      <h2>Personalizar reações</h2>
+      <p className="muted sm">
+        Escolha quais emojis aparecem nas prévias das publicações. Toque para adicionar ou remover (máximo 12).
+      </p>
+
+      <section className="set-block">
+        <h3 className="h3">Suas reações ({selected.length})</h3>
+        <div className="reactions-selected">
+          {selected.map((emoji) => (
+            <button
+              type="button"
+              key={emoji}
+              className={`reaction-tile fx-${fxFor(emoji)} on`}
+              onClick={() => toggle(emoji)}
+              title={`Remover ${emoji}`}
+            >
+              <span>{emoji}</span>
+              <Icon name="x" />
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="set-block">
+        <h3 className="h3">Adicionar reação <Icon name="plus" /></h3>
+        <div className="reactions-catalog">
+          {REACTION_CATALOG.map((emoji) => {
+            const on = selected.includes(emoji);
+            return (
+              <button
+                type="button"
+                key={emoji}
+                className={`reaction-tile fx-${fxFor(emoji)}${on ? ' on' : ''}`}
+                onClick={() => toggle(emoji)}
+                aria-pressed={on}
+                title={on ? `Remover ${emoji}` : `Adicionar ${emoji}`}
+              >
+                {emoji}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="row end">
+        <button type="button" className="btn" onClick={() => actions.setReactions(REACTIONS_PADRAO)}>
+          Restaurar padrão
+        </button>
+        <button type="button" className="btn primary" onClick={actions.closeModal}>
+          Concluir
+        </button>
+      </div>
+    </>
+  );
+}
+
 function SettingsModal() {
   const { data, ui, actions, mode, canInstall, session } = useApp();
   const settings = ui.settings;
@@ -2329,6 +2398,7 @@ function DeleteAccountModal() {
 
 const MODAL_LABELS = {
   profile: 'Editar perfil',
+  reactions: 'Personalizar reações',
   post: 'Publicação',
   comm: 'Comunidade',
   newcomm: 'Criar comunidade',
@@ -2526,6 +2596,8 @@ export default function ModalHost() {
     content = <LiveModal />;
   } else if (modal.type === 'settings') {
     content = <SettingsModal />;
+  } else if (modal.type === 'reactions') {
+    content = <ReactionsModal />;
   } else if (modal.type === 'feedprefs') {
     content = <FeedPrefsModal />;
     wide = true;

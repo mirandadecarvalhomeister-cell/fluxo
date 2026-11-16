@@ -508,13 +508,29 @@ body.lock{overflow:hidden}
 /* reactions */
 .reaction-wrap{position:relative;display:flex}
 .reaction-emoji{font-size:16px;line-height:1}
-.react-picker{position:absolute;left:0;bottom:100%;display:flex;gap:2px;padding:6px 8px;margin-bottom:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;box-shadow:0 12px 34px rgba(0,0,0,.2);opacity:0;pointer-events:none;transform:translateY(6px) scale(.96);transform-origin:bottom left;transition:opacity .18s ease,transform .18s cubic-bezier(.2,1.4,.5,1);z-index:25}
+.react-picker{position:absolute;left:0;bottom:100%;display:flex;gap:4px;padding:8px 10px;margin-bottom:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;box-shadow:0 12px 34px rgba(0,0,0,.25);opacity:0;pointer-events:none;transform:translateY(6px) scale(.96);transform-origin:bottom left;transition:opacity .18s ease,transform .18s cubic-bezier(.2,1.4,.5,1);z-index:25}
 .react-picker::after{content:"";position:absolute;left:0;right:0;bottom:-10px;height:10px}
 .reaction-wrap:focus-within .react-picker,.reaction-wrap.picker-open .react-picker{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
-.act-my-reaction{font-size:18px;line-height:1;font-style:normal}
-.react-picker button{width:32px;height:32px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:18px;background:transparent;color:inherit;transition:background .16s ease,transform .16s cubic-bezier(.2,1.5,.5,1)}
-.react-picker button:hover{background:var(--surface2);transform:scale(1.22) translateY(-2px)}
+.act-my-reaction{font-size:20px;line-height:1;font-style:normal}
+.react-picker-add{width:48px;height:48px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:22px;background:var(--surface2)!important;color:var(--accent)!important;border:1px dashed var(--line);cursor:pointer;transition:transform .16s,background .16s}
+.react-picker-add:hover{transform:scale(1.15) rotate(90deg);background:var(--accent-soft)!important}
+.react-picker-add .ic{width:20px;height:20px}
+.react-picker button{width:48px;height:48px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:30px;line-height:1;background:transparent;color:inherit;transition:background .16s ease,transform .16s cubic-bezier(.2,1.5,.5,1)}
+.react-picker button:hover{background:var(--surface2);transform:scale(1.3) translateY(-4px)}
 .react-picker button.on{background:var(--accent-soft)}
+/* Animações expressivas no HOVER de cada emoji do picker. */
+.react-picker button.fx-heart:hover{animation:fx-heartbeat-hover .7s cubic-bezier(.2,1.4,.4,1)}
+.react-picker button.fx-fire:hover{animation:fx-flame-hover .6s ease-out}
+.react-picker button.fx-clap:hover{animation:fx-clap-hover .6s cubic-bezier(.2,1.5,.4,1)}
+.react-picker button.fx-party:hover{animation:fx-pop-party 1.1s cubic-bezier(.2,1.6,.4,1)}
+.react-picker button.fx-laugh:hover{animation:fx-laugh 1.1s cubic-bezier(.2,1.5,.4,1)}
+.react-picker button.fx-wow:hover,
+.react-picker button.fx-sad:hover,
+.react-picker button.fx-thumb:hover,
+.react-picker button.fx-default:hover{animation:fx-btn-pop .55s cubic-bezier(.2,1.6,.4,1)}
+@keyframes fx-heartbeat-hover{0%{transform:scale(1)}30%{transform:scale(1.35)}50%{transform:scale(1.1)}70%{transform:scale(1.4)}100%{transform:scale(1.3)}}
+@keyframes fx-flame-hover{0%{transform:scale(1) rotate(0)}35%{transform:scale(1.35) rotate(-8deg)}65%{transform:scale(1.2) rotate(8deg)}100%{transform:scale(1.3) rotate(0)}}
+@keyframes fx-clap-hover{0%{transform:scale(1) rotate(0)}30%{transform:scale(1.35) rotate(10deg)}60%{transform:scale(1.15) rotate(-10deg)}100%{transform:scale(1.3) rotate(0)}}
 /* Entrada escalonada: cada emoji "pula" um pouco após o anterior. */
 .reaction-wrap.picker-open .react-picker button,
 .reaction-wrap:focus-within .react-picker button{animation:react-pop-in .32s cubic-bezier(.2,1.5,.4,1) backwards}
@@ -526,12 +542,16 @@ body.lock{overflow:hidden}
 .react-picker button:nth-child(6){animation-delay:.17s}
 .react-picker button:nth-child(7){animation-delay:.2s}
 .react-picker button:nth-child(8){animation-delay:.23s}
-@keyframes react-pop-in{0%{opacity:0;transform:translateY(8px) scale(.5)}60%{transform:translateY(-2px) scale(1.18)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes react-pop-in{0%{opacity:0;transform:translateY(14px) scale(.4)}60%{transform:translateY(-4px) scale(1.2)}100%{opacity:1;transform:translateY(0) scale(1)}}
 /* Animação no ponto do clique (botão/picker) — visível mesmo em posts altos. */
 .act-like.burst .act-ic,.act-like.burst .act-my-reaction{animation:fx-btn-pop .6s cubic-bezier(.2,1.6,.4,1)}
 @keyframes fx-btn-pop{0%{transform:scale(1)}30%{transform:scale(1.7) rotate(-8deg)}60%{transform:scale(.9) rotate(5deg)}100%{transform:scale(1) rotate(0)}}
-.react-picker button.burst{animation:fx-btn-pop .55s cubic-bezier(.2,1.6,.4,1)}
-.react-picker button.on{background:var(--accent-soft)}
+.react-picker button.burst.fx-heart{animation:fx-heartbeat 1.1s cubic-bezier(.2,1.4,.4,1)}
+.react-picker button.burst.fx-fire{animation:fx-flame 1.2s ease-out}
+.react-picker button.burst.fx-clap{animation:fx-clap 1s cubic-bezier(.2,1.5,.4,1)}
+.react-picker button.burst.fx-party{animation:fx-pop-party 1.1s cubic-bezier(.2,1.6,.4,1)}
+.react-picker button.burst.fx-laugh{animation:fx-laugh 1.1s cubic-bezier(.2,1.5,.4,1)}
+.react-picker button.burst:not(.fx-heart):not(.fx-fire):not(.fx-clap):not(.fx-party):not(.fx-laugh){animation:fx-btn-pop .55s cubic-bezier(.2,1.6,.4,1)}
 
 /* Reação "estorra" sobre o post: animações expressivas por tipo de emoji. */
 .rfx{position:absolute;inset:0;z-index:30;display:grid;place-items:center;pointer-events:none;overflow:hidden}
@@ -1609,3 +1629,18 @@ html.video-open,body.video-open{overflow:hidden!important}
 .att-quiz .att-post-h,.att-quiz .att-quiz-body,.att-quiz .att-post-f{padding-left:12px;padding-right:12px}
 .att-quiz .att-post-h,.att-quiz .att-post-f{padding-top:10px;padding-bottom:10px}
 .att-quiz .att-quiz-body{padding-bottom:4px}
+
+/* Personalizar reações: grades de emojis selecionáveis. */
+.reactions-selected,.reactions-catalog{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.reaction-tile{width:52px;height:52px;padding:0;border-radius:14px;display:grid;place-items:center;font-size:28px;line-height:1;background:var(--surface2);border:1px solid var(--line);cursor:pointer;position:relative;transition:transform .16s cubic-bezier(.2,1.5,.5,1),background .16s,border-color .16s}
+.reaction-tile:hover{transform:scale(1.2) translateY(-3px);border-color:var(--accent)}
+.reaction-tile.on{background:var(--accent-soft);border-color:var(--accent)}
+.reaction-tile svg{display:none}
+.reactions-selected .reaction-tile.on svg{display:block;position:absolute;top:-5px;right:-5px;width:16px;height:16px;padding:2px;border-radius:50%;background:var(--surface);color:var(--danger,#ff5a5a)}
+/* Animações expressivas no hover de cada tile, por tipo. */
+.reaction-tile.fx-heart:hover{animation:fx-heartbeat-hover .7s cubic-bezier(.2,1.4,.4,1)}
+.reaction-tile.fx-fire:hover{animation:fx-flame-hover .6s ease-out}
+.reaction-tile.fx-clap:hover{animation:fx-clap-hover .6s cubic-bezier(.2,1.5,.4,1)}
+.reaction-tile.fx-party:hover{animation:fx-pop-party 1.1s cubic-bezier(.2,1.6,.4,1)}
+.reaction-tile.fx-laugh:hover{animation:fx-laugh 1.1s cubic-bezier(.2,1.5,.4,1)}
+.reaction-tile.fx-wow:hover,.reaction-tile.fx-sad:hover,.reaction-tile.fx-thumb:hover,.reaction-tile.fx-default:hover{animation:fx-btn-pop .55s cubic-bezier(.2,1.6,.4,1)}

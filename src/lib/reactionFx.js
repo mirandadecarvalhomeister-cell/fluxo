@@ -2,6 +2,17 @@
 // Usado pelo componente ReactionFx (overlay que "estorra" sobre o post) e
 // pelas classes de animação no botão.
 
+// Reações padrão exibidas no picker de cada publicação.
+export const REACTIONS = ['❤️', '🔥', '👏', '😂', '😮', '😢', '🎉', '💜'];
+
+// Catálogo completo disponível para personalização (botão + no picker).
+export const REACTION_CATALOG = [
+  '❤️', '🔥', '👏', '😂', '😮', '😢', '🎉', '💜',
+  '🤯', '🙌', '😍', '🤔', '💡', '👀', '🚀', '🍿',
+  '🥳', '😎', '🤝', '💯', '✨', '👍', '👎', '😭',
+  '🥰', '😡', '🤩', '🫶', '💪', '🙏', '🎯', '🌟',
+];
+
 const HEARTS = ['❤️', '💜', '🧡', '💛', '💚', '💙', '🩷', '🤍', '🖤', '💖', '💗', '💓', '💞', '💕'];
 const FIRE = ['🔥', '🎃'];
 const CLAP = ['👏'];
