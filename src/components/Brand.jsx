@@ -5,6 +5,28 @@ import { useApp } from '../store/AppContext';
 
 const ASSET_VERSION = '6';
 
+// Detecta emojis (incluindo sequências com ZWJ, modificadores de pele e
+// variation selectors) para poder estilizá-los separadamente do texto.
+const EMOJI_RE = /[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\u{FE0F}\u{200D}]+/gu;
+
+function renderWithEmojis(text) {
+  const str = String(text ?? '');
+  const parts = str.split(EMOJI_RE);
+  const emojis = str.match(EMOJI_RE) || [];
+  return parts.flatMap((part, i) => {
+    const nodes = [];
+    if (part) nodes.push(<span key={`t${i}`}>{part}</span>);
+    if (emojis[i]) {
+      nodes.push(
+        <span className="msg-emoji" key={`e${i}`}>
+          {emojis[i]}
+        </span>
+      );
+    }
+    return nodes;
+  });
+}
+
 // Selo de conta oficial. Hoje apenas o perfil @fluxooficial é verificado.
 export const OFFICIAL_HANDLE = 'fluxooficial';
 
@@ -121,7 +143,7 @@ export function TagText({ text, links = false }) {
             </button>
           );
         }
-        return <span key={i}>{part.text}</span>;
+        return <span key={i}>{renderWithEmojis(part.text)}</span>;
       })}
     </>
   );

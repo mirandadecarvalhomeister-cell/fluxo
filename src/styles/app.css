@@ -1653,3 +1653,6 @@ html.video-open,body.video-open{overflow:hidden!important}
   .chat-picker .emoji-grid{grid-template-columns:repeat(6,1fr)}
   .chat-picker .emoji-grid button{font-size:32px}
 }
+
+/* Emojis enviados nas mensagens do chat aparecem maiores que o texto. */
+.b p .msg-emoji{font-size:1.85em;line-height:1;vertical-align:-0.12em;display:inline-block;margin:0 1px}
