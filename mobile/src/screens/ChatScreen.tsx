@@ -1,0 +1,237 @@
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { useApp } from '../context/AppContext';
+import { getConversation } from '../lib/api';
+import { colors, radius, spacing } from '../lib/theme';
+import { AvatarView, EmptyState } from '../components/Ui';
+import { timeAgo } from '../lib/format';
+import type { DirectMessage } from '../types';
+
+function Attachment({ attachment, onOpenPost, onOpenQuiz }: { attachment: any; onOpenPost: (id: string) => void; onOpenQuiz: (id?: string) => void }) {
+  if (!attachment) return null;
+  if (attachment.kind === 'post') {
+    const media = attachment.media || attachment.mediaSeed || null;
+    const isVideo = attachment.mediaKind === 'video';
+    return (
+      <Pressable style={styles.attachCard} onPress={() => attachment.postId && onOpenPost(attachment.postId)}>
+        {media ? (
+          <View style={styles.attachMedia}>
+            <Image source={{ uri: media }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            {isVideo ? <View style={styles.playOverlay}><Ionicons name="play" size={18} color="#fff" /></View> : null}
+          </View>
+        ) : null}
+        <Text style={styles.attachTitle} numberOfLines={2}>{attachment.title || 'Publicação compartilhada'}</Text>
+        {attachment.text ? <Text style={styles.attachText} numberOfLines={2}>{attachment.text}</Text> : null}
+        <Text style={styles.attachHint}>Toque para abrir</Text>
+      </Pressable>
+    );
+  }
+  if (attachment.kind === 'quiz') {
+    return (
+      <Pressable style={styles.attachCard} onPress={() => onOpenQuiz(attachment.challengeId)}>
+        <Text style={styles.attachTitle}>💣 Desafio do Quiz BOOM!</Text>
+        <Text style={styles.attachText}>
+          {attachment.challengerName || 'Um amigo'} · {attachment.categoryName || 'Quiz'} · meta {attachment.targetScore || 0} pts
+        </Text>
+        <Text style={styles.attachHint}>Toque para jogar</Text>
+      </Pressable>
+    );
+  }
+  return (
+    <View style={styles.attachCard}>
+      <Text style={styles.attachTitle}>Anexo</Text>
+      <Text style={styles.attachText} numberOfLines={3}>{JSON.stringify(attachment).slice(0, 120)}</Text>
+    </View>
+  );
+}
+
+export default function ChatScreen({ userId }: { userId: string }) {
+  const { profile, users, messagesVersion, actions } = useApp();
+  const [messages, setMessages] = useState<DirectMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [text, setText] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [sending, setSending] = useState(false);
+  const listRef = useRef<FlatList<DirectMessage>>(null);
+  const other = users[userId];
+
+  async function load() {
+    if (!profile?.id) return;
+    try {
+      const rows = await getConversation(profile.id, userId);
+      setMessages(rows);
+      await actions.markThreadRead(userId);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, [userId, profile?.id, messagesVersion]);
+
+  const onSend = async () => {
+    const clean = text.trim();
+    if (!clean || sending) return;
+    setSending(true);
+    const sent = await actions.sendMessage(userId, clean);
+    setSending(false);
+    if (sent) {
+      setText('');
+      setMessages((cur) => [...cur, sent]);
+      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+    }
+  };
+
+  const onEdit = (msg: DirectMessage) => {
+    setEditingId(msg.id);
+    setEditText(msg.text);
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    const err = await actions.editMessage(editingId, editText);
+    if (err) {
+      Alert.alert('Não foi possível editar', err);
+      return;
+    }
+    setMessages((cur) => cur.map((m) => m.id === editingId ? { ...m, text: editText.trim(), editedAt: Date.now() } : m));
+    setEditingId(null);
+    setEditText('');
+  };
+
+  const onDelete = (msg: DirectMessage) => {
+    Alert.alert('Apagar mensagem', 'Deseja apagar esta mensagem?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Apagar', style: 'destructive', onPress: async () => {
+          const err = await actions.deleteMessage(msg.id);
+          if (err) Alert.alert('Erro', err);
+          else setMessages((cur) => cur.filter((m) => m.id !== msg.id));
+        }
+      },
+    ]);
+  };
+
+  return (
+    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <View style={styles.header}>
+        <Pressable onPress={actions.pop} hitSlop={8} style={styles.back}><Ionicons name="chevron-back" size={26} color={colors.text} /></Pressable>
+        <Pressable style={styles.headerUser} onPress={() => actions.push({ name: 'user', userId })}>
+          <AvatarView user={other} size={34} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerName} numberOfLines={1}>{other?.name || 'Conversa'}</Text>
+            <Text style={styles.headerMeta} numberOfLines={1}>{other?.handle ? `@${other.handle}` : ''}</Text>
+          </View>
+        </Pressable>
+      </View>
+
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+        {loading ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: colors.muted }}>Carregando…</Text></View>
+        ) : (
+          <FlatList
+            ref={listRef}
+            data={messages}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ padding: spacing.lg, gap: 8, paddingBottom: 12, flexGrow: messages.length ? 0 : 1 }}
+            onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+            renderItem={({ item }) => {
+              const mine = item.senderId === profile?.id;
+              return (
+                <Pressable
+                  onLongPress={() => {
+                    if (!mine) return;
+                    const buttons: any[] = [
+                      { text: 'Cancelar', style: 'cancel' },
+                      { text: 'Apagar', style: 'destructive', onPress: () => onDelete(item) },
+                    ];
+                    if (item.text) buttons.splice(1, 0, { text: 'Editar mensagem', onPress: () => onEdit(item) });
+                    Alert.alert('Mensagem', undefined, buttons);
+                  }}
+                  style={[styles.bubbleWrap, mine ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}
+                >
+                  <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
+                    {item.attachment ? <Attachment attachment={item.attachment} onOpenPost={(id) => actions.push({ name: 'post', postId: id })} onOpenQuiz={(id) => actions.openQuiz({ challengeId: id })} /> : null}
+                    {item.text ? <Text style={styles.bubbleText}>{item.text}</Text> : null}
+                    <View style={styles.bubbleMeta}>
+                      {item.editedAt ? <Text style={styles.edited}>editado</Text> : null}
+                      <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
+                    </View>
+                  </View>
+                </Pressable>
+              );
+            }}
+            ListEmptyComponent={<EmptyState icon="chatbubble-outline" title="Nenhuma mensagem" text="Diga oi para começar a conversa." />}
+          />
+        )}
+
+        {editingId ? (
+          <View style={styles.editBar}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.editLabel}>Editando mensagem</Text>
+              <TextInput value={editText} onChangeText={setEditText} style={styles.editInput} placeholder="Mensagem" placeholderTextColor={colors.faint} multiline />
+            </View>
+            <Pressable onPress={saveEdit} style={styles.sendBtn}><Ionicons name="checkmark" size={20} color="#fff" /></Pressable>
+            <Pressable onPress={() => { setEditingId(null); setEditText(''); }} style={[styles.sendBtn, { backgroundColor: colors.surfaceAlt }]}><Ionicons name="close" size={20} color={colors.text} /></Pressable>
+          </View>
+        ) : (
+          <View style={styles.composer}>
+            <TextInput
+              value={text}
+              onChangeText={setText}
+              placeholder="Mensagem"
+              placeholderTextColor={colors.faint}
+              style={styles.input}
+              multiline
+            />
+            <Pressable onPress={onSend} disabled={!text.trim() || sending} style={[styles.sendBtn, (!text.trim() || sending) && { opacity: 0.5 }]}>
+              <Ionicons name="send" size={18} color="#fff" />
+            </Pressable>
+          </View>
+        )}
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
+  back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerUser: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerName: { color: colors.text, fontWeight: '800', fontSize: 16 },
+  headerMeta: { color: colors.muted, fontSize: 12 },
+  bubbleWrap: { width: '100%' },
+  bubble: { maxWidth: '82%', borderRadius: 18, paddingHorizontal: 12, paddingVertical: 8, gap: 4 },
+  mine: { backgroundColor: colors.primary, borderBottomRightRadius: 6 },
+  theirs: { backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, borderBottomLeftRadius: 6 },
+  bubbleText: { color: colors.text, fontSize: 15, lineHeight: 20 },
+  bubbleMeta: { flexDirection: 'row', gap: 6, justifyContent: 'flex-end', alignItems: 'center' },
+  time: { color: 'rgba(245,246,251,0.7)', fontSize: 11 },
+  edited: { color: 'rgba(245,246,251,0.6)', fontSize: 11, fontStyle: 'italic' },
+  attachCard: { backgroundColor: 'rgba(0,0,0,0.18)', borderRadius: 12, padding: 8, gap: 4, marginBottom: 4 },
+  attachMedia: { width: '100%', aspectRatio: 16 / 9, borderRadius: 8, overflow: 'hidden', backgroundColor: '#000' },
+  playOverlay: { position: 'absolute', right: 8, bottom: 8, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
+  attachTitle: { color: colors.text, fontWeight: '800', fontSize: 13 },
+  attachText: { color: 'rgba(245,246,251,0.85)', fontSize: 12 },
+  attachHint: { color: colors.cyan, fontSize: 11, fontWeight: '700' },
+  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 10, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bg },
+  input: { flex: 1, minHeight: 42, maxHeight: 120, borderRadius: 20, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 14, paddingVertical: 10 },
+  sendBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  editBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 10, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
+  editLabel: { color: colors.cyan, fontSize: 12, fontWeight: '700', marginBottom: 4 },
+  editInput: { minHeight: 40, borderRadius: 12, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 12, paddingVertical: 8 },
+});
