@@ -235,7 +235,7 @@ $$;
 -- ---------------------------------------------------------------------------
 create or replace function public.quiz_weekly_ranking(p_limit integer default 50)
 returns table (
-  position bigint,
+  "position" bigint,
   user_id text,
   name text,
   handle text,
@@ -280,7 +280,7 @@ $$;
 -- ---------------------------------------------------------------------------
 create or replace function public.quiz_friends_ranking(p_limit integer default 50)
 returns table (
-  position bigint,
+  "position" bigint,
   user_id text,
   name text,
   handle text,
@@ -339,3 +339,12 @@ grant execute on function public.quiz_begin_run(text, text, text, integer) to au
 grant execute on function public.quiz_claim_invite(text) to authenticated;
 grant execute on function public.quiz_weekly_ranking(integer) to authenticated;
 grant execute on function public.quiz_friends_ranking(integer) to authenticated;
+
+-- O Supabase concede EXECUTE para `anon` automaticamente ao criar funções
+-- pela plataforma (dashboard/API). Remove explicitamente para que apenas
+-- usuários autenticados executem as funções do quiz.
+revoke execute on function public.quiz_round_status() from anon;
+revoke execute on function public.quiz_begin_run(text, text, text, integer) from anon;
+revoke execute on function public.quiz_claim_invite(text) from anon;
+revoke execute on function public.quiz_weekly_ranking(integer) from anon;
+revoke execute on function public.quiz_friends_ranking(integer) from anon;

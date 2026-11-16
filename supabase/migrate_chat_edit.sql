@@ -43,6 +43,10 @@ $$;
 revoke all on function public.edit_direct_message(text, text) from public;
 grant execute on function public.edit_direct_message(text, text) to authenticated;
 
+-- Remove o auto-grant do Supabase para `anon` (concedido automaticamente ao
+-- criar funções pela plataforma); só quem está logado pode editar mensagens.
+revoke execute on function public.edit_direct_message(text, text) from anon;
+
 -- Realtime: garante que o UPDATE chegue aos dois lados.
 do $$
 begin
