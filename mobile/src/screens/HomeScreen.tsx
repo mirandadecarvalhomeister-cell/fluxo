@@ -1,11 +1,13 @@
-﻿import React, { useCallback } from 'react';
+﻿import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
   Text,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,13 +21,28 @@ import { firstMedia, isVideoPost } from '../lib/media';
 import { sharePostLink } from '../lib/share';
 import type { Post } from '../types';
 
+const REACTIONS = ['❤️', '🔥', '👏', '😂', '😮', '😢', '🎉', '💜'];
+
 function PostCard({ post }: { post: Post }) {
   const { users, actions } = useApp();
   const author = users[post.authorId];
   const media = firstMedia(post);
   const video = isVideoPost(post);
+  const [showReactions, setShowReactions] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+
+  const doReact = (emoji: string) => {
+    setShowReactions(false);
+    void actions.reactPost(post, emoji);
+  };
+
+  const reportPost = () => {
+    setShowMenu(false);
+    actions.toast('Publicação sinalizada. Obrigado por ajudar.');
+  };
 
   return (
+    <>
     <View style={styles.card}>
       <View style={styles.header}>
         <Pressable style={styles.author} onPress={() => actions.push({ name: 'user', userId: post.authorId })}>
@@ -37,7 +54,7 @@ function PostCard({ post }: { post: Post }) {
             </Text>
           </View>
         </Pressable>
-        <IconButton name="ellipsis-horizontal" onPress={() => {}} />
+        <IconButton name="ellipsis-horizontal" onPress={() => setShowMenu(true)} />
       </View>
 
       {post.text ? <Text style={styles.text}>{post.text}</Text> : null}
@@ -69,7 +86,19 @@ function PostCard({ post }: { post: Post }) {
       ) : null}
 
       <View style={styles.actions}>
-        <Action icon={post.liked ? 'heart' : 'heart-outline'} color={post.liked ? colors.pink : colors.text} label={compactNumber(post.likes)} onPress={() => actions.toggleLike(post)} />
+        <Pressable
+          onPress={() => doReact(post.myReaction || '❤️')}
+          onLongPress={() => setShowReactions(true)}
+          style={styles.actionBtn}
+          hitSlop={6}
+        >
+          {post.myReaction ? (
+            <Text style={styles.reactionEmoji}>{post.myReaction}</Text>
+          ) : (
+            <Ionicons name="heart-outline" size={22} color={colors.text} />
+          )}
+          <Text style={styles.actionLabel}>{compactNumber(post.likes)}</Text>
+        </Pressable>
         <Action icon="chatbubble-outline" label={compactNumber(post.commentCount)} onPress={() => actions.push({ name: 'comments', postId: post.id })} />
         <Action icon="paper-plane-outline" label="Enviar" onPress={() => actions.push({ name: 'shareToChat', postId: post.id })} />
         <Action icon="share-outline" label="Compartilhar" onPress={() => sharePostLink(post.id, post.text)} />
@@ -77,6 +106,44 @@ function PostCard({ post }: { post: Post }) {
         <Action icon={post.saved ? 'bookmark' : 'bookmark-outline'} color={post.saved ? colors.cyan : colors.text} label="" onPress={() => actions.toggleSave(post)} />
       </View>
     </View>
+
+    {/* Picker de reações */}
+    <Modal visible={showReactions} transparent animationType="fade" onRequestClose={() => setShowReactions(false)}>
+      <TouchableWithoutFeedback onPress={() => setShowReactions(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.reactionBar}>
+            {REACTIONS.map((emoji) => (
+              <Pressable key={emoji} onPress={() => doReact(emoji)} style={styles.reactionOption}>
+                <Text style={styles.reactionOptionEmoji}>{emoji}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+
+    {/* Menu da publicação (3 pontinhos) */}
+    <Modal visible={showMenu} transparent animationType="fade" onRequestClose={() => setShowMenu(false)}>
+      <TouchableWithoutFeedback onPress={() => setShowMenu(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.postMenu}>
+            <Pressable style={styles.menuItem} onPress={() => { setShowMenu(false); actions.push({ name: 'shareToChat', postId: post.id }); }}>
+              <Ionicons name="paper-plane-outline" size={20} color={colors.text} />
+              <Text style={styles.menuText}>Enviar para conversa</Text>
+            </Pressable>
+            <Pressable style={styles.menuItem} onPress={() => { setShowMenu(false); void sharePostLink(post.id, post.text); }}>
+              <Ionicons name="share-outline" size={20} color={colors.text} />
+              <Text style={styles.menuText}>Compartilhar link</Text>
+            </Pressable>
+            <Pressable style={styles.menuItem} onPress={reportPost}>
+              <Ionicons name="flag-outline" size={20} color={colors.pink} />
+              <Text style={[styles.menuText, { color: colors.pink }]}>Denunciar publicação</Text>
+            </Pressable>
+          </View>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+    </>
   );
 }
 
@@ -166,4 +233,19 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, gap: 14 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 4, paddingHorizontal: 4 },
   actionLabel: { color: colors.text, fontSize: 13, fontWeight: '600' },
+  reactionEmoji: { fontSize: 22, lineHeight: 24 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center' },
+  reactionBar: {
+    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6,
+    backgroundColor: colors.surface, borderRadius: radius.xl, padding: 14,
+    borderWidth: 1, borderColor: colors.border, maxWidth: '92%',
+  },
+  reactionOption: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt },
+  reactionOptionEmoji: { fontSize: 30 },
+  postMenu: {
+    width: '82%', maxWidth: 320, backgroundColor: colors.surface, borderRadius: radius.xl,
+    borderWidth: 1, borderColor: colors.border, padding: 6, gap: 2,
+  },
+  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: radius.lg },
+  menuText: { color: colors.text, fontSize: 15, fontWeight: '600' },
 });

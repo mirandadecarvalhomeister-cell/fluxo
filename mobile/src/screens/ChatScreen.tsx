@@ -14,7 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useApp } from '../context/AppContext';
-import { getConversation } from '../lib/api';
+import { getConversation, uploadMedia } from '../lib/api';
+import * as ImagePicker from 'expo-image-picker';
 import { colors, radius, spacing } from '../lib/theme';
 import { AvatarView, EmptyState } from '../components/Ui';
 import { timeAgo } from '../lib/format';
@@ -66,6 +67,7 @@ export default function ChatScreen({ userId }: { userId: string }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [sending, setSending] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
   const listRef = useRef<FlatList<DirectMessage>>(null);
   const other = users[userId];
 
@@ -92,6 +94,47 @@ export default function ChatScreen({ userId }: { userId: string }) {
       setText('');
       setMessages((cur) => [...cur, sent]);
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+    }
+  };
+
+  // Envia uma imagem/câmera como anexo na conversa.
+  const onPickMedia = async (useCamera: boolean) => {
+    try {
+      if (useCamera) {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) { actions.toast('Permissão de câmera negada.'); return; }
+      } else {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) { actions.toast('Permissão de galeria negada.'); return; }
+      }
+      const res = useCamera
+        ? await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: false })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+      if (res.canceled || !res.assets?.[0]) return;
+      const asset = res.assets[0];
+      if (!profile?.id) return;
+      setSending(true);
+      const uploaded = await uploadMedia({
+        uri: asset.uri,
+        userId: profile.id,
+        fileName: `chat-${Date.now()}.jpg`,
+        mimeType: 'image/jpeg',
+      });
+      const sent = await actions.sendMessage(userId, text.trim(), {
+        kind: 'photo',
+        media: uploaded.url,
+        mediaKind: 'photo',
+        fileName: `chat-${Date.now()}.jpg`,
+      });
+      setSending(false);
+      if (sent) {
+        setText('');
+        setMessages((cur) => [...cur, sent]);
+        requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+      }
+    } catch (error: any) {
+      setSending(false);
+      actions.toast(error?.message || 'Não foi possível enviar a imagem.');
     }
   };
 
@@ -188,7 +231,17 @@ export default function ChatScreen({ userId }: { userId: string }) {
             <Pressable onPress={() => { setEditingId(null); setEditText(''); }} style={[styles.sendBtn, { backgroundColor: colors.surfaceAlt }]}><Ionicons name="close" size={20} color={colors.text} /></Pressable>
           </View>
         ) : (
+          <>
           <View style={styles.composer}>
+            <Pressable onPress={() => setShowEmoji((v) => !v)} style={styles.toolBtn} hitSlop={6}>
+              <Ionicons name={showEmoji ? 'happy' : 'happy-outline'} size={22} color={colors.muted} />
+            </Pressable>
+            <Pressable onPress={() => onPickMedia(false)} style={styles.toolBtn} hitSlop={6}>
+              <Ionicons name="attach-outline" size={22} color={colors.muted} />
+            </Pressable>
+            <Pressable onPress={() => onPickMedia(true)} style={styles.toolBtn} hitSlop={6}>
+              <Ionicons name="camera-outline" size={22} color={colors.muted} />
+            </Pressable>
             <TextInput
               value={text}
               onChangeText={setText}
@@ -197,10 +250,20 @@ export default function ChatScreen({ userId }: { userId: string }) {
               style={styles.input}
               multiline
             />
-            <Pressable onPress={onSend} disabled={!text.trim() || sending} style={[styles.sendBtn, (!text.trim() || sending) && { opacity: 0.5 }]}>
+            <Pressable onPress={onSend} disabled={(!text.trim() && !sending) || sending} style={[styles.sendBtn, ((!text.trim() && !sending) || sending) && { opacity: 0.5 }]}>
               <Ionicons name="send" size={18} color="#fff" />
             </Pressable>
           </View>
+          {showEmoji ? (
+            <View style={styles.emojiBar}>
+              {['😀','😂','😍','🥰','😎','🤔','😢','😡','👍','👏','🙏','🔥','❤️','🎉','💯','✨'].map((emoji) => (
+                <Pressable key={emoji} onPress={() => { setText((cur) => cur + emoji); setShowEmoji(false); }} style={styles.emojiBtn}>
+                  <Text style={styles.emojiText}>{emoji}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          </>
         )}
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -217,7 +280,7 @@ const styles = StyleSheet.create({
   bubbleWrap: { width: '100%' },
   bubble: { maxWidth: '82%', borderRadius: 18, paddingHorizontal: 12, paddingVertical: 8, gap: 4 },
   mine: { backgroundColor: colors.primary, borderBottomRightRadius: 6 },
-  theirs: { backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, borderBottomLeftRadius: 6 },
+  theirs: { backgroundColor: colors.surfaceAlt, borderBottomLeftRadius: 6 },
   bubbleText: { color: colors.text, fontSize: 15, lineHeight: 20 },
   bubbleMeta: { flexDirection: 'row', gap: 6, justifyContent: 'flex-end', alignItems: 'center' },
   time: { color: 'rgba(245,246,251,0.7)', fontSize: 11 },
@@ -228,7 +291,11 @@ const styles = StyleSheet.create({
   attachTitle: { color: colors.text, fontWeight: '800', fontSize: 13 },
   attachText: { color: 'rgba(245,246,251,0.85)', fontSize: 12 },
   attachHint: { color: colors.cyan, fontSize: 11, fontWeight: '700' },
-  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 10, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bg },
+  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, padding: 8, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bg },
+  toolBtn: { width: 36, height: 40, alignItems: 'center', justifyContent: 'center' },
+  emojiBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, paddingHorizontal: 8, paddingBottom: 6, backgroundColor: colors.bg },
+  emojiBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
+  emojiText: { fontSize: 26 },
   input: { flex: 1, minHeight: 42, maxHeight: 120, borderRadius: 20, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 14, paddingVertical: 10 },
   sendBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   editBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 10, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },

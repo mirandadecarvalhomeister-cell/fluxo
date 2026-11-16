@@ -93,6 +93,7 @@ type AppContextValue = {
     refreshFeed: () => Promise<void>;
     loadMore: () => Promise<void>;
     toggleLike: (post: Post) => Promise<void>;
+    reactPost: (post: Post, emoji?: string) => Promise<void>;
     toggleSave: (post: Post) => Promise<void>;
     assistantComment: (postId: string, text: string) => Promise<void>;
     publish: (input: PublishInput) => Promise<string | null>;
@@ -522,36 +523,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [feedDone, mergePosts, mergeProfiles]);
 
-  const toggleLike = useCallback(async (post: Post) => {
+  const reactPost = useCallback(async (post: Post, emoji: string = '❤️') => {
     const uidValue = uidRef.current;
     if (!uidValue) return;
-    const liked = !post.liked;
-    const delta = liked ? 1 : -1;
+    const previous = post.myReaction;
+    const next = previous === emoji ? null : emoji;
     setPosts((current) =>
-      current.map((row) =>
-        row.id === post.id
-          ? {
-              ...row,
-              liked,
-              likes: Math.max(0, row.likes + delta),
-              myReaction: liked ? '❤️' : null,
-              reactionCounts: {
-                ...row.reactionCounts,
-                '❤️': Math.max(0, (row.reactionCounts['❤️'] || 0) + delta),
-              },
-            }
-          : row
-      )
+      current.map((row) => {
+        if (row.id !== post.id) return row;
+        const counts = { ...(row.reactionCounts || {}) };
+        if (previous) counts[previous] = Math.max(0, (counts[previous] || 0) - 1);
+        if (next) counts[next] = (counts[next] || 0) + 1;
+        return {
+          ...row,
+          myReaction: next,
+          liked: !!next,
+          likes: Math.max(0, (row.likes || 0) + (next ? 1 : 0) - (previous ? 1 : 0)),
+          reactionCounts: counts,
+        };
+      })
     );
     try {
-      await api.setLike(post.id, uidValue, liked);
+      await api.setLike(post.id, uidValue, !!next, next || undefined);
     } catch (error: any) {
       setPosts((current) =>
-        current.map((row) => (row.id === post.id ? { ...row, liked: post.liked, likes: post.likes } : row))
+        current.map((row) =>
+          row.id === post.id
+            ? { ...row, liked: post.liked, likes: post.likes, myReaction: previous, reactionCounts: post.reactionCounts }
+            : row
+        )
       );
-      toast(error?.message || 'Não foi possível curtir.');
+      toast(error?.message || 'Não foi possível reagir.');
     }
   }, [toast]);
+
+  const toggleLike = useCallback(async (post: Post) => {
+    await reactPost(post, '❤️');
+  }, [reactPost]);
 
   const toggleSave = useCallback(async (post: Post) => {
     const uidValue = uidRef.current;
@@ -949,6 +957,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       refreshFeed,
       loadMore,
       toggleLike,
+      reactPost,
       toggleSave,
       assistantComment,
       publish,

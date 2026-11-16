@@ -1,5 +1,25 @@
 import type { MediaItem, Post } from '../types';
 
+export type Cover = { k: 'art' | 'img'; v: string } | null | undefined;
+
+// Resolve a capa do perfil. O site grava {k:'img', v:url} (imagem) ou
+// {k:'art', v:tema} (arte/gradiente). Para 'img' devolvemos a URL; para 'art'
+// devolvemos null e a UI aplica um gradiente com a paleta do tema.
+export function coverImageUri(cover: unknown): string | null {
+  const c = cover as Cover;
+  if (!c || typeof c !== 'object') return null;
+  if (c.k === 'img' && typeof c.v === 'string' && c.v.trim()) return c.v;
+  return null;
+}
+
+export function coverArtKey(cover: unknown): string {
+  const c = cover as Cover;
+  if (c && typeof c === 'object' && c.k === 'art' && typeof c.v === 'string' && c.v.trim()) {
+    return c.v;
+  }
+  return 'aurora';
+}
+
 export const MAX_POST_MEDIA = 10;
 export const MAX_VIDEO_SECONDS = 180;
 export const MAX_MEDIA_BYTES = 50 * 1024 * 1024;

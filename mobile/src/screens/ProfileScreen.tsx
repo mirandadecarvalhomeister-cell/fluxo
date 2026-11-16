@@ -1,43 +1,58 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+﻿import React, { useCallback, useEffect, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../context/AppContext';
 import { AvatarView, EmptyState, GhostButton } from '../components/Ui';
-import { colors, radius, spacing } from '../lib/theme';
+import { colors, gradients, radius, spacing } from '../lib/theme';
 import { compactNumber } from '../lib/format';
-import { firstMedia, isVideoPost } from '../lib/media';
+import { coverImageUri, firstMedia, isVideoPost } from '../lib/media';
 import { fetchConnections, fetchUserPosts } from '../lib/api';
+import type { Post } from '../types';
 
 export default function ProfileScreen() {
   const { profile, posts, following, online, actions } = useApp();
-  const { mergePosts, mergeProfiles } = actions;
-  const mine = useMemo(() => posts.filter((p) => p.authorId === profile?.id), [posts, profile?.id]);
+  const { mergeProfiles } = actions;
+  const [myPosts, setMyPosts] = useState<Post[]>([]);
   const [counts, setCounts] = useState<{ followers: number | null; following: number | null }>({
     followers: null,
     following: null,
   });
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Contadores reais e publicações do perfil (inclui posts antigos fora do feed).
-  useEffect(() => {
-    let active = true;
+  // Publicações do perfil buscadas diretamente (inclui posts antigos fora do feed).
+  // Estado próprio para não ser apagado pelo refresh do feed global.
+  const loadProfile = useCallback(async () => {
     if (!online || !profile?.id) return;
     const uid = profile.id;
-    Promise.all([fetchConnections(uid, 'followers'), fetchConnections(uid, 'following'), fetchUserPosts(uid, uid)])
-      .then(([followers, follows, page]) => {
-        if (!active) return;
-        setCounts({ followers: followers.ids.length, following: follows.ids.length });
-        if (page.posts.length) mergePosts(page.posts);
-        if (page.profiles.length) mergeProfiles(page.profiles);
-      })
-      .catch(() => {
-        if (active) setCounts({ followers: null, following: null });
-      });
-    return () => {
-      active = false;
-    };
-  }, [online, profile?.id, following.length, mergePosts, mergeProfiles]);
+    const [followersR, followsR, postsR] = await Promise.allSettled([
+      fetchConnections(uid, 'followers'),
+      fetchConnections(uid, 'following'),
+      fetchUserPosts(uid, uid),
+    ]);
+    if (followersR.status === 'fulfilled') setCounts((c) => ({ ...c, followers: followersR.value.ids.length }));
+    if (followsR.status === 'fulfilled') setCounts((c) => ({ ...c, following: followsR.value.ids.length }));
+    if (postsR.status === 'fulfilled') {
+      setMyPosts(postsR.value.posts);
+      if (postsR.value.profiles.length) mergeProfiles(postsR.value.profiles);
+    }
+  }, [online, profile?.id, mergeProfiles]);
+
+  useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadProfile();
+    setRefreshing(false);
+  }, [loadProfile]);
+
+  // Enquanto a busca própria não chega, usa o que já existe no feed global.
+  const mine = myPosts.length ? myPosts : posts.filter((p) => p.authorId === profile?.id);
+  const coverUri = coverImageUri(profile?.cover);
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -50,9 +65,21 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 30 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 30 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+      >
+        {/* Capa do perfil */}
+        <View style={styles.cover}>
+          {coverUri ? (
+            <Image source={{ uri: coverUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          ) : (
+            <LinearGradient colors={gradients.brand} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+          )}
+        </View>
+
         <View style={styles.profileRow}>
-          <AvatarView user={profile} size={82} />
+          <View style={styles.avatarWrap}><AvatarView user={profile} size={82} /></View>
           <View style={styles.stats}>
             <Stat label="Posts" value={compactNumber(mine.length)} />
             <Pressable onPress={() => profile?.id && actions.push({ name: 'connections', userId: profile.id, mode: 'followers' })}><Stat label="Seguidores" value={compactNumber(counts.followers ?? profile?.followers ?? 0)} /></Pressable>
@@ -111,8 +138,10 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
   title: { color: colors.text, fontSize: 22, fontWeight: '900' },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  profileRow: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: spacing.lg },
-  stats: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
+  cover: { width: '100%', height: 140, overflow: 'hidden', backgroundColor: colors.surfaceAlt },
+  profileRow: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: spacing.lg, marginTop: -38 },
+  avatarWrap: { borderRadius: 46, borderWidth: 4, borderColor: colors.bg, overflow: 'hidden' },
+  stats: { flex: 1, flexDirection: 'row', justifyContent: 'space-around', paddingTop: 30 },
   name: { color: colors.text, fontSize: 17, fontWeight: '800' },
   bio: { color: colors.text, lineHeight: 20 },
   bioMuted: { color: colors.muted },
