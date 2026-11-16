@@ -41,6 +41,7 @@
       ]
     },
     "plugins": [
+      "./plugins/with-android-build-fixes.js",
       [
         "expo-status-bar",
         {
