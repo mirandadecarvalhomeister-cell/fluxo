@@ -44,6 +44,7 @@ import {
   challengeLink as quizChallengeLink,
   saveChallenge as saveQuizChallenge,
 } from '../games/quiz/quizData';
+import { quizCardImage } from '../lib/quizCard';
 import { showDeviceNotification } from '../lib/notify';
 import { playMessageSound, playSentSound } from '../lib/sound';
 import {
@@ -732,6 +733,53 @@ const readHash = () => {
   return { route, room, arenaCode, quizOpen, quizChallenge, quizInvite };
 };
 
+// Convites/compartilhamentos chegam com parâmetros na URL (ex.:
+// #conexoes/quiz?desafio=... ou ?convite=...). O modo visitante só vale para
+// esses links — nunca para um F5 comum na tela de login.
+const INVITE_KEYS = ['convite', 'invite', 'desafio', 'challenge'];
+
+const hasInviteParams = () => {
+  if (typeof window === 'undefined') return false;
+  const hashQuery = (location.hash || '').split('?')[1] || '';
+  const search = (location.search || '').replace(/^\?/, '');
+  const params = new URLSearchParams(`${hashQuery}&${search}`);
+  return INVITE_KEYS.some((key) => params.has(key));
+};
+
+// "Consome" o convite: remove só os parâmetros de convite da URL, mantendo a
+// rota (ex.: #conexoes/quiz). Assim um recarregamento depois não reativa o
+// modo visitante.
+const clearInviteParams = () => {
+  if (typeof window === 'undefined') return;
+  const hash = location.hash || '';
+  const hashQuery = hash.split('?')[1] || '';
+  const search = (location.search || '').replace(/^\?/, '');
+  const hadInvite =
+    INVITE_KEYS.some((k) => new URLSearchParams(hashQuery).has(k)) ||
+    INVITE_KEYS.some((k) => new URLSearchParams(search).has(k));
+  if (!hadInvite) return;
+
+  // Search (fora do hash).
+  const searchParams = new URLSearchParams(search);
+  INVITE_KEYS.forEach((key) => searchParams.delete(key));
+  const restSearch = searchParams.toString();
+
+  // Hash (ex.: #conexoes/quiz?desafio=... -> #conexoes/quiz).
+  let cleanHash = '';
+  if (hash) {
+    const [path, query] = hash.slice(1).split('?');
+    const hashParams = new URLSearchParams(query || '');
+    INVITE_KEYS.forEach((key) => hashParams.delete(key));
+    const restHash = hashParams.toString();
+    cleanHash = '#' + path + (restHash ? '?' + restHash : '');
+  }
+  history.replaceState(
+    null,
+    '',
+    location.pathname + (restSearch ? '?' + restSearch : '') + cleanHash
+  );
+};
+
 const initialUi = () => {
   const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite } = readHash();
   return {
@@ -890,6 +938,8 @@ export function AppProvider({ children }) {
     setGuest(true);
     setSession(null);
     setData(newState('Visitante', 'visitante@fluxo.app'));
+    // Consome o convite da URL para que um F5 depois não reative o visitante.
+    clearInviteParams();
   }, []);
 
   const exitGuest = useCallback(() => {
@@ -971,12 +1021,12 @@ export function AppProvider({ children }) {
         const s = await remote.getSession();
         if (cancelled) return;
         if (s?.user) await startSupabase(s.user);
-        else startGuest();
+        else if (hasInviteParams()) startGuest();
         setReady(true);
       } else {
         const email = lsGet(SESSION_KEY);
         if (email) startLocal(email);
-        else startGuest();
+        else if (hasInviteParams()) startGuest();
         setReady(true);
       }
     })();
@@ -998,7 +1048,12 @@ export function AppProvider({ children }) {
       if (s?.user) startSupabase(s.user);
       else {
         lastUserId.current = null;
-        startGuest();
+        if (hasInviteParams()) startGuest();
+        else {
+          setGuest(false);
+          setSession(null);
+          setData(null);
+        }
       }
     });
   }, [startSupabase, startGuest]);
@@ -3010,6 +3065,29 @@ export function AppProvider({ children }) {
     return { challenge, link };
   }
 
+  async function shareQuizInvite(challenge) {
+    if (!challenge) return;
+    const link = challenge.link || quizChallengeLink(challenge.id);
+    const image = quizCardImage(challenge);
+    const meta = challenge.targetScore
+      ? 'Meta: ' + Number(challenge.targetScore).toLocaleString('pt-BR') + ' pontos. '
+      : '';
+    const text =
+      '💣 ' + (challenge.challengerName || 'Um amigo') +
+      ' te desafiou no Quiz BOOM! ' + meta + 'Aceite no Fluxo:';
+    const result = await shareLink({
+      title: 'Desafio do Quiz BOOM · Fluxo',
+      text,
+      url: link,
+      image,
+      imageName: 'quiz-boom.png',
+    });
+    if (result === 'copied') toast('Link do desafio copiado');
+    else if (result === 'shared') toast('Desafio compartilhado');
+    else if (result === 'error') toast('Não foi possível compartilhar.');
+    return result;
+  }
+
   async function shareChannel(id) {
     const channel = dataRef.current?.chans.find((c) => c.id === id);
     if (!channel) return;
@@ -4708,6 +4786,7 @@ export function AppProvider({ children }) {
     shareArenaResult,
     shareQuizResult,
     shareQuizChallenge,
+    shareQuizInvite,
     clearRoom: () => {
       setUi((u) => ({ ...u, room: null }));
       if (location.hash !== '#conexoes') location.hash = '#conexoes';

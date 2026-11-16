@@ -3,6 +3,7 @@ import { Avatar } from '../../components/Avatar';
 import { Icon } from '../../components/Icon';
 import { useApp } from '../../store/AppContext';
 import { fmt, shareLink } from '../../lib/utils';
+import { quizCardImage } from '../../lib/quizCard';
 import { ALL_CATEGORY, CATEGORIES, buildRound, categoryById, poolFor } from './bank';
 import {
   BONUS_ROUNDS,
@@ -574,6 +575,14 @@ export default function QuizBoom() {
           title: 'Quiz BOOM!',
           text: `${data?.me?.name || 'Um amigo'} te desafiou no Quiz BOOM! Faça ${finalResult.score} pontos ou mais:`,
           url: result.link,
+          image: quizCardImage({
+            mode: finalResult.mode,
+            categoryName: finalResult.categoryName,
+            challengerName: data?.me?.name || 'Um amigo',
+            size: finalResult.total,
+            targetScore: finalResult.score,
+          }),
+          imageName: 'quiz-boom.png',
         });
       }
       setPickerOpen(false);
@@ -584,7 +593,23 @@ export default function QuizBoom() {
   };
 
   const shareOutside = async (payload) => {
-    const result = await shareLink(payload);
+    // Prévia visual real do Quiz BOOM: quando o link é um convite/desafio do
+    // jogo, anexa a imagem ilustrativa gerada em canvas ao compartilhamento.
+    const isQuizLink = /[?#].*(desafio|challenge|convite|invite)=/.test(payload.url || '');
+    const finalPayload = isQuizLink
+      ? {
+          ...payload,
+          image: quizCardImage({
+            mode: finalResult?.mode || 'classic',
+            categoryName: finalResult?.categoryName,
+            challengerName: data?.me?.name || 'Um amigo',
+            size: finalResult?.total,
+            targetScore: finalResult?.score,
+          }),
+          imageName: 'quiz-boom.png',
+        }
+      : payload;
+    const result = await shareLink(finalPayload);
     if (result === 'copied') actions.notify?.('Link copiado');
     else if (result === 'error') actions.notify?.('Não foi possível compartilhar.');
   };

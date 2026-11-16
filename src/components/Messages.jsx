@@ -3,6 +3,7 @@ import { art } from '../lib/art';
 import { userOf } from '../lib/selectors';
 import { fileToDataURL, hm } from '../lib/utils';
 import { useApp } from '../store/AppContext';
+import { quizCardImage } from '../lib/quizCard';
 import { Avatar } from './Avatar';
 import { TagText, Verified } from './Brand';
 import ChatPicker from './ChatPicker';
@@ -286,12 +287,22 @@ function AudioMessage({ src }) {
 function QuizAttachment({ attachment }) {
   const { actions } = useApp();
   const mode = attachment.mode === 'insane' ? 'Insano' : 'Clássico';
+  const [card, setCard] = useState(() => quizCardImage(attachment));
+  useEffect(() => {
+    setCard(quizCardImage(attachment));
+  }, [attachment.mode, attachment.categoryName, attachment.challengerName, attachment.size, attachment.targetScore]);
   return (
     <button
       type="button"
       className="att-post att-quiz"
       onClick={() => actions.openQuizChallenge?.(attachment.challengeId)}
     >
+      {card ? (
+        <span className="att-quiz-cover">
+          <img src={card} alt={`Desafio do Quiz BOOM de ${attachment.challengerName || 'um amigo'}`} />
+          <span className="att-quiz-cover-tag">🎮 Quiz BOOM!</span>
+        </span>
+      ) : null}
       <span className="att-post-h">
         <span className="att-quiz-emoji" aria-hidden="true">💣</span>
         <b className="ell">Desafio do Quiz BOOM!</b>
