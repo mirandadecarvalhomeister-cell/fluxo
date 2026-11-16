@@ -64,6 +64,7 @@ export function mapPost(row: Row, extras?: {
   saved?: boolean;
   commentCount?: number;
   reactionCounts?: Record<string, number>;
+  interactions?: any[];
 }): Post {
   const media = baseMedia(row);
   return {
@@ -83,6 +84,7 @@ export function mapPost(row: Row, extras?: {
     interactive: normalizeInteractive(row.interactive),
     commentCount: extras?.commentCount ?? 0,
     reactionCounts: extras?.reactionCounts ?? {},
+    interactions: extras?.interactions ?? [],
     communityId: row.community_id || null,
   };
 }
@@ -176,11 +178,12 @@ export async function hydratePosts(rows: Row[], uidValue: string, quiet = false)
   const ids = rows.map((row) => String(row.id));
   const authorIds = rows.map((row) => String(row.author_id));
 
-  const [profileList, likesResult, savesResult, commentsResult] = await Promise.all([
+  const [profileList, likesResult, savesResult, commentsResult, interactionsResult] = await Promise.all([
     profilesByIds(authorIds),
     supabase.from('post_likes').select('post_id,user_id,emoji').in('post_id', ids),
     supabase.from('post_saves').select('post_id').eq('user_id', uidValue).in('post_id', ids),
     supabase.from('comments').select('post_id').in('post_id', ids),
+    supabase.from('post_interactions').select('id,post_id,user_id,kind,option_id,text,created_at').in('post_id', ids),
   ]);
 
   if (!quiet && likesResult.error && !/does not exist/i.test(likesResult.error.message || '')) {
@@ -207,6 +210,22 @@ export async function hydratePosts(rows: Row[], uidValue: string, quiet = false)
     commentCounts.set(postId, (commentCounts.get(postId) || 0) + 1);
   });
 
+  // Interações (votos/respostas/participações) agrupadas por publicação.
+  const interactionsByPost = new Map<string, any[]>();
+  ((interactionsResult.data || []) as Row[]).forEach((row) => {
+    const postId = String(row.post_id);
+    const list = interactionsByPost.get(postId) || [];
+    list.push({
+      id: String(row.id),
+      userId: String(row.user_id),
+      kind: row.kind,
+      optionId: row.option_id || null,
+      text: row.text || null,
+      createdAt: ts(row.created_at),
+    });
+    interactionsByPost.set(postId, list);
+  });
+
   return {
     posts: rows.map((row) =>
       mapPost(row, {
@@ -216,6 +235,7 @@ export async function hydratePosts(rows: Row[], uidValue: string, quiet = false)
         saved: saved.has(String(row.id)),
         commentCount: commentCounts.get(String(row.id)) || 0,
         reactionCounts: reactionCounts[String(row.id)] || {},
+        interactions: interactionsByPost.get(String(row.id)) || [],
       })
     ),
     profiles: profileList,
@@ -236,6 +256,17 @@ export async function setLike(postId: string, uidValue: string, liked: boolean, 
       .eq('user_id', uidValue);
     fail(error, 'Não foi possível remover a curtida.');
   }
+}
+
+// Interações de posts interativos (enquete, pergunta, desafio).
+export async function deleteInteraction(postId: string, userId: string, kind: 'vote' | 'answer' | 'join'): Promise<void> {
+  const { error } = await supabase
+    .from('post_interactions')
+    .delete()
+    .eq('post_id', postId)
+    .eq('user_id', userId)
+    .eq('kind', kind);
+  fail(error, 'Não foi possível remover sua participação.');
 }
 
 export async function setSave(postId: string, uidValue: string, saved: boolean) {
@@ -341,13 +372,13 @@ export async function saveInteraction(input: {
   text?: string;
 }) {
   const { error } = await supabase.from('post_interactions').upsert({
-    id: input.id || uid('i'),
+    id: input.id || `${input.postId}:${input.userId}:${input.kind}:${uid('i')}`,
     post_id: input.postId,
     user_id: input.userId,
     kind: input.kind,
     option_id: input.optionId || null,
-    text: input.text || '',
-  });
+    text: input.text ? String(input.text).slice(0, 280) : '',
+  }, { onConflict: 'post_id,user_id,kind' });
   fail(error, 'Não foi possível registrar sua participação.');
 }
 

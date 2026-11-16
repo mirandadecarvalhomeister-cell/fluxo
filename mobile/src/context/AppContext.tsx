@@ -51,7 +51,7 @@ type PublishInput = {
   text: string;
   assets: { uri: string; kind: 'photo' | 'video'; duration?: number | null; mimeType?: string | null; fileName?: string | null }[];
   format: any;
-  pollOptions?: string[];
+  options?: { id?: string; label: string; mediaIndex?: number }[];
   reactions?: string[];
   invited?: string[];
   live?: any;
@@ -95,6 +95,9 @@ type AppContextValue = {
     loadMore: () => Promise<void>;
     toggleLike: (post: Post) => Promise<void>;
     reactPost: (post: Post, emoji?: string) => Promise<void>;
+    votePost: (post: Post, optionId: string) => Promise<void>;
+    answerPost: (post: Post, text: string) => Promise<void>;
+    joinChallenge: (post: Post) => Promise<void>;
     toggleSave: (post: Post) => Promise<void>;
     assistantComment: (postId: string, text: string) => Promise<void>;
     publish: (input: PublishInput) => Promise<string | null>;
@@ -562,6 +565,84 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await reactPost(post, '❤️');
   }, [reactPost]);
 
+  // Atualiza as interações de um post no estado local.
+  const patchInteractions = useCallback((postId: string, fn: (list: any[]) => any[]) => {
+    setPosts((current) =>
+      current.map((p) => (p.id === postId ? { ...p, interactions: fn(p.interactions || []) } : p))
+    );
+  }, []);
+
+  const votePost = useCallback(async (post: Post, optionId: string) => {
+    const uidValue = uidRef.current;
+    if (!uidValue) return;
+    const mine = (post.interactions || []).find((i) => i.userId === uidValue && i.kind === 'vote');
+    if (mine?.optionId === optionId) {
+      try {
+        await api.deleteInteraction(post.id, uidValue, 'vote');
+        patchInteractions(post.id, (list) => list.filter((i) => !(i.userId === uidValue && i.kind === 'vote')));
+      } catch (e: any) {
+        toast(e?.message || 'Não foi possível remover o voto.');
+      }
+      return;
+    }
+    try {
+      await api.saveInteraction({
+        id: `${post.id}:${uidValue}:vote`,
+        postId: post.id,
+        userId: uidValue,
+        kind: 'vote',
+        optionId,
+      });
+      const entry = { id: `${post.id}:${uidValue}:vote`, userId: uidValue, kind: 'vote', optionId, text: null, createdAt: Date.now() };
+      patchInteractions(post.id, (list) => [...list.filter((i) => !(i.userId === uidValue && i.kind === 'vote')), entry]);
+    } catch (e: any) {
+      toast(e?.message || 'Não foi possível votar.');
+    }
+  }, [toast, patchInteractions]);
+
+  const answerPost = useCallback(async (post: Post, text: string) => {
+    const uidValue = uidRef.current;
+    if (!uidValue || !text.trim()) return;
+    const clean = String(text).trim().slice(0, 280);
+    try {
+      await api.saveInteraction({
+        id: `${post.id}:${uidValue}:answer`,
+        postId: post.id,
+        userId: uidValue,
+        kind: 'answer',
+        text: clean,
+      });
+      const entry = { id: `${post.id}:${uidValue}:answer`, userId: uidValue, kind: 'answer', optionId: null, text: clean, createdAt: Date.now() };
+      patchInteractions(post.id, (list) => [...list.filter((i) => !(i.userId === uidValue && i.kind === 'answer')), entry]);
+      toast('Resposta enviada!');
+    } catch (e: any) {
+      toast(e?.message || 'Não foi possível responder.');
+    }
+  }, [toast, patchInteractions]);
+
+  const joinChallenge = useCallback(async (post: Post) => {
+    const uidValue = uidRef.current;
+    if (!uidValue) return;
+    const joined = (post.interactions || []).some((i) => i.userId === uidValue && i.kind === 'join');
+    if (joined) {
+      toast('Você já está participando!');
+      return;
+    }
+    try {
+      await api.saveInteraction({
+        id: `${post.id}:${uidValue}:join`,
+        postId: post.id,
+        userId: uidValue,
+        kind: 'join',
+      });
+      const entry = { id: `${post.id}:${uidValue}:join`, userId: uidValue, kind: 'join', optionId: null, text: null, createdAt: Date.now() };
+      patchInteractions(post.id, (list) => [...list, entry]);
+      toast('Você entrou no desafio!');
+    } catch (e: any) {
+      toast(e?.message || 'Não foi possível entrar no desafio.');
+    }
+  }, [toast, patchInteractions]);
+
   const toggleSave = useCallback(async (post: Post) => {
     const uidValue = uidRef.current;
     if (!uidValue) return;
@@ -623,11 +704,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
 
       setPublishProgress('Publicando…');
-      const draftOptions = (input.pollOptions || []).map((label, index) => ({
-        id: `opt-${index + 1}`,
-        label,
-        mediaIndex: index,
-      }));
+      const draftOptions = (input.options || []).map((opt, index) => ({
+        id: opt.id || `opt-${index + 1}`,
+        label: String(opt.label || '').trim(),
+        mediaIndex: opt.mediaIndex,
+      })).filter((opt) => opt.label);
       const interactive = input.format === 'classic'
         ? null
         : buildInteractive(input.format, {
@@ -639,6 +720,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (interactive?.format === 'poll' && interactive.options.length < 2) {
         return 'Adicione pelo menos duas alternativas na enquete.';
+      }
+      if (interactive?.format === 'imageVote' && media.length < 2) {
+        return 'Adicione pelo menos duas imagens para a votação.';
       }
 
       const post = await api.createPost({
@@ -973,6 +1057,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loadMore,
       toggleLike,
       reactPost,
+      votePost,
+      answerPost,
+      joinChallenge,
       toggleSave,
       assistantComment,
       publish,

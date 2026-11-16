@@ -48,6 +48,15 @@ export type Interactive = {
   };
 };
 
+export type PostInteraction = {
+  id: string;
+  userId: string;
+  kind: 'vote' | 'answer' | 'join';
+  optionId: string | null;
+  text: string | null;
+  createdAt: number;
+};
+
 export type Post = {
   id: string;
   authorId: string;
@@ -65,6 +74,7 @@ export type Post = {
   interactive: Interactive | null;
   commentCount: number;
   reactionCounts: Record<string, number>;
+  interactions: PostInteraction[];
   communityId?: string | null;
 };
 

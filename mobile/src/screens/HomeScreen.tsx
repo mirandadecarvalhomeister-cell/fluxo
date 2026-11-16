@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';import { useApp } from '../context/AppContext';
+import { Ionicons } from '@expo/vector-icons';
+import { useApp } from '../context/AppContext';
+import Interactive from '../components/Interactive';
 import { AvatarView, EmptyState, IconButton } from '../components/Ui';
 import { colors, radius, spacing } from '../lib/theme';
 import { compactNumber, timeAgo } from '../lib/format';
@@ -57,8 +59,8 @@ function PostCard({ post }: { post: Post }) {
       </View>
 
       {post.text ? <Text style={styles.text}>{post.text}</Text> : null}
-
-      {media ? (
+      <Interactive post={post} compact />
+      {post.interactive?.format !== 'imageVote' && media ? (
         <Pressable
           onPress={() => (video ? actions.push({ name: 'reels', postId: post.id }) : actions.push({ name: 'post', postId: post.id }))}
           style={styles.mediaWrap}
@@ -78,7 +80,7 @@ function PostCard({ post }: { post: Post }) {
           {video ? (
             <View style={styles.playBadge}>
               <Ionicons name="play" size={14} color="#fff" />
-              <Text style={styles.playBadgeText}>Reels</Text>
+              <Text style={styles.playBadgeText}>Clips</Text>
             </View>
           ) : null}
         </Pressable>

@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import StackHeader from '../components/StackHeader';
+import Interactive from '../components/Interactive';
 import { AvatarView, EmptyState, GhostButton } from '../components/Ui';
 import { colors, spacing } from '../lib/theme';
 import { compactNumber, timeAgo } from '../lib/format';
@@ -46,7 +47,8 @@ export default function PostScreen({ postId }: { postId: string }) {
           </View>
         </View>
         {post.text ? <Text style={styles.text}>{post.text}</Text> : null}
-        {media.map((m, i) => (
+        <Interactive post={post} />
+        {post.interactive?.format !== 'imageVote' ? media.map((m, i) => (
           <View key={i} style={styles.mediaWrap}>
             {m.kind === 'photo' && m.src ? (
               <Image source={{ uri: m.src }} style={styles.media} contentFit="cover" />
@@ -54,7 +56,7 @@ export default function PostScreen({ postId }: { postId: string }) {
               <View style={[styles.media, styles.stub]}><Ionicons name="videocam" size={30} color={colors.muted} /><Text style={{ color: colors.muted }}>Vídeo</Text></View>
             ) : null}
           </View>
-        ))}
+        )) : null}
         <View style={styles.actions}>
           <GhostButton title={`${compactNumber(post.likes)}`} icon={post.liked ? 'heart' : 'heart-outline'} onPress={() => actions.toggleLike(post)} />
           <GhostButton title={`${compactNumber(post.commentCount)}`} icon="chatbubble-outline" onPress={() => actions.push({ name: 'comments', postId: post.id })} />

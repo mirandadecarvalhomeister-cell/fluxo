@@ -52,11 +52,11 @@ function ReelItem({ post, active, onClose }: { post: Post; active: boolean; onCl
   useEffect(() => {
     if (!player) return;
     try {
-      // Economia de dados desliga o autoplay; o usuário toca para assistir.
-      if (active && prefs.autoplay && !prefs.dataSaver) player.play();
+      // Reproduz automaticamente sempre que o clipe estiver ativo.
+      if (active) player.play();
       else player.pause();
     } catch {}
-  }, [active, player, prefs.autoplay, prefs.dataSaver]);
+  }, [active, player]);
 
   useEffect(() => {
     if (!player) return;
@@ -101,9 +101,15 @@ function ReelItem({ post, active, onClose }: { post: Post; active: boolean; onCl
       {!playing && src ? (
         <View pointerEvents="none" style={styles.playPause}>
           <Ionicons name="play" size={52} color="rgba(255,255,255,0.9)" />
-          {prefs.dataSaver ? <Text style={styles.dataHint}>Economia de dados · toque para assistir</Text> : null}
         </View>
       ) : null}
+
+      {/* Botão de volume no centro da tela (não intercepta o toque de play/pause) */}
+      <View pointerEvents="box-none" style={styles.volumeCenter}>
+        <Pressable onPress={() => setMuted((m) => !m)} hitSlop={12} style={styles.volumeBtn}>
+          <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={28} color="#fff" />
+        </Pressable>
+      </View>
 
       <LinearGradient colors={gradients.top} pointerEvents="none" style={[styles.topGrad, { height: insets.top + 90 }]} />
       <LinearGradient colors={gradients.bottom} pointerEvents="none" style={styles.bottomGrad} />
@@ -112,10 +118,8 @@ function ReelItem({ post, active, onClose }: { post: Post; active: boolean; onCl
         <Pressable onPress={onClose} hitSlop={10} style={styles.circleBtn}>
           <Ionicons name="chevron-back" size={26} color="#fff" />
         </Pressable>
-        <Text style={styles.topTitle}>Reels</Text>
-        <Pressable onPress={() => setMuted((m) => !m)} hitSlop={10} style={styles.circleBtn}>
-          <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={22} color="#fff" />
-        </Pressable>
+        <Text style={styles.topTitle}>Clips</Text>
+        <View style={styles.circleBtnPlaceholder} />
       </View>
 
       <View style={[styles.rail, { bottom: insets.bottom + 90 }]}>
@@ -236,6 +240,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
   },
+  volumeCenter: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  volumeBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  circleBtnPlaceholder: { width: 38, height: 38 },
   dataHint: {
     color: '#fff',
     fontSize: 12,
