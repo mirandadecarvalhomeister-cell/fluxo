@@ -510,12 +510,13 @@ body.lock{overflow:hidden}
 .reaction-emoji{font-size:16px;line-height:1}
 .react-picker{position:absolute;left:0;bottom:100%;display:flex;gap:2px;padding:6px 8px;margin-bottom:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;box-shadow:0 12px 34px rgba(0,0,0,.2);opacity:0;pointer-events:none;transform:translateY(6px) scale(.96);transform-origin:bottom left;transition:opacity .18s ease,transform .18s cubic-bezier(.2,1.4,.5,1);z-index:25}
 .react-picker::after{content:"";position:absolute;left:0;right:0;bottom:-10px;height:10px}
-.reaction-wrap:hover .react-picker,.reaction-wrap:focus-within .react-picker{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
+.reaction-wrap:focus-within .react-picker,.reaction-wrap.picker-open .react-picker{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
+.act-my-reaction{font-size:18px;line-height:1;font-style:normal}
 .react-picker button{width:32px;height:32px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:18px;background:transparent;color:inherit;transition:background .16s ease,transform .16s cubic-bezier(.2,1.5,.5,1)}
 .react-picker button:hover{background:var(--surface2);transform:scale(1.22) translateY(-2px)}
 .react-picker button.on{background:var(--accent-soft)}
 /* Entrada escalonada: cada emoji "pula" um pouco após o anterior. */
-.reaction-wrap:hover .react-picker button,
+.reaction-wrap.picker-open .react-picker button,
 .reaction-wrap:focus-within .react-picker button{animation:react-pop-in .32s cubic-bezier(.2,1.5,.4,1) backwards}
 .react-picker button:nth-child(1){animation-delay:.02s}
 .react-picker button:nth-child(2){animation-delay:.05s}

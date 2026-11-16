@@ -264,11 +264,16 @@ export default function Post({ post, detail = false }) {
   const cardRef = useRef(null);
   const [expanded, setExpanded] = useState(false);
   const [reactBurst, setReactBurst] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const burstTimer = useRef(null);
 
   const handleReact = (emoji) => {
     actions.reactPost(post.id, emoji);
     setReactBurst(emoji);
+    setPickerOpen(false); // fecha o picker assim que escolhe
+    if (document.activeElement && document.activeElement.blur) {
+      document.activeElement.blur(); // evita que :focus-within mantenha o picker aberto
+    }
     window.clearTimeout(burstTimer.current);
     burstTimer.current = window.setTimeout(() => setReactBurst(null), 1500);
   };
@@ -461,7 +466,11 @@ export default function Post({ post, detail = false }) {
       ) : null}
 
       <footer className="acts">
-        <div className="reaction-wrap">
+        <div
+          className={`reaction-wrap${pickerOpen ? ' picker-open' : ''}`}
+          onMouseEnter={() => setPickerOpen(true)}
+          onMouseLeave={() => setPickerOpen(false)}
+        >
           <button
             type="button"
             className={`act-btn act-like ${post.myReaction ? 'on' : ''} ${reactBurst ? 'burst' : ''}`}
@@ -470,7 +479,11 @@ export default function Post({ post, detail = false }) {
             aria-label={post.myReaction ? 'Remover reação' : 'Reagir'}
             title="Reagir"
           >
-            <Icon name="heart" className="act-ic" />
+            {post.myReaction ? (
+              <span className="act-ic act-my-reaction">{post.myReaction}</span>
+            ) : (
+              <Icon name="heart" className="act-ic" />
+            )}
             <span className="act-count">{fmt(totalLikes)}</span>
           </button>
           <div className="react-picker" role="menu" aria-label="Escolher reação">
