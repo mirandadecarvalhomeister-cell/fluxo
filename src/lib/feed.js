@@ -42,7 +42,6 @@ export const FEED_FORMATS = [
   { id: 'question', label: 'Perguntas' },
   { id: 'imageVote', label: 'Votações' },
   { id: 'challenge', label: 'Desafios' },
-  { id: 'reactions', label: 'Reações' },
 ];
 
 export const ALGO_LEVELS = [

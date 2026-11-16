@@ -39,13 +39,6 @@ export const INTERACTIVE_FORMATS = [
     icon: 'users',
     hint: 'Convide amigos para um desafio e acompanhe quem participou.',
   },
-  {
-    id: 'reactions',
-    label: 'Reações',
-    short: 'Reações',
-    icon: 'smile',
-    hint: 'Escolha até 8 reações personalizadas para a publicação.',
-  },
 ];
 
 export const DEFAULT_REACTIONS = ['❤️', '🔥', '👏', '😂', '😮', '🎉', '💜'];

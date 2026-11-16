@@ -412,36 +412,6 @@ function Challenge({ post, info }) {
   );
 }
 
-function Reactions({ post }) {
-  const { actions } = useApp();
-  const interactive = normalizeInteractive(post.interactive);
-  const counts = post.reactionCounts || {};
-  const reactions = interactive?.reactions || [];
-  return (
-    <>
-      <div className="int-reacts" role="group" aria-label="Reações personalizadas">
-        {reactions.map((emoji) => {
-          const mine = post.myReaction === emoji;
-          return (
-            <button
-              type="button"
-              key={emoji}
-              className={mine ? 'on' : ''}
-              onClick={() => actions.reactPost(post.id, emoji)}
-              aria-pressed={mine}
-              title={`Reagir com ${emoji}`}
-            >
-              <span className="int-react-emoji">{emoji}</span>
-              <span className="int-react-count">{fmt(counts[emoji] || 0)}</span>
-            </button>
-          );
-        })}
-      </div>
-      <p className="int-hint">Reações escolhidas pelo autor desta publicação.</p>
-    </>
-  );
-}
-
 export default function Interactive({ post }) {
   const { data, actions } = useApp();
   const interactive = normalizeInteractive(post.interactive);
@@ -526,7 +496,6 @@ export default function Interactive({ post }) {
       {interactive.format === 'imageVote' ? <ImageVote post={post} info={info} /> : null}
       {interactive.format === 'question' ? <Question post={post} info={info} /> : null}
       {interactive.format === 'challenge' ? <Challenge post={post} info={info} /> : null}
-      {interactive.format === 'reactions' ? <Reactions post={post} /> : null}
     </section>
   );
 }

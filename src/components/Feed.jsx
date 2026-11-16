@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import {
-  DEFAULT_REACTIONS,
   INTERACTIVE_FORMATS,
   MAX_OPTIONS,
   MAX_SCHEDULE_MINUTES,
-  REACTION_CHOICES,
   RESULT_RELEASE_OPTIONS,
   SCHEDULE_UNITS,
   formatMeta,
@@ -57,9 +55,7 @@ function Composer() {
           ? 'Qual é a melhor? Descreva a votação…'
           : format === 'challenge'
             ? `Qual desafio você propõe, ${first}?`
-            : format === 'reactions'
-              ? 'O que está rolando? Escolha as reações ideais…'
-              : `O que está rolando no seu fluxo, ${first}? Use @ para mencionar alguém.`;
+            : `O que está rolando no seu fluxo, ${first}? Use @ para mencionar alguém.`;
 
   return (
     <form
@@ -297,31 +293,6 @@ function Composer() {
               Siga pessoas para poder convidá-las para os seus desafios.
             </p>
           )}
-        </div>
-      ) : null}
-
-      {format === 'reactions' ? (
-        <div className="fmt-fields">
-          <div className="react-choice">
-            {REACTION_CHOICES.map((emoji) => {
-              const on = (draft.reactions || DEFAULT_REACTIONS).includes(emoji);
-              return (
-                <button
-                  type="button"
-                  key={emoji}
-                  className={on ? 'on' : ''}
-                  onClick={() => actions.toggleDraftReaction(emoji)}
-                  aria-pressed={on}
-                  aria-label={`${on ? 'Remover' : 'Adicionar'} reação ${emoji}`}
-                >
-                  {emoji}
-                </button>
-              );
-            })}
-          </div>
-          <p className="muted sm">
-            {(draft.reactions || DEFAULT_REACTIONS).length} de 8 reações escolhidas.
-          </p>
         </div>
       ) : null}
 

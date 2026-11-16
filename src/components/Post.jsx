@@ -10,6 +10,7 @@ import { useApp } from '../store/AppContext';
 import { LiveAvatar } from './Avatar';
 import { TagText, Verified } from './Brand';
 import CommentSheet, { Comments } from './Comments';
+import ReactionFx from './ReactionFx';
 import { Icon } from './Icon';
 import Interactive from './Interactive';
 import { EditWrap } from './MediaEditor';
@@ -269,7 +270,7 @@ export default function Post({ post, detail = false }) {
     actions.reactPost(post.id, emoji);
     setReactBurst(emoji);
     window.clearTimeout(burstTimer.current);
-    burstTimer.current = window.setTimeout(() => setReactBurst(null), 520);
+    burstTimer.current = window.setTimeout(() => setReactBurst(null), 1500);
   };
 
   useEffect(() => () => window.clearTimeout(burstTimer.current), []);
@@ -367,6 +368,7 @@ export default function Post({ post, detail = false }) {
       aria-label={detail ? undefined : `Abrir publicação de ${author.name}`}
       title={detail ? undefined : 'Abrir publicação'}
     >
+      {reactBurst ? <ReactionFx emoji={reactBurst} /> : null}
       <header className="post-h">
         <button
           type="button"
