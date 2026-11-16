@@ -40,6 +40,19 @@ function Attachment({ attachment, onOpenPost, onOpenQuiz }: { attachment: any; o
       </Pressable>
     );
   }
+  if (attachment.kind === 'photo' || attachment.kind === 'video') {
+    const src = attachment.media || attachment.uri || attachment.src;
+    return (
+      <View style={styles.attachCard}>
+        {src ? (
+          <View style={styles.attachMedia}>
+            <Image source={{ uri: src }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          </View>
+        ) : null}
+        <Text style={styles.attachHint}>Foto enviada</Text>
+      </View>
+    );
+  }
   if (attachment.kind === 'quiz') {
     return (
       <Pressable style={styles.attachCard} onPress={() => onOpenQuiz(attachment.challengeId)}>
