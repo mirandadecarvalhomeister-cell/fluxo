@@ -1,6 +1,7 @@
 ﻿import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   FlatList,
   Modal,
   Pressable,
@@ -21,6 +22,8 @@ import { compactNumber, timeAgo } from '../lib/format';
 import { firstMedia, isVideoPost } from '../lib/media';
 import { sharePostLink } from '../lib/share';
 import type { Post } from '../types';
+
+const { height: SCREEN_H } = Dimensions.get('window');
 
 const REACTIONS = ['❤️', '🔥', '👏', '😂', '😮', '😢', '🎉', '💜'];
 
@@ -66,14 +69,14 @@ function PostCard({ post }: { post: Post }) {
           style={styles.mediaWrap}
         >
           {media.kind === 'photo' && media.src ? (
-            <Image source={{ uri: media.src }} style={styles.media} contentFit="cover" />
+            <Image source={{ uri: media.src }} style={styles.mediaFit} contentFit="contain" />
           ) : media.src ? (
-            <View style={[styles.media, styles.videoStub]}>
+            <View style={[styles.mediaFit, styles.videoStub]}>
               <Ionicons name="play-circle" size={54} color="#fff" />
               <Text style={styles.videoLabel}>Vídeo</Text>
             </View>
           ) : (
-            <View style={[styles.media, styles.videoStub]}>
+            <View style={[styles.mediaFit, styles.videoStub]}>
               <Ionicons name={video ? 'videocam' : 'image'} size={40} color={colors.muted} />
             </View>
           )}
@@ -219,7 +222,8 @@ const styles = StyleSheet.create({
   name: { color: colors.text, fontWeight: '800', fontSize: 15 },
   meta: { color: colors.muted, fontSize: 12 },
   text: { color: colors.text, fontSize: 15, lineHeight: 21, paddingHorizontal: spacing.lg },
-  mediaWrap: { width: '100%', aspectRatio: 4 / 5, backgroundColor: colors.surfaceAlt },
+  mediaWrap: { width: '100%', maxHeight: SCREEN_H * 0.7, minHeight: 200, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
+  mediaFit: { width: '100%', height: '100%', minHeight: 200 },
   media: { width: '100%', height: '100%' },
   videoStub: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#11131d', gap: 6 },
   videoLabel: { color: colors.muted, fontWeight: '700' },
