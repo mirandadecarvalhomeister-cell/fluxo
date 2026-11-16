@@ -527,6 +527,12 @@ body.lock{overflow:hidden}
 .react-picker button:nth-child(7){animation-delay:.2s}
 .react-picker button:nth-child(8){animation-delay:.23s}
 @keyframes react-pop-in{0%{opacity:0;transform:translateY(8px) scale(.5)}60%{transform:translateY(-2px) scale(1.18)}100%{opacity:1;transform:translateY(0) scale(1)}}
+/* Animação no ponto do clique (botão/picker) — visível mesmo em posts altos. */
+.act-like.burst .act-ic,.act-like.burst .act-my-reaction{animation:fx-btn-pop .6s cubic-bezier(.2,1.6,.4,1)}
+@keyframes fx-btn-pop{0%{transform:scale(1)}30%{transform:scale(1.7) rotate(-8deg)}60%{transform:scale(.9) rotate(5deg)}100%{transform:scale(1) rotate(0)}}
+.react-picker button.burst{animation:fx-btn-pop .55s cubic-bezier(.2,1.6,.4,1)}
+.react-picker button.on{background:var(--accent-soft)}
+
 /* Reação "estorra" sobre o post: animações expressivas por tipo de emoji. */
 .rfx{position:absolute;inset:0;z-index:30;display:grid;place-items:center;pointer-events:none;overflow:hidden}
 .rfx-main{display:inline-block;font-size:64px;line-height:1;filter:drop-shadow(0 8px 16px rgba(0,0,0,.35));will-change:transform,opacity}
