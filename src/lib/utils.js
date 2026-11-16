@@ -108,11 +108,27 @@ export function fileToRawDataURL(file) {
   });
 }
 
-export async function shareLink({ title, text, url }) {
+export async function shareLink({ title, text, url, image = null, imageName = 'fluxo.jpg' }) {
   const payload = { title, text, url };
+  // Prévia visual no compartilhamento nativo: tenta anexar a imagem/vídeo do
+  // conteúdo quando o navegador/app suporta arquivos. Sem suporte (ou em caso
+  // de CORS), cai de volta para o compartilhamento apenas com texto + link.
+  let file = null;
+  if (image && typeof navigator !== 'undefined' && navigator.canShare && navigator.share) {
+    try {
+      const response = await fetch(image);
+      const blob = await response.blob();
+      if (blob && blob.size > 0 && blob.type.startsWith('image/')) {
+        file = new File([blob], imageName, { type: blob.type });
+        if (!navigator.canShare({ files: [file] })) file = null;
+      }
+    } catch {
+      file = null;
+    }
+  }
   try {
     if (navigator.share) {
-      await navigator.share(payload);
+      await navigator.share(file ? { ...payload, files: [file] } : payload);
       return 'shared';
     }
     await navigator.clipboard.writeText(url);

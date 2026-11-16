@@ -307,6 +307,16 @@ video.media-video{display:block;width:auto;height:auto;max-width:100%;max-height
 .att-post-h{display:flex;align-items:center;gap:8px;min-width:0}
 .att-post-t{font-size:13px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .att-post-f{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--accent)}
+.att-post-media{position:relative;display:block;width:100%;max-width:260px;border-radius:12px;overflow:hidden;background:#05060a;aspect-ratio:4/3}
+.att-post-media img,.att-post-media video{display:block;width:100%;height:100%;object-fit:cover}
+.att-post-media.video{aspect-ratio:4/5}
+.att-post-play{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.22);color:#fff;font-style:normal}
+.att-post-play svg{width:34px;height:34px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.6))}
+.att-quiz{background:linear-gradient(135deg,rgba(139,92,246,.28),rgba(255,45,135,.2));border:1px solid rgba(139,92,246,.4)}
+.att-quiz-emoji{font-size:22px;line-height:1}
+.att-quiz-body{display:grid;gap:3px;font-size:13px}
+.att-quiz-meta{color:rgba(245,242,255,.72);font-size:12px}
+.att-quiz-target{font-size:12px;color:#ffb020}
 .b.me .att-post-f{color:#fff}
 .cmts-off{display:flex;align-items:center;gap:8px;padding:8px 0}
 [data-motion="reduce"] *,[data-motion="reduce"] *::before,[data-motion="reduce"] *::after{animation:none!important;transition:none!important}
@@ -417,6 +427,11 @@ body.lock{overflow:hidden}
 .b.them{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:4px}
 .b.me{align-self:flex-end;background:var(--accent);color:var(--accent-fg);border-bottom-right-radius:4px}
 .b .meta{display:flex;justify-content:flex-end;align-items:center;gap:4px;font-size:11px;opacity:.7;margin-top:2px}
+.b .meta .edited{font-style:normal;font-size:10px;letter-spacing:.02em;opacity:.85;margin-right:2px}
+.msg-edit textarea{width:100%;resize:vertical;min-height:84px;max-height:220px;border-radius:14px;border:1px solid var(--line);background:rgba(0,0,0,.22);color:var(--fg);padding:12px;font:inherit;line-height:1.4}
+.msg-edit textarea:focus{outline:2px solid rgba(139,92,246,.55);outline-offset:1px}
+.msg-edit-actions{display:flex;justify-content:flex-end;gap:10px;padding-top:4px}
+.msg-edit-actions .btn{min-width:110px;justify-content:center}
 .b .tick{width:14px;height:14px}.b .tick.read{color:#7DE3FF;opacity:1}
 .b .react{position:absolute;right:8px;bottom:-10px;background:var(--surface);color:var(--hot);border:1px solid var(--line);border-radius:999px;width:22px;height:22px;display:grid;place-items:center}
 .b.liked{margin-bottom:10px}

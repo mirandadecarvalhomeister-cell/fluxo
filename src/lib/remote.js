@@ -11,6 +11,19 @@ import { slug } from './utils';
 const enabled = () => isSupabaseEnabled && !!supabase;
 const warn = (error) => console.warn('[supabase]', error?.message || error);
 
+// Domínio público usado nos links de confirmação de e-mail, recuperação de
+// senha e OAuth. Sempre prioriza o domínio em que o site está aberto para não
+// cair no endereço antigo da Netlify. Pode ser fixado em VITE_PUBLIC_SITE_URL.
+export function publicSiteUrl() {
+  const configured = String(import.meta.env.VITE_PUBLIC_SITE_URL || '').trim();
+  const current =
+    typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : '';
+  const base = configured || current;
+  return base.replace(/\/+$/, '');
+}
+
 async function safe(promise, fallback = []) {
   try {
     const { data, error } = await promise;
@@ -73,7 +86,7 @@ export function onAuthChange(callback) {
 export async function resetPassword(email, redirectTo) {
   if (!enabled()) throw new Error('Supabase não configurado.');
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: redirectTo || window.location.origin,
+    redirectTo: redirectTo || publicSiteUrl(),
   });
   if (error) throw error;
 }
@@ -90,7 +103,10 @@ export async function signUp({ name, email, password }) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name } },
+    options: {
+      data: { name },
+      emailRedirectTo: publicSiteUrl(),
+    },
   });
   if (error) throw error;
   return data;
@@ -135,7 +151,7 @@ export async function signInWithGoogle() {
   if (!enabled()) throw new Error('Supabase não configurado.');
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.origin },
+    options: { redirectTo: publicSiteUrl() },
   });
   if (error) throw error;
 }
@@ -1194,6 +1210,215 @@ export async function sendDirectMessage(message, senderId, recipientId) {
     if (error) warn(error);
   } catch (error) {
     warn(error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Quiz BOOM! — modos, rodadas, medalhas, desafios e rankings.
+// ---------------------------------------------------------------------------
+
+export async function quizRoundStatus() {
+  const fallback = { used: 0, bonus: 0, free_rounds: 3, remaining: 3, online: false };
+  if (!enabled()) return fallback;
+  try {
+    const { data, error } = await supabase.rpc('quiz_round_status');
+    if (error) {
+      warn(error);
+      return fallback;
+    }
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return fallback;
+    return {
+      used: Number(row.used) || 0,
+      bonus: Number(row.bonus) || 0,
+      free_rounds: Number(row.free_rounds) || 3,
+      remaining: Number(row.remaining) || 0,
+      online: true,
+    };
+  } catch (error) {
+    warn(error);
+    return fallback;
+  }
+}
+
+export async function quizBeginRun({ id, category, mode, total }) {
+  if (!enabled()) return { ok: false, error: 'offline' };
+  try {
+    const { error } = await supabase.rpc('quiz_begin_run', {
+      p_id: id,
+      p_category: category || 'todas',
+      p_mode: mode === 'insane' ? 'insane' : 'classic',
+      p_total: Number(total) || 10,
+    });
+    if (error) return { ok: false, error: error.message || 'error' };
+    return { ok: true };
+  } catch (error) {
+    warn(error);
+    return { ok: false, error: error?.message || 'error' };
+  }
+}
+
+export async function quizFinishRun(id, result = {}) {
+  if (!enabled() || !id) return false;
+  try {
+    const { error } = await supabase
+      .from('quiz_runs')
+      .update({
+        status: 'finished',
+        score: Math.max(0, Math.round(Number(result.score) || 0)),
+        correct: Math.max(0, Number(result.correct) || 0),
+        answered: Math.max(0, Number(result.answered) || 0),
+        best_combo: Math.max(0, Number(result.bestCombo) || 0),
+        duration_ms: Math.max(0, Number(result.durationMs) || 0),
+        finished_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+    if (error) {
+      warn(error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    warn(error);
+    return false;
+  }
+}
+
+export async function quizSaveMedal(category) {
+  if (!enabled() || !category) return false;
+  try {
+    const { error } = await supabase
+      .from('quiz_medals')
+      .upsert({ category, created_at: new Date().toISOString() });
+    if (error) {
+      warn(error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    warn(error);
+    return false;
+  }
+}
+
+export async function quizLoadMedals() {
+  if (!enabled()) return [];
+  const rows = await safe(supabase.from('quiz_medals').select('category,created_at'));
+  return Array.isArray(rows) ? rows : [];
+}
+
+export async function quizClaimInvite(inviter) {
+  if (!enabled() || !inviter) return false;
+  try {
+    const { data, error } = await supabase.rpc('quiz_claim_invite', { p_inviter: inviter });
+    if (error) {
+      warn(error);
+      return false;
+    }
+    return data === true;
+  } catch (error) {
+    warn(error);
+    return false;
+  }
+}
+
+export async function quizSaveChallenge(challenge) {
+  if (!enabled() || !challenge?.id) return false;
+  try {
+    const { error } = await supabase.from('quiz_challenges').upsert({
+      id: challenge.id,
+      challenger_id: challenge.challengerId,
+      challenger_name: challenge.challengerName || '',
+      category: challenge.category || 'todas',
+      mode: challenge.mode === 'insane' ? 'insane' : 'classic',
+      size: Number(challenge.size) || 10,
+      target_score: Math.max(0, Math.round(Number(challenge.targetScore) || 0)),
+    });
+    if (error) {
+      warn(error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    warn(error);
+    return false;
+  }
+}
+
+export async function quizFetchChallenge(id) {
+  if (!enabled() || !id) return null;
+  try {
+    const { data, error } = await supabase
+      .from('quiz_challenges')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error || !data) return null;
+    return {
+      id: data.id,
+      challengerId: data.challenger_id,
+      challengerName: data.challenger_name || 'Um amigo',
+      category: data.category || 'todas',
+      mode: data.mode === 'insane' ? 'insane' : 'classic',
+      size: Number(data.size) || 10,
+      targetScore: Number(data.target_score) || 0,
+      createdAt: data.created_at ? new Date(data.created_at).getTime() : Date.now(),
+    };
+  } catch (error) {
+    warn(error);
+    return null;
+  }
+}
+
+const mapRanking = (rows) =>
+  (Array.isArray(rows) ? rows : []).map((row) => ({
+    position: Number(row.position) || 0,
+    userId: row.user_id || '',
+    name: row.name || 'Jogador',
+    handle: row.handle || '',
+    avatar: row.avatar_url || null,
+    score: Number(row.total_score) || 0,
+    rounds: Number(row.rounds) || 0,
+    bestCombo: Number(row.best_combo) || 0,
+  }));
+
+export async function quizRankings(limit = 50) {
+  if (!enabled()) return { global: [], friends: [] };
+  try {
+    const [global, friends] = await Promise.all([
+      supabase.rpc('quiz_weekly_ranking', { p_limit: limit }),
+      supabase.rpc('quiz_friends_ranking', { p_limit: limit }),
+    ]);
+    if (global.error) warn(global.error);
+    if (friends.error) warn(friends.error);
+    return {
+      global: mapRanking(global.data),
+      friends: mapRanking(friends.data),
+    };
+  } catch (error) {
+    warn(error);
+    return { global: [], friends: [] };
+  }
+}
+
+export async function updateDirectMessage(id, text) {
+  if (!enabled() || !id) return false;
+  const clean = String(text || '').trim();
+  if (!clean) return false;
+  try {
+    // A função no servidor valida que quem edita é o autor da mensagem.
+    const { error } = await supabase.rpc('edit_direct_message', {
+      p_id: id,
+      p_text: clean,
+    });
+    if (error) {
+      warn(error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    warn(error);
+    return false;
   }
 }
 

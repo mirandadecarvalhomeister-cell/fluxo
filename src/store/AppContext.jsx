@@ -40,6 +40,10 @@ import {
 import { COVERS, STATE_VERSION, newState } from '../lib/seed';
 import { mentionsHandle, notificationText } from '../lib/selectors';
 import { DEFAULT_FEED_PREFS, feedPrefs } from '../lib/feed';
+import {
+  challengeLink as quizChallengeLink,
+  saveChallenge as saveQuizChallenge,
+} from '../games/quiz/quizData';
 import { showDeviceNotification } from '../lib/notify';
 import { playMessageSound, playSentSound } from '../lib/sound';
 import {
@@ -482,6 +486,7 @@ function mergeWorkspace(base, ws, user) {
       ts: new Date(m.created_at).getTime(),
       st: mine ? (m.read ? 'read' : 'sent') : '',
       ...(m.attachment ? { attachment: m.attachment } : {}),
+      ...(m.edited_at ? { editedAt: new Date(m.edited_at).getTime() } : {}),
     });
     if (!mine && !m.read) chat.unread += 1;
   });
@@ -688,14 +693,19 @@ const demoAccounts = () => {
 };
 
 const readHash = () => {
-  const raw = (location.hash || '#feed').slice(1);
+  const hash = location.hash || '#feed';
+  const [path, query] = hash.slice(1).split('?');
+  const raw = path || 'feed';
   const [route, param, extra] = raw.split('/');
+  const params = new URLSearchParams(query || '');
   const valid = ['feed', 'perfil', 'mensagens', 'conexoes'].includes(route)
     ? route
     : 'feed';
   let room = null;
   let arenaCode = null;
   let quizOpen = false;
+  let quizChallenge = null;
+  let quizInvite = null;
   if (valid === 'conexoes' && param) {
     if (param === 'arena') {
       arenaCode = extra
@@ -709,6 +719,8 @@ const readHash = () => {
         : '';
     } else if (param === 'quiz') {
       quizOpen = true;
+      quizChallenge = params.get('desafio') || params.get('challenge') || null;
+      quizInvite = params.get('convite') || params.get('invite') || null;
     } else {
       try {
         room = decodeURIComponent(param);
@@ -717,11 +729,11 @@ const readHash = () => {
       }
     }
   }
-  return { route: valid, room, arenaCode, quizOpen };
+  return { route, room, arenaCode, quizOpen, quizChallenge, quizInvite };
 };
 
 const initialUi = () => {
-  const { route, room, arenaCode, quizOpen } = readHash();
+  const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite } = readHash();
   return {
     route,
     draft: {
@@ -744,6 +756,8 @@ const initialUi = () => {
     room,
     arenaCode,
     quizOpen,
+    quizChallenge,
+    quizInvite,
     chanFilter: 'all',
     myLive: null,
     authTab: 'in',
@@ -849,14 +863,15 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     const onHash = () => {
-      const { route, room, arenaCode, quizOpen } = readHash();
+      const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite } = readHash();
       setUi((u) =>
         u.route === route &&
         u.room === room &&
         u.arenaCode === arenaCode &&
-        u.quizOpen === quizOpen
+        u.quizOpen === quizOpen &&
+        (u.quizChallenge || null) === (quizChallenge || null)
           ? u
-          : { ...u, route, room, arenaCode, quizOpen }
+          : { ...u, route, room, arenaCode, quizOpen, quizChallenge, quizInvite }
       );
       window.scrollTo(0, 0);
     };
@@ -975,7 +990,34 @@ export function AppProvider({ children }) {
     return remote.subscribeDirectMessages(session.id, (row, event) => {
       if (!row) return;
       if (event === 'UPDATE') {
-        if (!row.id || !row.read) return;
+        if (!row.id) return;
+        // Edição de texto chega em tempo real para os dois lados.
+        if (row.edited_at) {
+          setData((cur) =>
+            cur
+              ? {
+                  ...cur,
+                  chats: cur.chats.map((chat) => ({
+                    ...chat,
+                    msgs: chat.msgs.map((item) =>
+                      item.id === row.id
+                        ? {
+                            ...item,
+                            text: row.text || '',
+                            editedAt: new Date(row.edited_at).getTime(),
+                            ...(row.attachment !== undefined
+                              ? { attachment: row.attachment || undefined }
+                              : {}),
+                          }
+                        : item
+                    ),
+                  })),
+                }
+              : cur
+          );
+          return;
+        }
+        if (!row.read) return;
         // O "visto" do outro lado chega em tempo real: marca os meus envios.
         setData((cur) =>
           cur
@@ -1868,7 +1910,7 @@ export function AppProvider({ children }) {
       return 'A recuperação de senha precisa do Supabase configurado.';
     }
     try {
-      await remote.resetPassword(mail, window.location.origin);
+      await remote.resetPassword(mail, remote.publicSiteUrl?.() || window.location.origin);
       return null;
     } catch (error) {
       return error.message || 'Não foi possível enviar o e-mail.';
@@ -2786,10 +2828,16 @@ export function AppProvider({ children }) {
     const post = dataRef.current?.posts.find((p) => p.id === id);
     if (!post) return;
     const url = location.href.split('#')[0] + '#feed';
+    const preview = mediaOf(post)[0];
     const text = post.text
       ? `${post.text}\n\nVeja no Fluxo:`
       : 'Veja esta publicação no Fluxo:';
-    const result = await shareLink({ title: 'Fluxo', text, url });
+    const result = await shareLink({
+      title: 'Fluxo',
+      text,
+      url,
+      image: preview?.src || null,
+    });
     if (result === 'copied') toast('Link da publicação copiado');
     else if (result === 'shared') toast('Publicação compartilhada');
     else if (result === 'error') toast('Não foi possível compartilhar.');
@@ -2829,12 +2877,16 @@ export function AppProvider({ children }) {
     const post = dataRef.current?.posts.find((p) => p.id === postId);
     const targets = (userIds || []).filter(Boolean);
     if (!post || !targets.length) return;
+    const preview = mediaOf(post)[0];
     const attachment = {
       kind: 'post',
       postId: post.id,
       authorId: post.by,
+      title: post.text ? String(post.text).slice(0, 90) : 'Publicação compartilhada',
       text: (post.text || '').slice(0, 180),
-      media: post.media?.[0]?.src || post.src || null,
+      media: preview?.src || preview?.seed || null,
+      mediaSeed: preview?.seed || null,
+      mediaKind: preview?.kind === 'video' ? 'video' : 'photo',
     };
     const ts = Date.now();
     targets.forEach((userId, index) => {
@@ -2864,6 +2916,80 @@ export function AppProvider({ children }) {
         ? 'Publicação compartilhada'
         : `Publicação compartilhada com ${targets.length} pessoas`
     );
+  }
+
+  function shareQuizResult(result = {}) {
+    const mode = result.mode === 'insane' ? 'Insano' : 'Clássico';
+    const total = Number(result.total) || 0;
+    const correct = Number(result.correct) || 0;
+    const lines = [
+      `💣 Quiz BOOM! · ${result.categoryName || 'Todas as categorias'}`,
+      `Modo ${mode} · ${Number(result.score) || 0} pontos`,
+      `${correct}/${total} acertos · melhor combo ${Number(result.bestCombo) || 0}x`,
+    ];
+    if (result.medal) lines.push(`🏅 ${result.medal}`);
+    lines.push('Jogue também no Fluxo!');
+    publish(lines.join('\n'));
+  }
+
+  function shareQuizChallenge(result = {}, userIds = []) {
+    const current = dataRef.current;
+    const targets = (userIds || []).filter(Boolean);
+    if (!current) return null;
+    const me = current.me || {};
+    const challenge = {
+      id: uid(),
+      challengerId: sessionRef.current?.id || 'local',
+      challengerName: me.name || 'Um amigo',
+      category: result.categoryId || 'todas',
+      categoryName: result.categoryName || 'Todas as categorias',
+      mode: result.mode === 'insane' ? 'insane' : 'classic',
+      size: Number(result.total) || 10,
+      targetScore: Number(result.score) || 0,
+      medal: result.medal || null,
+      createdAt: Date.now(),
+    };
+    saveQuizChallenge(challenge, Boolean(sessionRef.current?.id));
+    const link = quizChallengeLink(challenge.id);
+    const attachment = {
+      kind: 'quiz',
+      challengeId: challenge.id,
+      challengerName: challenge.challengerName,
+      categoryName: challenge.categoryName,
+      mode: challenge.mode,
+      size: challenge.size,
+      targetScore: challenge.targetScore,
+      link,
+    };
+    const ts = Date.now();
+    targets.forEach((userId, index) => {
+      ensureChat(userId);
+      const message = {
+        id: uid(),
+        me: true,
+        text: '',
+        ts: ts + index,
+        st: 'sent',
+        attachment,
+      };
+      setData((cur) => ({
+        ...cur,
+        chats: cur.chats.map((chat) =>
+          chat.with === userId ? { ...chat, msgs: [...chat.msgs, message] } : chat
+        ),
+      }));
+      if (sessionRef.current?.id) {
+        remote.sendDirectMessage(message, sessionRef.current.id, userId);
+      }
+    });
+    if (targets.length) {
+      toast(
+        targets.length === 1
+          ? 'Desafio enviado'
+          : `Desafio enviado para ${targets.length} amigos`
+      );
+    }
+    return { challenge, link };
   }
 
   async function shareChannel(id) {
@@ -2915,12 +3041,26 @@ export function AppProvider({ children }) {
       room: null,
       arenaCode: null,
       quizOpen: true,
+      quizChallenge: null,
+    }));
+    if (location.hash !== '#conexoes/quiz') location.hash = '#conexoes/quiz';
+  }
+
+  function openQuizChallenge(id) {
+    if (!id) return;
+    setUi((u) => ({
+      ...u,
+      route: 'conexoes',
+      room: null,
+      arenaCode: null,
+      quizOpen: true,
+      quizChallenge: id,
     }));
     if (location.hash !== '#conexoes/quiz') location.hash = '#conexoes/quiz';
   }
 
   function closeQuiz() {
-    setUi((u) => ({ ...u, quizOpen: false }));
+    setUi((u) => ({ ...u, quizOpen: false, quizChallenge: null, quizInvite: null }));
     if (location.hash !== '#conexoes') location.hash = '#conexoes';
   }
 
@@ -3521,6 +3661,50 @@ export function AppProvider({ children }) {
           : c
       ),
     }));
+  }
+
+  async function editMessage(chatId, index, text) {
+    const chat = dataRef.current?.chats.find((c) => c.id === chatId);
+    const message = chat?.msgs?.[index];
+    const clean = String(text || '').trim();
+    if (!chat || !message || !message.me || !clean) return;
+    if (clean === String(message.text || '').trim()) return;
+    const previous = message.text || '';
+    const editedAt = Date.now();
+    setData((cur) => ({
+      ...cur,
+      chats: cur.chats.map((c) =>
+        c.id === chatId
+          ? {
+              ...c,
+              msgs: c.msgs.map((m, i) =>
+                i === index ? { ...m, text: clean, editedAt } : m
+              ),
+            }
+          : c
+      ),
+    }));
+    const ok = sessionRef.current?.id && message.id
+      ? await remote.updateDirectMessage(message.id, clean)
+      : true;
+    if (!ok) {
+      setData((cur) => ({
+        ...cur,
+        chats: cur.chats.map((c) =>
+          c.id === chatId
+            ? {
+                ...c,
+                msgs: c.msgs.map((m, i) =>
+                  i === index ? { ...m, text: previous, editedAt: undefined } : m
+                ),
+              }
+            : c
+        ),
+      }));
+      toast('Não foi possível editar a mensagem.');
+      return;
+    }
+    toast('Mensagem editada');
   }
 
   function deleteMessage(chatId, index) {
@@ -4487,6 +4671,7 @@ export function AppProvider({ children }) {
     sendChatBlob,
     viewPost,
     likeMessage,
+    editMessage,
     deleteMessage,
     clearChat,
     deleteChat,
@@ -4498,9 +4683,12 @@ export function AppProvider({ children }) {
     openArenaCode,
     closeArena,
     openQuiz,
+    openQuizChallenge,
     closeQuiz,
     inviteToArena,
     shareArenaResult,
+    shareQuizResult,
+    shareQuizChallenge,
     clearRoom: () => {
       setUi((u) => ({ ...u, room: null }));
       if (location.hash !== '#conexoes') location.hash = '#conexoes';

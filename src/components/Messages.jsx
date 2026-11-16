@@ -18,6 +18,7 @@ const ATTACH_LABEL = {
   story: 'Resposta ao story',
   sticker: 'Figurinha',
   arena: 'Convite para Arena do Caos',
+  quiz: 'Desafio do Quiz BOOM!',
 };
 
 const SWIPE_LIMIT = 58;
@@ -112,6 +113,10 @@ function PostAttachment({ attachment }) {
   const post = data.posts.find((item) => item.id === attachment.postId);
   const author = userOf(data, attachment.authorId || post?.by);
   const text = attachment.text || post?.text || 'Publicação compartilhada';
+  const isVideo = attachment.mediaKind === 'video';
+  const mediaSrc =
+    attachment.media ||
+    (attachment.mediaSeed ? art(attachment.mediaSeed, 640, 480) : null);
 
   return (
     <button
@@ -125,6 +130,20 @@ function PostAttachment({ attachment }) {
           {author.name} <Verified user={author} />
         </b>
       </span>
+      {mediaSrc ? (
+        <span className={`att-post-media ${isVideo ? 'video' : ''}`}>
+          {isVideo ? (
+            <video src={mediaSrc} muted playsInline preload="metadata" />
+          ) : (
+            <img src={mediaSrc} alt={attachment.title || 'Prévia da publicação'} />
+          )}
+          {isVideo ? (
+            <i className="att-post-play" aria-hidden="true">
+              <Icon name="play" />
+            </i>
+          ) : null}
+        </span>
+      ) : null}
       <span className="att-post-t">{text}</span>
       <span className="att-post-f">
         <Icon name="link" /> Ver publicação
@@ -264,9 +283,44 @@ function AudioMessage({ src }) {
   );
 }
 
+function QuizAttachment({ attachment }) {
+  const { actions } = useApp();
+  const mode = attachment.mode === 'insane' ? 'Insano' : 'Clássico';
+  return (
+    <button
+      type="button"
+      className="att-post att-quiz"
+      onClick={() => actions.openQuizChallenge?.(attachment.challengeId)}
+    >
+      <span className="att-post-h">
+        <span className="att-quiz-emoji" aria-hidden="true">💣</span>
+        <b className="ell">Desafio do Quiz BOOM!</b>
+      </span>
+      <span className="att-quiz-body">
+        <span>
+          <b>{attachment.challengerName || 'Um amigo'}</b> te desafiou
+        </span>
+        <span className="att-quiz-meta">
+          {attachment.categoryName || 'Todas as categorias'} · Modo {mode} ·{' '}
+          {Number(attachment.size) || 10} perguntas
+        </span>
+        <span className="att-quiz-target">
+          Meta: <b>{Number(attachment.targetScore) || 0} pontos</b>
+        </span>
+      </span>
+      <span className="att-post-f">
+        <Icon name="game" /> Aceitar desafio
+      </span>
+    </button>
+  );
+}
+
 function Attachment({ attachment, onOpen, onForward, onOpenArena }) {
   if (attachment.kind === 'post') {
     return <PostAttachment attachment={attachment} />;
+  }
+  if (attachment.kind === 'quiz') {
+    return <QuizAttachment attachment={attachment} />;
   }
   if (attachment.kind === 'story') {
     return <StoryAttachment attachment={attachment} />;
@@ -551,6 +605,7 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia, onForw
             />
           ) : null}
           <span className="meta">
+            {message.editedAt ? <em className="edited">editado</em> : null}
             {hm(message.ts)}
             {message.me ? (
               <Icon
@@ -1203,6 +1258,9 @@ export default function Messages() {
   const [menu, setMenu] = useState(null);
   const [viewer, setViewer] = useState(null);
   const [forward, setForward] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
   const [menuDragY, setMenuDragY] = useState(0);
   const [recording, setRecording] = useState(false);
   const [holding, setHolding] = useState(false);
@@ -1231,6 +1289,10 @@ export default function Messages() {
 
   useLayerBack(!!menu, () => setMenu(null));
   useLayerBack(!!forward, () => setForward(null));
+  useLayerBack(!!editing, () => {
+    setEditing(null);
+    setEditText('');
+  });
   useLayerBack(headMenu, () => setHeadMenu(false));
   useLayerBack(wallOpen, () => setWallOpen(false));
   useLayerBack(pickerOpen, () => setPickerOpen(false));
@@ -1581,6 +1643,42 @@ export default function Messages() {
   };
 
   const dismissMenu = () => closeLayer(() => setMenu(null));
+
+  const startEdit = (message, chatRef) => {
+    if (!message?.me || !String(message.text || '').trim()) {
+      dismissMenu();
+      return;
+    }
+    setEditing({ chat: chatRef, index: menu?.index ?? -1, message });
+    setEditText(message.text || '');
+    setMenu(null);
+  };
+
+  const cancelEdit = () => {
+    setEditing(null);
+    setEditText('');
+    setSavingEdit(false);
+  };
+
+  const saveEdit = async () => {
+    if (!editing || savingEdit) return;
+    const clean = editText.trim();
+    if (!clean) {
+      actions.notify('A mensagem não pode ficar vazia.');
+      return;
+    }
+    if (clean === String(editing.message.text || '').trim()) {
+      cancelEdit();
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await actions.editMessage(editing.chat.id, editing.index, clean);
+      cancelEdit();
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const startMenuDrag = (event) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
@@ -2147,6 +2245,11 @@ export default function Messages() {
                 <Icon name="file" /> Copiar texto
               </button>
             ) : null}
+            {menu.message.me && menu.message.text?.trim() ? (
+              <button type="button" role="menuitem" onClick={() => startEdit(menu.message, menu.chat)}>
+                <Icon name="edit" /> Editar mensagem
+              </button>
+            ) : null}
             {['photo', 'video', 'file'].includes(menu.message.attachment?.kind) ? (
               <button
                 type="button"
@@ -2201,6 +2304,59 @@ export default function Messages() {
               Cancelar
             </button>
           </div>
+        </div>
+      ) : null}
+
+      {editing ? (
+        <div className="msg-menu-layer">
+          <button
+            className="sheet-scrim"
+            type="button"
+            aria-label="Cancelar edição"
+            onClick={cancelEdit}
+          />
+          <form
+            className="msg-menu msg-edit"
+            role="dialog"
+            aria-label="Editar mensagem"
+            onSubmit={(event) => {
+              event.preventDefault();
+              saveEdit();
+            }}
+          >
+            <span className="sheet-grab" aria-hidden="true" />
+            <div className="msg-menu-head">
+              <Icon name="edit" />
+              <span className="ell">Editar mensagem</span>
+            </div>
+            <textarea
+              autoFocus
+              rows={3}
+              value={editText}
+              maxLength={4000}
+              onChange={(event) => setEditText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') cancelEdit();
+                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                  event.preventDefault();
+                  saveEdit();
+                }
+              }}
+              placeholder="Escreva a nova mensagem"
+            />
+            <div className="msg-edit-actions">
+              <button type="button" className="btn ghost" onClick={cancelEdit}>
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="btn primary"
+                disabled={savingEdit || !editText.trim()}
+              >
+                <Icon name="check" /> {savingEdit ? 'Salvando…' : 'Salvar'}
+              </button>
+            </div>
+          </form>
         </div>
       ) : null}
 
