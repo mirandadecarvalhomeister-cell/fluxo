@@ -3023,7 +3023,12 @@ export function AppProvider({ children }) {
       createdAt: Date.now(),
     };
     saveQuizChallenge(challenge, Boolean(sessionRef.current?.id));
-    const link = quizChallengeLink(challenge.id);
+    const link = quizChallengeLink(challenge.id, {
+      mode: challenge.mode,
+      categoryName: challenge.categoryName,
+      challengerName: challenge.challengerName,
+      targetScore: challenge.targetScore,
+    });
     const attachment = {
       kind: 'quiz',
       challengeId: challenge.id,

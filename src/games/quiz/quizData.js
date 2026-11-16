@@ -310,14 +310,26 @@ export const MEDAL_NAMES = {
 
 export const medalName = (categoryId) => MEDAL_NAMES[categoryId] || 'Mestre do Quiz BOOM';
 
-export function inviteLink(userId) {
+// Gera o link de convite no endpoint /convite, que serve tags OG dinâmicas
+// para crawlers (WhatsApp/Telegram) e redireciona usuários para o app.
+// Também mantemos os parâmetros no hash para o app saber o que abrir.
+function shareableLink(kind, id, extra = {}) {
   const base = `${window.location.origin}${window.location.pathname}`;
-  return `${base}#conexoes/quiz?convite=${encodeURIComponent(userId || '')}`;
+  const query = new URLSearchParams({ [kind]: id || '', ...extra }).toString();
+  return `${base}convite?${query}#conexoes/quiz?${kind}=${encodeURIComponent(id || '')}`;
 }
 
-export function challengeLink(id) {
-  const base = `${window.location.origin}${window.location.pathname}`;
-  return `${base}#conexoes/quiz?desafio=${encodeURIComponent(id || '')}`;
+export function inviteLink(userId) {
+  return shareableLink('convite', userId || '');
+}
+
+export function challengeLink(id, meta = {}) {
+  return shareableLink('desafio', id || '', {
+    modo: meta.mode || '',
+    categoria: meta.categoryName || '',
+    de: meta.challengerName || '',
+    meta: meta.targetScore ? String(meta.targetScore) : '',
+  });
 }
 
 export function readQuizParams() {
