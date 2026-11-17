@@ -279,7 +279,7 @@ export async function setSave(postId: string, uidValue: string, saved: boolean) 
   }
 }
 
-export async function fetchComments(postId: string): Promise<{ comments: Comment[]; profiles: Profile[] }> {
+export async function fetchComments(postId: string, uidValue?: string): Promise<{ comments: Comment[]; profiles: Profile[] }> {
   const { data, error } = await supabase
     .from('comments')
     .select('*')
@@ -288,7 +288,22 @@ export async function fetchComments(postId: string): Promise<{ comments: Comment
     .limit(300);
   fail(error, 'Não foi possível carregar os comentários.');
   const rows = (data || []) as Row[];
+  const ids = rows.map((row) => String(row.id));
   const profiles = await profilesByIds(rows.map((row) => String(row.author_id)));
+
+  let likeRows: Row[] = [];
+  if (ids.length) {
+    const result = await supabase.from('comment_likes').select('comment_id,user_id').in('comment_id', ids);
+    likeRows = (result.data || []) as Row[];
+  }
+  const likeCounts: Record<string, number> = {};
+  const mineLikes = new Set<string>();
+  likeRows.forEach((row) => {
+    const cid = String(row.comment_id);
+    likeCounts[cid] = (likeCounts[cid] || 0) + 1;
+    if (uidValue && String(row.user_id) === uidValue) mineLikes.add(cid);
+  });
+
   return {
     comments: rows.map((row) => ({
       id: String(row.id),
@@ -296,21 +311,48 @@ export async function fetchComments(postId: string): Promise<{ comments: Comment
       authorId: String(row.author_id),
       text: String(row.text || ''),
       createdAt: ts(row.created_at),
+      parentId: row.parent_id ? String(row.parent_id) : null,
+      likes: likeCounts[String(row.id)] || 0,
+      liked: mineLikes.has(String(row.id)),
     })),
     profiles,
   };
 }
 
-export async function addComment(input: { postId: string; authorId: string; text: string }) {
+export async function addComment(input: { postId: string; authorId: string; text: string; parentId?: string | null }) {
   const row = {
     id: uid('c'),
     post_id: input.postId,
     author_id: input.authorId,
     text: input.text,
+    parent_id: input.parentId || null,
   };
   const { error } = await supabase.from('comments').insert(row);
   fail(error, 'Não foi possível comentar.');
   return row;
+}
+
+export async function toggleCommentLike(commentId: string, userId: string): Promise<boolean> {
+  const { data: existing } = await supabase
+    .from('comment_likes')
+    .select('comment_id')
+    .eq('comment_id', commentId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (existing) {
+    const { error } = await supabase
+      .from('comment_likes')
+      .delete()
+      .eq('comment_id', commentId)
+      .eq('user_id', userId);
+    fail(error, 'Não foi possível remover a curtida.');
+    return false;
+  }
+  const { error } = await supabase
+    .from('comment_likes')
+    .insert({ comment_id: commentId, user_id: userId });
+  fail(error, 'Não foi possível curtir.');
+  return true;
 }
 
 export async function deleteComment(id: string) {
@@ -1032,14 +1074,17 @@ export async function deleteAccount() {
 // Atalhos usados pela interface nativa.
 export const getConversation = (uidValue: string, otherId: string) => fetchThread(uidValue, otherId);
 
-export async function getComments(postId: string) {
-  const { comments } = await fetchComments(postId);
+export async function getComments(postId: string, uidValue?: string) {
+  const { comments } = await fetchComments(postId, uidValue);
   return comments.map((comment) => ({
     id: comment.id,
     post_id: postId,
     author_id: comment.authorId,
     text: comment.text,
     created_at: new Date(comment.createdAt).toISOString(),
+    parent_id: comment.parentId || null,
+    like_count: comment.likes || 0,
+    liked: !!comment.liked,
   }));
 }
 

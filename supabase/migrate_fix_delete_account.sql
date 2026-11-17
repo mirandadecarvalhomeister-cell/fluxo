@@ -46,6 +46,9 @@ begin
   delete from public.post_likes where user_id = uid_text or post_id = any(post_ids);
   delete from public.post_saves where user_id = uid_text or post_id = any(post_ids);
   delete from public.post_reports where user_id = uid_text or post_id = any(post_ids);
+  delete from public.comment_likes
+  where user_id = uid_text
+     or comment_id in (select id from public.comments where post_id = any(post_ids) or author_id = uid_text);
   delete from public.comments where author_id = uid_text or post_id = any(post_ids);
 
   -- Relações sociais.

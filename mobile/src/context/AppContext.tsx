@@ -73,6 +73,7 @@ type AppContextValue = {
   unreadMessages: number;
   threads: ChatThread[];
   messagesVersion: number;
+  commentVersion: number;
   booting: boolean;
   feedLoading: boolean;
   feedRefreshing: boolean;
@@ -149,6 +150,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [messagesVersion, setMessagesVersion] = useState(0);
+  const [commentVersion, setCommentVersion] = useState(0);
   const [booting, setBooting] = useState(true);
   const [feedLoading, setFeedLoading] = useState(false);
   const [feedRefreshing, setFeedRefreshing] = useState(false);
@@ -441,20 +443,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       )
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'comments' },
+        { event: '*', schema: 'public', table: 'comments' },
         (payload: any) => {
-          const row = payload.new || {};
+          const row = payload.new || payload.old || {};
           if (!row.post_id) return;
-          setPosts((current) =>
-            current.map((post) =>
-              post.id === row.post_id ? { ...post, commentCount: post.commentCount + 1 } : post
-            )
-          );
-          const target = postsRef.current.find((post) => post.id === row.post_id);
-          if (target?.authorId === uidValue && row.author_id !== uidValue && prefsRef.current.notifications) {
-            notifyLocally('Novo comentário', `${firstName(users[row.author_id]?.name || 'Alguém')}: ${String(row.text || '').slice(0, 90)}`, { postId: row.post_id });
+          const delta = payload.eventType === 'INSERT' ? 1 : payload.eventType === 'DELETE' ? -1 : 0;
+          if (delta) {
+            setPosts((current) =>
+              current.map((post) =>
+                post.id === row.post_id ? { ...post, commentCount: Math.max(0, post.commentCount + delta) } : post
+              )
+            );
+          }
+          setCommentVersion((version) => version + 1);
+          if (payload.eventType === 'INSERT') {
+            const target = postsRef.current.find((post) => post.id === row.post_id);
+            if (target?.authorId === uidValue && row.author_id !== uidValue && prefsRef.current.notifications) {
+              notifyLocally('Novo comentário', `${firstName(users[row.author_id]?.name || 'Alguém')}: ${String(row.text || '').slice(0, 90)}`, { postId: row.post_id });
+            }
           }
         }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comment_likes' },
+        () => setCommentVersion((version) => version + 1)
       )
       .on(
         'postgres_changes',
@@ -1055,6 +1068,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     unreadMessages,
     threads,
     messagesVersion,
+    commentVersion,
     booting,
     feedLoading,
     feedRefreshing,
@@ -1109,7 +1123,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     },
   }), [
     session, profile, users, posts, following, route, stack, prefs, notifications,
-    notifSeen, unreadMessages, threads, messagesVersion, booting, feedLoading, feedRefreshing,
+    notifSeen, unreadMessages, threads, messagesVersion, commentVersion, booting, feedLoading, feedRefreshing,
     feedDone, publishing, publishProgress, online, realtime, toastMessage,
     go, push, pop, resetStack, signIn, signUp, signOut, requestReset,
     deleteAccountAction, refreshFeed, loadMore, toggleLike, toggleSave,

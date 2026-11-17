@@ -84,6 +84,9 @@ export type Comment = {
   authorId: string;
   text: string;
   createdAt: number;
+  parentId?: string | null;
+  likes?: number;
+  liked?: boolean;
 };
 
 export type DirectMessage = {
