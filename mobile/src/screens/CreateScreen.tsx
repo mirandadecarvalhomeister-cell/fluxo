@@ -293,6 +293,12 @@ export default function CreateScreen() {
               <Pressable onPress={() => (liveMode ? setStep('customize') : actions.go('home'))} style={styles.roundBtn} hitSlop={8}>
                 <Ionicons name="close" size={24} color="#fff" />
               </Pressable>
+              {!liveMode ? (
+                <Pressable onPress={() => setStep('gallery')} style={styles.topNextBtn} hitSlop={8}>
+                  <Text style={styles.topNextText}>Avançar</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#fff" />
+                </Pressable>
+              ) : <View style={{ width: 44 }} />}
               <Pressable onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))} style={styles.roundBtn} hitSlop={8}>
                 <Ionicons name="camera-reverse-outline" size={24} color="#fff" />
               </Pressable>
@@ -345,12 +351,7 @@ export default function CreateScreen() {
                     </>
                   )}
                 </Pressable>
-              ) : (
-                <Pressable onPress={() => setStep('gallery')} style={styles.nextBtn}>
-                  <Text style={styles.nextText}>Avançar</Text>
-                  <Ionicons name="arrow-forward" size={18} color="#fff" />
-                </Pressable>
-              )}
+              ) : null}
             </View>
           </CameraView>
         ) : (
@@ -602,7 +603,9 @@ function FormatButton({ icon, label, active, onPress, tint }: { icon: any; label
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   captureRoot: { flex: 1, backgroundColor: '#000' },
-  captureTop: { flexDirection: 'row', justifyContent: 'space-between', padding: spacing.lg, paddingTop: 48 },
+  captureTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg, paddingTop: 48 },
+  topNextBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 16, paddingVertical: 9, borderRadius: radius.pill, backgroundColor: colors.primary },
+  topNextText: { color: '#fff', fontWeight: '800', fontSize: 14 },
   captureTypes: { position: 'absolute', top: 108, left: 0, right: 0 },
   captureTypesRow: { paddingHorizontal: spacing.lg, gap: 8 },
   typeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
