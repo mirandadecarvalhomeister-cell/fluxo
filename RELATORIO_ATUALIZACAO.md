@@ -11,6 +11,7 @@
 | Sheet de comentários só arrastável pela alça | Gesto estendido ao cabeçalho inteiro, com expandir/fechar e rolagem da lista preservada. | Typecheck 0 erros. |
 | Grade do perfil carregava só 60 posts fixos | `fetchUserPosts` paginado com `range`; `ProfileScreen` e `UserScreen` com `FlatList` 3 colunas + `onEndReached`. | Typecheck 0 erros. |
 | Navegação sem gestos e barra inferior grande | Swipe da borda para voltar/trocar aba, transições slide+fade e barra reduzida. | Typecheck 0 erros. |
+| **Erro "Algo saiu do fluxo" ao abrir Conexões no site** | O app criava canais com `kind: 'live'`, mas o site só conhecia `avisos`/`conversa`/`palco` em `KINDS` — `KINDS['live'][0]` lançava TypeError. Corrigido em 3 camadas: app passou a gravar `kind: 'palco'`; `KINDS` do site ganhou o alias `live`; `Connections.jsx` usa fallback `KINDS[kind] || KINDS.conversa`. Canal existente normalizado no banco. | 16/16 testes; build OK; deploy Cloudflare; `index-sIhCxIJl.js` no ar. |
 
 ## 2. Novos recursos (integrados ao backend)
 
@@ -48,7 +49,7 @@
   - `supabase_realtime` contém `comments`, `comment_likes` e `post_likes`.
   - `quiz_refresh_rounds()` coerente com a hora UTC (0 às 01:13 UTC; volta a 1 às 03:00 UTC).
   - RLS ativo em `comments`, `comment_likes`, `communities` e `community_members`.
-- 12 commits enviados para `main`: `2df1d8d`, `1076e4f`, `5919eb3`, `9197e1d`, `58ebf00`, `72c8462`, `917aa4c`, `bc50f32`, `79009d5`, `5ece899`, `32b85e9`, `c771927`.
+- 15 commits enviados para `main`: `2df1d8d`, `1076e4f`, `5919eb3`, `9197e1d`, `58ebf00`, `72c8462`, `917aa4c`, `bc50f32`, `79009d5`, `5ece899`, `32b85e9`, `c771927`, `37f95b4`, `5f8bb93`, `5b8b1ad`.
 
 ## 6. Problemas e limitações conhecidos
 
