@@ -96,6 +96,13 @@
         {
           "cameraPermission": "O Fluxo usa a câmera para fotografar, gravar clipes e iniciar lives."
         }
+      ],
+      "expo-document-picker",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "O Fluxo usa sua localização para compartilhar onde você está no chat."
+        }
       ]
     ],
     "extra": {

@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -22,6 +23,8 @@ import {
   useAudioRecorderState,
 } from 'expo-audio';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as Location from 'expo-location';
 import { useApp } from '../context/AppContext';
 import { getConversation, uploadAudio, uploadMedia } from '../lib/api';
 import { colors, radius, spacing } from '../lib/theme';
@@ -36,6 +39,35 @@ function Attachment({ attachment, onOpenPost, onOpenQuiz, mine = false }: { atta
     const src = attachment.media || attachment.uri || attachment.src;
     if (!src) return null;
     return <AudioBubble url={src} duration={attachment.duration} mine={mine} />;
+  }
+  if (attachment.kind === 'location') {
+    return (
+      <Pressable
+        style={styles.attachCard}
+        onPress={() => { if (attachment.url) void Linking.openURL(String(attachment.url)); }}
+      >
+        <View style={styles.attachMedia}>
+          <View style={styles.mapStub}>
+            <Ionicons name="location" size={40} color={colors.pink} />
+          </View>
+        </View>
+        <Text style={styles.attachTitle}>📍 {attachment.label || 'Localização'}</Text>
+        <Text style={styles.attachHint}>Toque para abrir no mapa</Text>
+      </Pressable>
+    );
+  }
+  if (attachment.kind === 'file') {
+    return (
+      <Pressable style={styles.attachCard} onPress={() => { if (attachment.media) void Linking.openURL(String(attachment.media)); }}>
+        <View style={styles.fileRow}>
+          <View style={styles.fileIcon}><Ionicons name="document-outline" size={24} color={colors.primary} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.attachTitle} numberOfLines={2}>{attachment.fileName || 'Documento'}</Text>
+            <Text style={styles.attachHint}>Toque para abrir</Text>
+          </View>
+        </View>
+      </Pressable>
+    );
   }
   if (attachment.kind === 'post') {
     const media = attachment.media || attachment.mediaSeed || null;
@@ -86,6 +118,15 @@ function Attachment({ attachment, onOpenPost, onOpenQuiz, mine = false }: { atta
   );
 }
 
+function AttachOption({ icon, label, onPress }: { icon: any; label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={styles.attachOption} hitSlop={6}>
+      <View style={styles.attachOptionIcon}><Ionicons name={icon} size={21} color={colors.primary} /></View>
+      <Text style={styles.attachOptionText}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export default function ChatScreen({ userId }: { userId: string }) {
   const { profile, users, messagesVersion, actions } = useApp();
   const [messages, setMessages] = useState<DirectMessage[]>([]);
@@ -95,6 +136,7 @@ export default function ChatScreen({ userId }: { userId: string }) {
   const [editText, setEditText] = useState('');
   const [sending, setSending] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [showAttach, setShowAttach] = useState(false);
   const listRef = useRef<FlatList<DirectMessage>>(null);
   const other = users[userId];
 
@@ -212,6 +254,65 @@ export default function ChatScreen({ userId }: { userId: string }) {
     }
   };
 
+  // Envia um documento qualquer (PDF, ZIP, etc.) como anexo real no storage.
+  const onPickDocument = async () => {
+    setShowAttach(false);
+    if (!profile?.id) return;
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+      if (result.canceled || !result.assets?.[0]) return;
+      const doc = result.assets[0];
+      setSending(true);
+      const uploaded = await uploadMedia({
+        uri: doc.uri,
+        userId: profile.id,
+        fileName: doc.name || `arquivo-${Date.now()}`,
+        mimeType: doc.mimeType || 'application/octet-stream',
+      });
+      const sent = await actions.sendMessage(userId, '', {
+        kind: 'file',
+        media: uploaded.url,
+        fileName: doc.name || 'Arquivo',
+        mimeType: doc.mimeType || 'application/octet-stream',
+        size: doc.size || null,
+      });
+      setSending(false);
+      if (sent) {
+        setMessages((cur) => [...cur, sent]);
+        requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+      }
+    } catch (error: any) {
+      setSending(false);
+      actions.toast(error?.message || 'Não foi possível enviar o documento.');
+    }
+  };
+
+  // Envia a localização atual com link para o mapa.
+  const onSendLocation = async () => {
+    setShowAttach(false);
+    if (!profile?.id) return;
+    try {
+      const perm = await Location.requestForegroundPermissionsAsync();
+      if (!perm.granted) { actions.toast('Permissão de localização negada.'); return; }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const sent = await actions.sendMessage(userId, '', {
+        kind: 'location',
+        lat,
+        lng,
+        label: 'Minha localização',
+        url: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+      });
+      if (sent) {
+        setMessages((cur) => [...cur, sent]);
+        requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+      }
+    } catch {
+      actions.toast('Não foi possível obter a localização.');
+    }
+  };
+
   const onEdit = (msg: DirectMessage) => {
     setEditingId(msg.id);
     setEditText(msg.text);
@@ -318,11 +419,8 @@ export default function ChatScreen({ userId }: { userId: string }) {
             <Pressable onPress={() => setShowEmoji((v) => !v)} style={styles.toolBtn} hitSlop={6}>
               <Ionicons name={showEmoji ? 'happy' : 'happy-outline'} size={22} color={colors.muted} />
             </Pressable>
-            <Pressable onPress={() => onPickMedia(false)} style={styles.toolBtn} hitSlop={6}>
-              <Ionicons name="attach-outline" size={22} color={colors.muted} />
-            </Pressable>
-            <Pressable onPress={() => onPickMedia(true)} style={styles.toolBtn} hitSlop={6}>
-              <Ionicons name="camera-outline" size={22} color={colors.muted} />
+            <Pressable onPress={() => setShowAttach((v) => !v)} style={styles.toolBtn} hitSlop={6} accessibilityLabel="Anexar arquivo">
+              <Ionicons name={showAttach ? 'close' : 'attach-outline'} size={22} color={showAttach ? colors.primary : colors.muted} />
             </Pressable>
             <TextInput
               value={text}
@@ -359,6 +457,14 @@ export default function ChatScreen({ userId }: { userId: string }) {
               ))}
             </View>
           ) : null}
+          {showAttach ? (
+            <View style={styles.attachBar}>
+              <AttachOption icon="images-outline" label="Galeria" onPress={() => { setShowAttach(false); void onPickMedia(false); }} />
+              <AttachOption icon="camera-outline" label="Câmera" onPress={() => { setShowAttach(false); void onPickMedia(true); }} />
+              <AttachOption icon="document-outline" label="Documentos" onPress={() => void onPickDocument()} />
+              <AttachOption icon="location-outline" label="Localização" onPress={() => void onSendLocation()} />
+            </View>
+          ) : null}
           </>
         )}
       </KeyboardAvoidingView>
@@ -387,6 +493,9 @@ const styles = StyleSheet.create({
   attachTitle: { color: colors.text, fontWeight: '800', fontSize: 13 },
   attachText: { color: 'rgba(245,246,251,0.85)', fontSize: 12 },
   attachHint: { color: colors.cyan, fontSize: 11, fontWeight: '700' },
+  mapStub: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt },
+  fileRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  fileIcon: { width: 42, height: 42, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, paddingHorizontal: 10, paddingTop: 10, paddingBottom: 12, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bg },
   toolBtn: { width: 34, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
   toolBtnRecording: { backgroundColor: `${colors.pink}33` },
@@ -397,6 +506,10 @@ const styles = StyleSheet.create({
   emojiBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, paddingHorizontal: 8, paddingBottom: 6, backgroundColor: colors.bg },
   emojiBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
   emojiText: { fontSize: 26 },
+  attachBar: { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 10, gap: 8, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
+  attachOption: { flex: 1, alignItems: 'center', gap: 6 },
+  attachOptionIcon: { width: 46, height: 46, borderRadius: radius.lg, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  attachOptionText: { color: colors.text, fontSize: 11, fontWeight: '700', textAlign: 'center' },
   input: { flex: 1, minHeight: 42, maxHeight: 120, borderRadius: 20, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 14, paddingVertical: 10 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   sendBtnRecording: { backgroundColor: colors.pink },
