@@ -988,6 +988,34 @@ export async function uploadMedia(input: {
   return { url: data.publicUrl, path };
 }
 
+/** Envia áudio de mensagem para o bucket público `audio` (RLS por prefixo de user_id). */
+export async function uploadAudio(input: {
+  uri: string;
+  userId: string;
+  duration?: number | null;
+}): Promise<{ url: string; path: string }> {
+  const response = await fetch(input.uri);
+  const arrayBuffer = await response.arrayBuffer();
+  const cleanUri = String(input.uri).split('?')[0];
+  const ext = cleanUri.split('.').pop()?.toLowerCase() || 'm4a';
+  const mime =
+    ext === '3gp' ? 'audio/3gpp'
+    : ext === 'wav' ? 'audio/wav'
+    : ext === 'ogg' ? 'audio/ogg'
+    : ext === 'webm' ? 'audio/webm'
+    : ext === 'mp3' ? 'audio/mpeg'
+    : 'audio/mp4';
+  const path = `${input.userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage.from('audio').upload(path, arrayBuffer, {
+    cacheControl: '3600',
+    upsert: false,
+    contentType: mime,
+  });
+  fail(error, 'Não foi possível enviar o áudio.');
+  const { data } = supabase.storage.from('audio').getPublicUrl(path);
+  return { url: data.publicUrl, path };
+}
+
 export async function requestPasswordReset(email: string) {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: 'fluxo://redefinir-senha',

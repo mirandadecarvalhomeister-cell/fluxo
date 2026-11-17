@@ -9,7 +9,9 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#05060a",
     "newArchEnabled": true,
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "android": {
       "package": "app.fluxo.mobile",
       "versionCode": 1,
@@ -33,10 +35,21 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "vibefluxo.com", "pathPrefix": "/" },
-            { "scheme": "https", "host": "www.vibefluxo.com", "pathPrefix": "/" }
+            {
+              "scheme": "https",
+              "host": "vibefluxo.com",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.vibefluxo.com",
+              "pathPrefix": "/"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -76,7 +89,8 @@
           "supportsBackgroundPlayback": false,
           "supportsPictureInPicture": true
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "extra": {
       "eas": {

@@ -10,6 +10,7 @@ import { timeAgo } from '../lib/format';
 function preview(last: any) {
   if (!last) return 'Inicie uma conversa';
   const a = last.attachment;
+  if (a?.kind === 'audio') return `🎤 Áudio${a.duration ? ` · ${Math.round(a.duration)}s` : ''}`;
   if (a?.kind === 'post') return '📎 Publicação compartilhada';
   if (a?.kind === 'quiz') return '💣 Desafio do Quiz BOOM!';
   if (a?.kind === 'arena' || a?.kind === 'arena_result') return '🎮 Convite da Arena';

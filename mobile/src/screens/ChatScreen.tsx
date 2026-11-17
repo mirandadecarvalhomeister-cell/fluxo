@@ -13,16 +13,29 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useApp } from '../context/AppContext';
-import { getConversation, uploadMedia } from '../lib/api';
+import {
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  useAudioRecorder,
+  useAudioRecorderState,
+} from 'expo-audio';
 import * as ImagePicker from 'expo-image-picker';
+import { useApp } from '../context/AppContext';
+import { getConversation, uploadAudio, uploadMedia } from '../lib/api';
 import { colors, radius, spacing } from '../lib/theme';
 import { AvatarView, EmptyState } from '../components/Ui';
+import AudioBubble from '../components/AudioBubble';
 import { timeAgo } from '../lib/format';
 import type { DirectMessage } from '../types';
 
-function Attachment({ attachment, onOpenPost, onOpenQuiz }: { attachment: any; onOpenPost: (id: string) => void; onOpenQuiz: (id?: string) => void }) {
+function Attachment({ attachment, onOpenPost, onOpenQuiz, mine = false }: { attachment: any; onOpenPost: (id: string) => void; onOpenQuiz: (id?: string) => void; mine?: boolean }) {
   if (!attachment) return null;
+  if (attachment.kind === 'audio') {
+    const src = attachment.media || attachment.uri || attachment.src;
+    if (!src) return null;
+    return <AudioBubble url={src} duration={attachment.duration} mine={mine} />;
+  }
   if (attachment.kind === 'post') {
     const media = attachment.media || attachment.mediaSeed || null;
     const isVideo = attachment.mediaKind === 'video';
@@ -83,6 +96,53 @@ export default function ChatScreen({ userId }: { userId: string }) {
   const [showEmoji, setShowEmoji] = useState(false);
   const listRef = useRef<FlatList<DirectMessage>>(null);
   const other = users[userId];
+
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recState = useAudioRecorderState(recorder);
+  const [recording, setRecording] = useState(false);
+  const recStartRef = useRef(0);
+
+  const startRecording = async () => {
+    if (recording || sending) return;
+    try {
+      const perm = await requestRecordingPermissionsAsync();
+      if (!perm.granted) { actions.toast('Permissão de microfone negada.'); return; }
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      recStartRef.current = Date.now();
+      setRecording(true);
+    } catch (e: any) {
+      actions.toast(e?.message || 'Não foi possível iniciar a gravação.');
+    }
+  };
+
+  const finishRecording = async () => {
+    if (!recording) return;
+    setRecording(false);
+    const elapsed = Math.max(1, Math.round((Date.now() - recStartRef.current) / 1000));
+    try {
+      await recorder.stop();
+      const uri = recorder.uri;
+      if (!uri || !profile?.id) return;
+      setSending(true);
+      const uploaded = await uploadAudio({ uri, userId: profile.id, duration: elapsed });
+      const sent = await actions.sendMessage(userId, '', {
+        kind: 'audio',
+        media: uploaded.url,
+        duration: elapsed,
+        fileName: uploaded.path,
+      });
+      setSending(false);
+      if (sent) {
+        setMessages((cur) => [...cur, sent]);
+        requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+      }
+    } catch (e: any) {
+      setSending(false);
+      actions.toast(e?.message || 'Não foi possível enviar o áudio.');
+    }
+  };
 
   async function load() {
     if (!profile?.id) return;
@@ -220,7 +280,7 @@ export default function ChatScreen({ userId }: { userId: string }) {
                   style={[styles.bubbleWrap, mine ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}
                 >
                   <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
-                    {item.attachment ? <Attachment attachment={item.attachment} onOpenPost={(id) => actions.push({ name: 'post', postId: id })} onOpenQuiz={(id) => actions.openQuiz({ challengeId: id })} /> : null}
+                    {item.attachment ? <Attachment attachment={item.attachment} mine={mine} onOpenPost={(id) => actions.push({ name: 'post', postId: id })} onOpenQuiz={(id) => actions.openQuiz({ challengeId: id })} /> : null}
                     {item.text ? <Text style={styles.bubbleText}>{item.text}</Text> : null}
                     <View style={styles.bubbleMeta}>
                       {item.editedAt ? <Text style={styles.edited}>editado</Text> : null}
@@ -233,6 +293,14 @@ export default function ChatScreen({ userId }: { userId: string }) {
             ListEmptyComponent={<EmptyState icon="chatbubble-outline" title="Nenhuma mensagem" text="Diga oi para começar a conversa." />}
           />
         )}
+
+        {recording ? (
+          <View style={styles.recBar}>
+            <View style={styles.recDot} />
+            <Text style={styles.recText}>Gravando · solte para enviar</Text>
+            <Text style={styles.recTime}>{Math.floor((recState.durationMillis || 0) / 1000)}s</Text>
+          </View>
+        ) : null}
 
         {editingId ? (
           <View style={styles.editBar}>
@@ -254,6 +322,15 @@ export default function ChatScreen({ userId }: { userId: string }) {
             </Pressable>
             <Pressable onPress={() => onPickMedia(true)} style={styles.toolBtn} hitSlop={6}>
               <Ionicons name="camera-outline" size={22} color={colors.muted} />
+            </Pressable>
+            <Pressable
+              onPressIn={startRecording}
+              onPressOut={finishRecording}
+              style={[styles.toolBtn, recording && styles.toolBtnRecording]}
+              hitSlop={6}
+              accessibilityLabel="Segure para gravar áudio"
+            >
+              <Ionicons name={recording ? 'radio' : 'mic-outline'} size={22} color={recording ? colors.pink : colors.muted} />
             </Pressable>
             <TextInput
               value={text}
@@ -305,7 +382,12 @@ const styles = StyleSheet.create({
   attachText: { color: 'rgba(245,246,251,0.85)', fontSize: 12 },
   attachHint: { color: colors.cyan, fontSize: 11, fontWeight: '700' },
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, padding: 8, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bg },
-  toolBtn: { width: 36, height: 40, alignItems: 'center', justifyContent: 'center' },
+  toolBtn: { width: 36, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
+  toolBtnRecording: { backgroundColor: `${colors.pink}33` },
+  recBar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
+  recDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.pink },
+  recText: { flex: 1, color: colors.text, fontSize: 13, fontWeight: '700' },
+  recTime: { color: colors.pink, fontSize: 13, fontWeight: '800' },
   emojiBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, paddingHorizontal: 8, paddingBottom: 6, backgroundColor: colors.bg },
   emojiBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
   emojiText: { fontSize: 26 },
