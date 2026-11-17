@@ -138,7 +138,7 @@ export default function AppShell() {
     }
   }
 
-  const showTabs = !top;
+  const showTabs = !top && route !== 'create';
 
   return (
     <View style={styles.root} {...nav.panHandlers}>
