@@ -89,6 +89,21 @@ export type Comment = {
   liked?: boolean;
 };
 
+export type Community = {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  coverSeed: string;
+  iconUrl: string | null;
+  coverUrl: string | null;
+  isPrivate: boolean;
+  ownerId: string;
+  subs: number;
+  members: number;
+  joined: boolean;
+};
+
 export type DirectMessage = {
   id: string;
   senderId: string;

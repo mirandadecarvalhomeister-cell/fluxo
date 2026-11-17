@@ -45,7 +45,9 @@ export type StackEntry =
   | { name: 'connections'; userId: string; mode: 'followers' | 'following' }
   | { name: 'post'; postId: string }
   | { name: 'shareToChat'; postId: string }
-  | { name: 'quiz'; challengeId?: string; inviteId?: string };
+  | { name: 'quiz'; challengeId?: string; inviteId?: string }
+  | { name: 'communities' }
+  | { name: 'community'; communityId: string };
 
 type PublishInput = {
   text: string;

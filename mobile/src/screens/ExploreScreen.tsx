@@ -151,7 +151,13 @@ export default function ExploreScreen() {
     <SafeAreaView style={styles.root} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Radar Fluxo</Text>
-        <GhostButton title="Quiz BOOM!" icon="game-controller-outline" onPress={() => actions.openQuiz()} style={{ minHeight: 36, paddingHorizontal: 12 }} />
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          <Pressable onPress={() => actions.push({ name: 'communities' })} style={styles.communitiesBtn} accessibilityLabel="Abrir comunidades">
+            <Ionicons name="people-outline" size={16} color={colors.primary} />
+            <Text style={styles.communitiesText}>Comunidades</Text>
+          </Pressable>
+          <GhostButton title="Quiz BOOM!" icon="game-controller-outline" onPress={() => actions.openQuiz()} style={{ minHeight: 36, paddingHorizontal: 12 }} />
+        </View>
       </View>
 
       {/* Sub-abas */}
@@ -284,6 +290,8 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: 10 },
   title: { color: colors.text, fontSize: 24, fontWeight: '900' },
+  communitiesBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 11, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
+  communitiesText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
   segment: { flexDirection: 'row', marginHorizontal: spacing.lg, marginBottom: 10, padding: 4, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
   segmentBtn: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: radius.pill },
   segmentOn: { backgroundColor: colors.primary },

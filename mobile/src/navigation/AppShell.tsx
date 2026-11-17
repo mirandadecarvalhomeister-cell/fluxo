@@ -22,6 +22,8 @@ import SettingsScreen from '../screens/SettingsScreen';
 import ShareToChatScreen from '../screens/ShareToChatScreen';
 import LiveScreen from '../screens/LiveScreen';
 import QuizScreen from '../screens/QuizScreen';
+import CommunitiesScreen from '../screens/CommunitiesScreen';
+import CommunityScreen from '../screens/CommunityScreen';
 
 const TABS: Tab[] = ['home', 'explore', 'create', 'messages', 'profile'];
 const TAB_META: { id: Tab; icon: React.ComponentProps<typeof Ionicons>['name']; label: string }[] = [
@@ -124,6 +126,12 @@ export default function AppShell() {
         break;
       case 'quiz':
         overlay = <QuizScreen challengeId={top.challengeId} inviteId={top.inviteId} />;
+        break;
+      case 'communities':
+        overlay = <CommunitiesScreen />;
+        break;
+      case 'community':
+        overlay = <CommunityScreen communityId={top.communityId} />;
         break;
       default:
         overlay = null;

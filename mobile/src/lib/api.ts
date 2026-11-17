@@ -4,6 +4,7 @@ import type {
   ChannelMessage,
   ChatThread,
   Comment,
+  Community,
   DirectMessage,
   Interactive,
   LivePoll,
@@ -153,6 +154,63 @@ export async function fetchFollowingPage(uidValue: string, authorIds: string[], 
     .range(offset, offset + PAGE_SIZE - 1);
   fail(error, 'Não foi possível carregar o feed de seguindo.');
   return hydratePosts((data || []) as Row[], uidValue);
+}
+
+/** Comunidades reais do backend, com contagem de membros e participação do usuário. */
+export async function fetchCommunities(uidValue: string): Promise<Community[]> {
+  const [commResult, membersResult] = await Promise.all([
+    supabase.from('communities').select('*').order('created_at', { ascending: false }).limit(200),
+    supabase.from('community_members').select('community_id,user_id'),
+  ]);
+  fail(commResult.error, 'Não foi possível carregar as comunidades.');
+  const rows = (membersResult.data || []) as Row[];
+  const joinedIds = new Set(rows.filter((r) => String(r.user_id) === uidValue).map((r) => String(r.community_id)));
+  const counts: Record<string, number> = {};
+  rows.forEach((r) => {
+    const id = String(r.community_id);
+    counts[id] = (counts[id] || 0) + 1;
+  });
+  return ((commResult.data || []) as Row[]).map((r) => ({
+    id: String(r.id),
+    name: String(r.name || 'Comunidade'),
+    description: String(r.description || ''),
+    category: String(r.category || ''),
+    coverSeed: String(r.cover_seed || ''),
+    iconUrl: r.icon_url || null,
+    coverUrl: r.cover_url || null,
+    isPrivate: !!r.is_private,
+    ownerId: String(r.owner_id || ''),
+    subs: Number(r.subs) || 0,
+    members: counts[String(r.id)] || 0,
+    joined: joinedIds.has(String(r.id)),
+  }));
+}
+
+export async function fetchCommunityPosts(communityId: string, uidValue: string, offset = 0): Promise<FeedPage> {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('community_id', communityId)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + PAGE_SIZE - 1);
+  fail(error, 'Não foi possível carregar as publicações da comunidade.');
+  return hydratePosts((data || []) as Row[], uidValue);
+}
+
+export async function setCommunityMembership(communityId: string, uidValue: string, joined: boolean) {
+  if (joined) {
+    const { error } = await supabase
+      .from('community_members')
+      .upsert({ community_id: communityId, user_id: uidValue, role: 'member' });
+    fail(error, 'Não foi possível entrar na comunidade.');
+  } else {
+    const { error } = await supabase
+      .from('community_members')
+      .delete()
+      .eq('community_id', communityId)
+      .eq('user_id', uidValue);
+    fail(error, 'Não foi possível sair da comunidade.');
+  }
 }
 
 export async function fetchUserPosts(authorId: string, uidValue: string, offset = 0): Promise<FeedPage> {
