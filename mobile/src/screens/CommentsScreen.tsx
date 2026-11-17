@@ -32,7 +32,11 @@ export default function CommentsScreen({ postId }: { postId: string }) {
   const [sending, setSending] = useState(false);
   const translateY = useRef(new Animated.Value(SHEET_H)).current;
 
-  const slideIn = useCallback(() => {
+  const [expanded, setExpanded] = useState(false);
+  const sheetHeight = expanded ? SCREEN_H * 0.94 : SHEET_H;
+
+  const slideTo = useCallback((toExpanded: boolean) => {
+    setExpanded(toExpanded);
     Animated.spring(translateY, { toValue: 0, friction: 12, tension: 100, useNativeDriver: true }).start();
   }, [translateY]);
 
@@ -40,18 +44,24 @@ export default function CommentsScreen({ postId }: { postId: string }) {
     Animated.timing(translateY, { toValue: SHEET_H, duration: 220, useNativeDriver: true }).start(() => actions.pop());
   }, [translateY, actions]);
 
-  useEffect(() => { slideIn(); }, [slideIn]);
+  useEffect(() => { slideTo(false); }, []);
 
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, g) => g.dy > 4 && Math.abs(g.dy) > Math.abs(g.dx),
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 3 && Math.abs(g.dy) > Math.abs(g.dx),
       onPanResponderMove: (_, g) => {
-        if (g.dy > 0) translateY.setValue(g.dy);
+        // Arrastar para baixo move o sheet; para cima apenas sinaliza expansão.
+        translateY.setValue(Math.max(0, g.dy));
       },
       onPanResponderRelease: (_, g) => {
-        if (g.dy > CLOSE_THRESHOLD || g.vy > 0.5) close();
-        else slideIn();
+        if (g.dy > CLOSE_THRESHOLD || g.vy > 0.6) {
+          close();
+        } else if (g.dy < -40 && !expanded) {
+          slideTo(true);
+        } else {
+          Animated.spring(translateY, { toValue: 0, friction: 12, tension: 100, useNativeDriver: true }).start();
+        }
       },
     })
   ).current;
@@ -87,17 +97,18 @@ export default function CommentsScreen({ postId }: { postId: string }) {
   return (
     <View style={styles.root}>
       <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Fechar comentários" />
-      <Animated.View style={[styles.sheet, { height: SHEET_H, transform: [{ translateY }] }]}>
-        {/* Alça de arrasto */}
-        <View {...pan.panHandlers} style={styles.handleArea}>
-          <View style={styles.handle} />
-        </View>
-
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>Comentários</Text>
-          <Pressable onPress={close} hitSlop={10} style={styles.closeBtn}>
-            <Ionicons name="close" size={20} color={colors.muted} />
-          </Pressable>
+      <Animated.View style={[styles.sheet, { height: sheetHeight, transform: [{ translateY }] }]}>
+        {/* Alça + cabeçalho arrastáveis (a lista de comentários continua rolando livre) */}
+        <View {...pan.panHandlers}>
+          <View style={styles.handleArea}>
+            <View style={styles.handle} />
+          </View>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>Comentários</Text>
+            <Pressable onPress={close} hitSlop={10} style={styles.closeBtn}>
+              <Ionicons name="close" size={20} color={colors.muted} />
+            </Pressable>
+          </View>
         </View>
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
