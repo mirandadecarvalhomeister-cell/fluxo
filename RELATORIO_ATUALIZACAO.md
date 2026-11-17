@@ -71,4 +71,12 @@ Artefato release: `C:\fm\android\app\build\outputs\apk\release\app-release.apk`
 - Tamanho: **129.824.799 bytes** (~124 MB), gerado em 16/11/2026 às 22:45.
 - Inclui `expo-audio` (config plugin + permissões `RECORD_AUDIO`/`MODIFY_AUDIO_SETTINGS`) e o **LiveKit nativo** (`registerGlobals()`, `livekit-client`, `@livekit/react-native`, WebRTC) — acréscimo de ~1,7 MB em relação ao APK anterior.
 - `npx tsc --noEmit` final: **0 erros** (inclusive após a integração LiveKit nativa).
-- A transmissão real depende de teste em aparelho físico com câmera/microfone e do servidor LiveKit configurado; a lógica espelha exatamente o `LiveStage.jsx` do site.
+- **Testes visuais reais no emulador Android (AVD `Medium_Phone_API_37.0`, API 37)**: APK instalado via ADB, login efetuado, telas validadas por screenshot + `logcat` (sem crashes do app).
+  - Feed carrega; vídeo inline **tocando de fato** (96% dos pixels da área mudaram em 5s).
+  - Menu dos 3 pontinhos exibe as 9 opções do site (confirmado por screenshot).
+  - Texto longo com **Ler mais** visível.
+  - Criar abre a **câmera real** (permissão concedida no emulador) e **a barra inferior fica oculta** nas telas de criação.
+  - Galeria → seleção com **+ / Avançar** → personalização com 6 estilos e rodapé **Ao vivo / Enquete / Clips / Votação** (painel de Enquete conferido).
+  - **Ao vivo** abre a câmera e **não inicia a transmissão**; botão **Iniciar live** presente.
+  - Tabela de reações **oculta por padrão** e visível **apenas ao segurar** o coração (via `motionevent DOWN/UP`), sumindo ao soltar.
+- A transmissão real via LiveKit depende do servidor ativo; a lógica espelha exatamente o `LiveStage.jsx` do site.
