@@ -952,7 +952,7 @@ export async function createLiveChannel(input: {
     owner_id: input.ownerId,
     name: input.ownerName,
     description: 'Live no Fluxo',
-    kind: 'live',
+    kind: 'palco',
     followers: 0,
     is_live: true,
     livekit: true,

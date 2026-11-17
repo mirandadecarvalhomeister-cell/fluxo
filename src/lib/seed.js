@@ -21,6 +21,8 @@ export const KINDS = {
   avisos: ['mega', 'Avisos'],
   conversa: ['hash', 'Conversa'],
   palco: ['radio', 'Palco ao vivo'],
+  // Canais criados pelo app mobile usam "live"; mantém compatibilidade.
+  live: ['radio', 'Palco ao vivo'],
 };
 
 export function newState(name, email) {

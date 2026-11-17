@@ -56,7 +56,7 @@ function ChannelRow({ channel }) {
   const { data, actions } = useApp();
   const owner = userOf(data, channel.owner);
   const last = channel.msgs[channel.msgs.length - 1];
-  const kind = KINDS[channel.kind];
+  const kind = KINDS[channel.kind] || KINDS.conversa;
   return (
     <button className="chan" onClick={() => actions.openRoom(channel.id)}>
       <LiveAvatar user={owner} size={48} data={data} />
@@ -351,7 +351,7 @@ function Room({ channel }) {
 
   const owner = channel.owner === 'me';
   const author = userOf(data, channel.owner);
-  const kind = KINDS[channel.kind];
+  const kind = KINDS[channel.kind] || KINDS.conversa;
   const canPost = channel.kind !== 'avisos' || owner;
   const live = channel.live;
   const liveStage = channel.kind === 'palco' && live;
