@@ -79,4 +79,6 @@ Artefato release: `C:\fm\android\app\build\outputs\apk\release\app-release.apk`
   - Galeria → seleção com **+ / Avançar** → personalização com 6 estilos e rodapé **Ao vivo / Enquete / Clips / Votação** (painel de Enquete conferido).
   - **Ao vivo** abre a câmera e **não inicia a transmissão**; botão **Iniciar live** presente.
   - Tabela de reações **oculta por padrão** e visível **apenas ao segurar** o coração (via `motionevent DOWN/UP`), sumindo ao soltar.
+  - Câmera de criação com **seletor de tipo de postagem na primeira tela** e botão **Avançar no topo**; barra inferior oculta.
+  - Chat: barra de digitar maior, **botão enviar vinculado ao gravador de áudio** (ícone muda para microfone quando não há texto), e **menu de anexos** com Galeria, Câmera, Documentos e Localização (confirmado por screenshot).
 - A transmissão real via LiveKit depende do servidor ativo; a lógica espelha exatamente o `LiveStage.jsx` do site.
