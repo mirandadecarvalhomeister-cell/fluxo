@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -23,6 +23,7 @@ import { colors, radius, spacing } from '../lib/theme';
 import { compactNumber, timeAgo } from '../lib/format';
 import { firstMedia, isVideoPost } from '../lib/media';
 import { sharePostLink } from '../lib/share';
+import { fetchFollowingPage } from '../lib/api';
 import type { Post } from '../types';
 
 const { height: SCREEN_H } = Dimensions.get('window');
@@ -123,8 +124,48 @@ function Action({ icon, label, onPress, color = colors.text }: { icon: any; labe
   );
 }
 
+const FEED_PAGE_SIZE = 12;
+
 export default function HomeScreen() {
-  const { posts, feedLoading, feedRefreshing, feedDone, actions, setActiveVideoId } = useApp();
+  const { posts, feedLoading, feedRefreshing, feedDone, actions, setActiveVideoId, following, profile, online } = useApp();
+  const [mode, setMode] = useState<'all' | 'following'>('all');
+  const [followingPosts, setFollowingPosts] = useState<Post[]>([]);
+  const [followingLoading, setFollowingLoading] = useState(false);
+  const [followingLoadingMore, setFollowingLoadingMore] = useState(false);
+  const [followingDone, setFollowingDone] = useState(false);
+  const followingBusy = useRef(false);
+  const { mergeProfiles } = actions;
+
+  const loadFollowing = useCallback(async (offset: number, reset: boolean) => {
+    if (!online || !profile?.id || followingBusy.current) return;
+    followingBusy.current = true;
+    if (reset) { setFollowingLoading(true); setFollowingDone(false); }
+    else setFollowingLoadingMore(true);
+    try {
+      const page = await fetchFollowingPage(profile.id, following, offset);
+      setFollowingPosts((cur) => {
+        const base = reset ? [] : cur;
+        const seen = new Set(base.map((p) => p.id));
+        return [...base, ...page.posts.filter((p) => !seen.has(p.id))];
+      });
+      setFollowingDone(page.posts.length < FEED_PAGE_SIZE);
+      if (page.profiles.length) mergeProfiles(page.profiles);
+    } catch {
+      setFollowingDone(true);
+    } finally {
+      setFollowingLoading(false);
+      setFollowingLoadingMore(false);
+      followingBusy.current = false;
+    }
+  }, [online, profile?.id, following, mergeProfiles]);
+
+  useEffect(() => {
+    if (mode === 'following') {
+      setFollowingPosts([]);
+      void loadFollowing(0, true);
+    }
+  }, [mode, loadFollowing]);
+
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 65 }).current;
   const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
     const visibleVideoId = (viewableItems || [])
@@ -134,6 +175,18 @@ export default function HomeScreen() {
   }, [setActiveVideoId]);
 
   const renderItem = useCallback(({ item }: { item: Post }) => <PostCard post={item} />, []);
+
+  const data = mode === 'following' ? followingPosts : posts;
+  const loading = mode === 'following' ? followingLoading : feedLoading;
+  const loadingMore = mode === 'following' ? followingLoadingMore : (!feedDone && posts.length > 0);
+  const onEndReached = () => {
+    if (mode === 'following') { if (!followingDone) void loadFollowing(followingPosts.length, false); }
+    else if (!feedDone) actions.loadMore();
+  };
+  const onRefresh = () => {
+    if (mode === 'all') void actions.refreshFeed();
+    else void loadFollowing(0, true);
+  };
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -151,21 +204,36 @@ export default function HomeScreen() {
           <IconButton name="settings-outline" label="Configurações" onPress={() => actions.push({ name: 'settings' })} />
         </View>
       </View>
-      {feedLoading ? (
+
+      <View style={styles.feedModes}>
+        {(['all', 'following'] as const).map((value) => (
+          <Pressable
+            key={value}
+            onPress={() => setMode(value)}
+            style={[styles.modeBtn, mode === value && styles.modeBtnActive]}
+          >
+            <Text style={[styles.modeText, mode === value && styles.modeTextActive]}>
+              {value === 'all' ? 'Para você' : 'Seguindo'}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {loading ? (
         <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>
       ) : (
         <FlatList
-          data={posts}
+          data={data}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={{ paddingBottom: 24 }}
-          refreshControl={<RefreshControl refreshing={feedRefreshing} onRefresh={actions.refreshFeed} tintColor={colors.primary} />}
+          refreshControl={<RefreshControl refreshing={mode === 'all' ? feedRefreshing : followingLoading} onRefresh={onRefresh} tintColor={colors.primary} />}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
-          onEndReached={() => { if (!feedDone) actions.loadMore(); }}
+          onEndReached={onEndReached}
           onEndReachedThreshold={0.4}
-          ListEmptyComponent={<EmptyState icon="images-outline" title="Seu feed está vazio" text="Siga pessoas ou crie sua primeira publicação." />}
-          ListFooterComponent={!feedDone && posts.length ? <ActivityIndicator style={{ margin: 16 }} color={colors.primary} /> : undefined}
+          ListEmptyComponent={<EmptyState icon="images-outline" title={mode === 'following' ? 'Nada por aqui ainda' : 'Seu feed está vazio'} text={mode === 'following' ? 'Siga pessoas para ver as publicações delas.' : 'Siga pessoas ou crie sua primeira publicação.'} />}
+          ListFooterComponent={loadingMore ? <ActivityIndicator style={{ margin: 16 }} color={colors.primary} /> : undefined}
         />
       )}
     </SafeAreaView>
@@ -188,6 +256,11 @@ const styles = StyleSheet.create({
   logo: { color: colors.text, fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
   gamesTab: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 14, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, marginLeft: 6 },
   gamesTabText: { color: colors.primary, fontSize: 10, fontWeight: '900', letterSpacing: 0.6 },
+  feedModes: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: 6, gap: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
+  modeBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: colors.surfaceAlt },
+  modeBtnActive: { backgroundColor: colors.primary },
+  modeText: { color: colors.muted, fontSize: 12, fontWeight: '800' },
+  modeTextActive: { color: '#fff' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   card: {
     paddingVertical: 12,

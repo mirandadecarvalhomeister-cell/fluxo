@@ -142,6 +142,19 @@ export async function fetchFeedPage(uidValue: string, offset = 0): Promise<FeedP
   return hydratePosts((data || []) as Row[], uidValue);
 }
 
+/** Feed filtrado às pessoas que o usuário segue (paginação real). */
+export async function fetchFollowingPage(uidValue: string, authorIds: string[], offset = 0): Promise<FeedPage> {
+  if (!authorIds.length) return { posts: [], profiles: [] };
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*')
+    .in('author_id', authorIds)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + PAGE_SIZE - 1);
+  fail(error, 'Não foi possível carregar o feed de seguindo.');
+  return hydratePosts((data || []) as Row[], uidValue);
+}
+
 export async function fetchUserPosts(authorId: string, uidValue: string, offset = 0): Promise<FeedPage> {
   const { data, error } = await supabase
     .from('posts')
