@@ -1,5 +1,6 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
@@ -12,6 +13,9 @@ import { INTERACTIVE_FORMATS, MAX_OPTIONS, MIN_OPTIONS } from '../lib/interactiv
 
 type Fmt = 'classic' | 'poll' | 'question' | 'imageVote' | 'challenge';
 
+const DRAFT_KEY = 'fluxo:post-draft';
+const emptyOptions = () => [{ id: 'opt-1', label: '' }, { id: 'opt-2', label: '' }];
+
 export default function CreateScreen() {
   const { actions, publishing, users, profile } = useApp();
   const [text, setText] = useState('');
@@ -22,6 +26,38 @@ export default function CreateScreen() {
     { id: 'opt-2', label: '' },
   ]);
   const [invited, setInvited] = useState<string[]>([]);
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  // Rascunho local: restaura ao abrir e salva automaticamente no aparelho.
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(DRAFT_KEY);
+        if (!raw || !active) return;
+        const draft = JSON.parse(raw);
+        if (typeof draft.text === 'string') setText(draft.text);
+        if (draft.format) setFormat(draft.format as Fmt);
+        if (Array.isArray(draft.options) && draft.options.length >= 2) setOptions(draft.options);
+        if (Array.isArray(draft.invited)) setInvited(draft.invited);
+        if (Array.isArray(draft.assets)) setAssets(draft.assets);
+        setDraftRestored(true);
+      } catch {}
+    })();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!draftRestored) return;
+    const hasContent = !!text.trim() || assets.length > 0 || format !== 'classic';
+    if (!hasContent) return;
+    const timer = setTimeout(() => {
+      void AsyncStorage.setItem(DRAFT_KEY, JSON.stringify({
+        text, format, options, invited, assets, savedAt: Date.now(),
+      }));
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [draftRestored, text, format, options, invited, assets]);
 
   const isPoll = format === 'poll';
   const isImageVote = format === 'imageVote';
@@ -130,14 +166,32 @@ export default function CreateScreen() {
     });
     if (err) Alert.alert('Erro ao publicar', err);
     else {
+      await AsyncStorage.removeItem(DRAFT_KEY).catch(() => {});
       setText('');
       setAssets([]);
-      setOptions([{ id: 'opt-1', label: '' }, { id: 'opt-2', label: '' }]);
+      setOptions(emptyOptions());
       setInvited([]);
       setFormat('classic');
       actions.go('home');
       actions.toast('Publicação criada!');
     }
+  }
+
+  function discardDraft() {
+    Alert.alert('Descartar rascunho', 'Apagar o rascunho salvo neste aparelho?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Descartar', style: 'destructive', onPress: async () => {
+          await AsyncStorage.removeItem(DRAFT_KEY).catch(() => {});
+          setText('');
+          setAssets([]);
+          setOptions(emptyOptions());
+          setInvited([]);
+          setFormat('classic');
+          actions.toast('Rascunho descartado.');
+        },
+      },
+    ]);
   }
 
   const formatInfo = INTERACTIVE_FORMATS.find((f) => f.id === format);
@@ -147,7 +201,12 @@ export default function CreateScreen() {
     <SafeAreaView style={styles.root} edges={['top']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 14, paddingBottom: 40 }}>
-          <Text style={styles.title}>Criar publicação</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>Criar publicação</Text>
+            <Pressable onPress={discardDraft} hitSlop={8} style={styles.iconBtn} accessibilityLabel="Descartar rascunho">
+              <Ionicons name="trash-outline" size={20} color={colors.muted} />
+            </Pressable>
+          </View>
 
           {/* Seletor de formato */}
           <Text style={styles.label}>Formato</Text>
@@ -262,6 +321,7 @@ export default function CreateScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { color: colors.text, fontSize: 24, fontWeight: '900' },
   label: { color: colors.text, fontWeight: '800', fontSize: 14, marginBottom: 2 },
   hint: { color: colors.muted, fontSize: 12 },
