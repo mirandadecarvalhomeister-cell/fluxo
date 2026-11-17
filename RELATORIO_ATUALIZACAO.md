@@ -58,3 +58,8 @@
 ## 7. APK
 
 Artefato release: `C:\fm\android\app\build\outputs\apk\release\app-release.apk`
+
+- Build final: **BUILD SUCCESSFUL em 6m17s** (775 tarefas: 58 executadas, 717 up-to-date).
+- Tamanho: **128.116.007 bytes** (~122 MB), gerado em 16/11/2026 às 22:19.
+- Inclui o módulo nativo `expo-audio` (config plugin + permissões `RECORD_AUDIO`/`MODIFY_AUDIO_SETTINGS` já presentes no manifest).
+- `npx tsc --noEmit` final: **0 erros**.
