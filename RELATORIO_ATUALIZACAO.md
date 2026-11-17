@@ -20,11 +20,12 @@
 - **Rascunhos locais**: editor salva texto, formato, opções, convites e mídia no AsyncStorage; restaura ao abrir, autosave e botão de descarte.
 - **Comunidades no mobile**: lista real do backend, entrar/sair com escrita em `community_members`, feed da comunidade paginado, capa/ícone/contagem de membros. Entrada pelo botão "Comunidades" em Explorar.
 - **Aba JOGOS no topo** do feed abrindo o Quiz BOOM! existente.
+- **Lives com LiveKit nativo (mesmo fluxo do site)** — `registerGlobals()` no entry point, token via Edge Function `livekit-token` com `role: host/viewer`, transmissão de câmera/microfone do celular, reprodução dos tracks remotos, controles de cam/mic/trocar câmera/sair, contagem de espectadores, corações com haptics e chat em tempo real. Botão **AO VIVO** no feed para transmitir e aba **Lives** no Explorar para assistir. Canal marcado offline ao encerrar.
 - **Realtime cobre agora `comment_likes`** além das 10 tabelas anteriores.
 
 ## 3. Pendências de backend
 
-- **Gravação de lives**: deliberadamente adiada por decisão do usuário (depende de Egress LiveKit + storage + custo por minuto).
+- **Gravação de lives** (salvar a transmissão como vídeo): deliberadamente adiada por decisão do usuário (depende de Egress LiveKit + storage + custo por minuto). **Transmissão e reprodução ao vivo já estão implementadas** e não dependem de Egress.
 - **Realtime ainda não coberto no mobile para**: `communities`, `quiz_*`, jogos/arena e `message_reactions`. As telas funcionam com carregamento sob demanda; não há atualização automática nestes pontos.
 - **Criação de comunidades pelo app**: o mobile consome, entra e sai; a criação continua disponível apenas no site.
 - **Postar dentro de uma comunidade pelo app**: o feed da comunidade é somente leitura; a publicação com `community_id` existe no site.
@@ -47,7 +48,7 @@
   - `supabase_realtime` contém `comments`, `comment_likes` e `post_likes`.
   - `quiz_refresh_rounds()` coerente com a hora UTC (0 às 01:13 UTC; volta a 1 às 03:00 UTC).
   - RLS ativo em `comments`, `comment_likes`, `communities` e `community_members`.
-- 9 commits enviados para `main`: `2df1d8d`, `1076e4f`, `5919eb3`, `9197e1d`, `58ebf00`, `72c8462`, `917aa4c`, `bc50f32`, `79009d5`.
+- 12 commits enviados para `main`: `2df1d8d`, `1076e4f`, `5919eb3`, `9197e1d`, `58ebf00`, `72c8462`, `917aa4c`, `bc50f32`, `79009d5`, `5ece899`, `32b85e9`, `c771927`.
 
 ## 6. Problemas e limitações conhecidos
 
@@ -62,4 +63,5 @@ Artefato release: `C:\fm\android\app\build\outputs\apk\release\app-release.apk`
 - Build final: **BUILD SUCCESSFUL em 6m17s** (775 tarefas: 58 executadas, 717 up-to-date).
 - Tamanho: **128.116.007 bytes** (~122 MB), gerado em 16/11/2026 às 22:19.
 - Inclui o módulo nativo `expo-audio` (config plugin + permissões `RECORD_AUDIO`/`MODIFY_AUDIO_SETTINGS` já presentes no manifest).
-- `npx tsc --noEmit` final: **0 erros**.
+- `npx tsc --noEmit` final: **0 erros** (inclusive após a integração LiveKit nativa).
+- A transmissão real depende de teste em aparelho físico com câmera/microfone e do servidor LiveKit configurado; a lógica espelha exatamente o `LiveStage.jsx` do site.
