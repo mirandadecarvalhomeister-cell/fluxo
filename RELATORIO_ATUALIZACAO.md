@@ -60,8 +60,8 @@
 
 Artefato release: `C:\fm\android\app\build\outputs\apk\release\app-release.apk`
 
-- Build final: **BUILD SUCCESSFUL em 6m17s** (775 tarefas: 58 executadas, 717 up-to-date).
-- Tamanho: **128.116.007 bytes** (~122 MB), gerado em 16/11/2026 às 22:19.
-- Inclui o módulo nativo `expo-audio` (config plugin + permissões `RECORD_AUDIO`/`MODIFY_AUDIO_SETTINGS` já presentes no manifest).
+- Build final: **BUILD SUCCESSFUL em 2m24s** (775 tarefas: 23 executadas, 752 up-to-date); bundle Metro com **1156 módulos** (antes 900).
+- Tamanho: **129.824.799 bytes** (~124 MB), gerado em 16/11/2026 às 22:45.
+- Inclui `expo-audio` (config plugin + permissões `RECORD_AUDIO`/`MODIFY_AUDIO_SETTINGS`) e o **LiveKit nativo** (`registerGlobals()`, `livekit-client`, `@livekit/react-native`, WebRTC) — acréscimo de ~1,7 MB em relação ao APK anterior.
 - `npx tsc --noEmit` final: **0 erros** (inclusive após a integração LiveKit nativa).
 - A transmissão real depende de teste em aparelho físico com câmera/microfone e do servidor LiveKit configurado; a lógica espelha exatamente o `LiveStage.jsx` do site.
