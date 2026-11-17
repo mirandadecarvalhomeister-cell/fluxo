@@ -1,44 +1,72 @@
-﻿import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../context/AppContext';
 import { AvatarView, EmptyState, GhostButton } from '../components/Ui';
-import { colors, gradients, radius, spacing } from '../lib/theme';
+import { colors, gradients, spacing } from '../lib/theme';
 import { compactNumber } from '../lib/format';
 import { coverImageUri, firstMedia, isVideoPost } from '../lib/media';
 import { fetchConnections, fetchUserPosts } from '../lib/api';
 import type { Post } from '../types';
 
+const PAGE_SIZE = 12;
+
 export default function ProfileScreen() {
   const { profile, posts, following, online, actions } = useApp();
   const { mergeProfiles } = actions;
   const [myPosts, setMyPosts] = useState<Post[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [done, setDone] = useState(false);
+  const busyRef = useRef(false);
   const [counts, setCounts] = useState<{ followers: number | null; following: number | null }>({
     followers: null,
     following: null,
   });
   const [refreshing, setRefreshing] = useState(false);
 
-  // Publicações do perfil buscadas diretamente (inclui posts antigos fora do feed).
-  // Estado próprio para não ser apagado pelo refresh do feed global.
+  // Busca própria e isolada do feed global: inclui posts antigos e pagina a grade.
   const loadProfile = useCallback(async () => {
     if (!online || !profile?.id) return;
     const uid = profile.id;
+    busyRef.current = true;
+    setDone(false);
     const [followersR, followsR, postsR] = await Promise.allSettled([
       fetchConnections(uid, 'followers'),
       fetchConnections(uid, 'following'),
-      fetchUserPosts(uid, uid),
+      fetchUserPosts(uid, uid, 0),
     ]);
     if (followersR.status === 'fulfilled') setCounts((c) => ({ ...c, followers: followersR.value.ids.length }));
     if (followsR.status === 'fulfilled') setCounts((c) => ({ ...c, following: followsR.value.ids.length }));
     if (postsR.status === 'fulfilled') {
       setMyPosts(postsR.value.posts);
+      setDone(postsR.value.posts.length < PAGE_SIZE);
       if (postsR.value.profiles.length) mergeProfiles(postsR.value.profiles);
     }
+    busyRef.current = false;
   }, [online, profile?.id, mergeProfiles]);
+
+  const loadMore = useCallback(async () => {
+    if (!online || !profile?.id || done || busyRef.current) return;
+    busyRef.current = true;
+    setLoadingMore(true);
+    try {
+      const page = await fetchUserPosts(profile.id, profile.id, myPosts.length);
+      setMyPosts((cur) => {
+        const seen = new Set(cur.map((p) => p.id));
+        return [...cur, ...page.posts.filter((p) => !seen.has(p.id))];
+      });
+      setDone(page.posts.length < PAGE_SIZE);
+      if (page.profiles.length) mergeProfiles(page.profiles);
+    } catch {
+      setDone(true);
+    } finally {
+      setLoadingMore(false);
+      busyRef.current = false;
+    }
+  }, [online, profile?.id, myPosts.length, done, mergeProfiles]);
 
   useEffect(() => {
     void loadProfile();
@@ -53,6 +81,39 @@ export default function ProfileScreen() {
   // Enquanto a busca própria não chega, usa o que já existe no feed global.
   const mine = myPosts.length ? myPosts : posts.filter((p) => p.authorId === profile?.id);
   const coverUri = coverImageUri(profile?.cover);
+  const loadingInitial = online && !myPosts.length && !done;
+
+  const header = (
+    <View>
+      <View style={styles.cover}>
+        {coverUri ? (
+          <Image source={{ uri: coverUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : (
+          <LinearGradient colors={gradients.brand} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+        )}
+      </View>
+
+      <View style={styles.profileRow}>
+        <View style={styles.avatarWrap}><AvatarView user={profile} size={82} /></View>
+        <View style={styles.stats}>
+          <Stat label="Posts" value={compactNumber(myPosts.length || posts.filter((p) => p.authorId === profile?.id).length)} />
+          <Pressable onPress={() => profile?.id && actions.push({ name: 'connections', userId: profile.id, mode: 'followers' })}><Stat label="Seguidores" value={compactNumber(counts.followers ?? profile?.followers ?? 0)} /></Pressable>
+          <Pressable onPress={() => profile?.id && actions.push({ name: 'connections', userId: profile.id, mode: 'following' })}><Stat label="Seguindo" value={compactNumber(counts.following ?? following.length)} /></Pressable>
+        </View>
+      </View>
+
+      <View style={{ paddingHorizontal: spacing.lg, gap: 4 }}>
+        <Text style={styles.name}>{profile?.name || 'Seu perfil'}</Text>
+        {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : <Text style={styles.bioMuted}>Adicione uma bio para as pessoas te conhecerem.</Text>}
+        {profile?.city ? <Text style={styles.meta}><Ionicons name="location-outline" size={13} color={colors.muted} /> {profile.city}</Text> : null}
+      </View>
+
+      <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: spacing.lg, marginTop: 12 }}>
+        <View style={{ flex: 1 }}><GhostButton title="Editar perfil" onPress={() => actions.push({ name: 'editProfile' })} /></View>
+        <View style={{ flex: 1 }}><GhostButton title="Quiz BOOM!" icon="flame-outline" onPress={() => actions.openQuiz()} /></View>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -65,61 +126,38 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 30 }}
+      <FlatList
+        data={mine}
+        keyExtractor={(item) => item.id}
+        numColumns={3}
+        columnWrapperStyle={styles.row}
+        ListHeaderComponent={header}
+        renderItem={({ item }) => {
+          const media = firstMedia(item);
+          return (
+            <Pressable style={styles.gridItem} onPress={() => (isVideoPost(item) ? actions.push({ name: 'reels', postId: item.id }) : actions.push({ name: 'post', postId: item.id }))}>
+              {media?.src ? (
+                <Image source={{ uri: media.src }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              ) : (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' }]}>
+                  <Ionicons name={isVideoPost(item) ? 'videocam' : 'image'} size={22} color={colors.faint} />
+                </View>
+              )}
+              {isVideoPost(item) ? <View style={styles.videoMark}><Ionicons name="play" size={12} color="#fff" /></View> : null}
+            </Pressable>
+          );
+        }}
+        contentContainerStyle={{ paddingBottom: 30, paddingTop: 0 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-      >
-        {/* Capa do perfil */}
-        <View style={styles.cover}>
-          {coverUri ? (
-            <Image source={{ uri: coverUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-          ) : (
-            <LinearGradient colors={gradients.brand} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
-          )}
-        </View>
-
-        <View style={styles.profileRow}>
-          <View style={styles.avatarWrap}><AvatarView user={profile} size={82} /></View>
-          <View style={styles.stats}>
-            <Stat label="Posts" value={compactNumber(mine.length)} />
-            <Pressable onPress={() => profile?.id && actions.push({ name: 'connections', userId: profile.id, mode: 'followers' })}><Stat label="Seguidores" value={compactNumber(counts.followers ?? profile?.followers ?? 0)} /></Pressable>
-            <Pressable onPress={() => profile?.id && actions.push({ name: 'connections', userId: profile.id, mode: 'following' })}><Stat label="Seguindo" value={compactNumber(counts.following ?? following.length)} /></Pressable>
+        onEndReached={() => { void loadMore(); }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={loadingMore ? <ActivityIndicator style={{ margin: 16 }} color={colors.primary} /> : undefined}
+        ListEmptyComponent={loadingInitial ? <ActivityIndicator style={{ margin: 24 }} color={colors.primary} /> : (
+          <View style={{ padding: spacing.xl, width: '100%' }}>
+            <EmptyState icon="person-circle-outline" title="Nenhuma publicação" text="Compartilhe suas primeiras fotos e vídeos." />
           </View>
-        </View>
-
-        <View style={{ paddingHorizontal: spacing.lg, gap: 4 }}>
-          <Text style={styles.name}>{profile?.name || 'Seu perfil'}</Text>
-          {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : <Text style={styles.bioMuted}>Adicione uma bio para as pessoas te conhecerem.</Text>}
-          {profile?.city ? <Text style={styles.meta}><Ionicons name="location-outline" size={13} color={colors.muted} /> {profile.city}</Text> : null}
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: spacing.lg, marginTop: 12 }}>
-          <View style={{ flex: 1 }}><GhostButton title="Editar perfil" onPress={() => actions.push({ name: 'editProfile' })} /></View>
-          <View style={{ flex: 1 }}><GhostButton title="Quiz BOOM!" icon="flame-outline" onPress={() => actions.openQuiz()} /></View>
-        </View>
-
-        <View style={styles.grid}>
-          {mine.length ? mine.map((post) => {
-            const media = firstMedia(post);
-            return (
-              <Pressable key={post.id} style={styles.gridItem} onPress={() => (isVideoPost(post) ? actions.push({ name: 'reels', postId: post.id }) : actions.push({ name: 'post', postId: post.id }))}>
-                {media?.src ? (
-                  <Image source={{ uri: media.src }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                ) : (
-                  <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' }]}>
-                    <Ionicons name={isVideoPost(post) ? 'videocam' : 'image'} size={22} color={colors.faint} />
-                  </View>
-                )}
-                {isVideoPost(post) ? <View style={styles.videoMark}><Ionicons name="play" size={12} color="#fff" /></View> : null}
-              </Pressable>
-            );
-          }) : (
-            <View style={{ padding: spacing.xl, width: '100%' }}>
-              <EmptyState icon="person-circle-outline" title="Nenhuma publicação" text="Compartilhe suas primeiras fotos e vídeos." />
-            </View>
-          )}
-        </View>
-      </ScrollView>
+        )}
+      />
     </SafeAreaView>
   );
 }
@@ -146,7 +184,7 @@ const styles = StyleSheet.create({
   bio: { color: colors.text, lineHeight: 20 },
   bioMuted: { color: colors.muted },
   meta: { color: colors.muted, marginTop: 2 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 16, paddingHorizontal: 1 },
-  gridItem: { width: '33.333%', aspectRatio: 1, padding: 1 },
+  row: { paddingHorizontal: 1, gap: 1 },
+  gridItem: { width: '33.333%', aspectRatio: 1 },
   videoMark: { position: 'absolute', top: 6, right: 6, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 10, padding: 4 },
 });

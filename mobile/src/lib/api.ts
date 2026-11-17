@@ -142,13 +142,13 @@ export async function fetchFeedPage(uidValue: string, offset = 0): Promise<FeedP
   return hydratePosts((data || []) as Row[], uidValue);
 }
 
-export async function fetchUserPosts(authorId: string, uidValue: string): Promise<FeedPage> {
+export async function fetchUserPosts(authorId: string, uidValue: string, offset = 0): Promise<FeedPage> {
   const { data, error } = await supabase
     .from('posts')
     .select('*')
     .eq('author_id', authorId)
     .order('created_at', { ascending: false })
-    .limit(60);
+    .range(offset, offset + PAGE_SIZE - 1);
   fail(error, 'Não foi possível carregar as publicações.');
   return hydratePosts((data || []) as Row[], uidValue);
 }
