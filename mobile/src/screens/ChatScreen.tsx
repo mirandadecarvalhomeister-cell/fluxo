@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   KeyboardAvoidingView,
@@ -323,15 +324,6 @@ export default function ChatScreen({ userId }: { userId: string }) {
             <Pressable onPress={() => onPickMedia(true)} style={styles.toolBtn} hitSlop={6}>
               <Ionicons name="camera-outline" size={22} color={colors.muted} />
             </Pressable>
-            <Pressable
-              onPressIn={startRecording}
-              onPressOut={finishRecording}
-              style={[styles.toolBtn, recording && styles.toolBtnRecording]}
-              hitSlop={6}
-              accessibilityLabel="Segure para gravar áudio"
-            >
-              <Ionicons name={recording ? 'radio' : 'mic-outline'} size={22} color={recording ? colors.pink : colors.muted} />
-            </Pressable>
             <TextInput
               value={text}
               onChangeText={setText}
@@ -340,9 +332,23 @@ export default function ChatScreen({ userId }: { userId: string }) {
               style={styles.input}
               multiline
             />
-            <Pressable onPress={onSend} disabled={(!text.trim() && !sending) || sending} style={[styles.sendBtn, ((!text.trim() && !sending) || sending) && { opacity: 0.5 }]}>
-              <Ionicons name="send" size={18} color="#fff" />
-            </Pressable>
+            {sending ? (
+              <View style={styles.sendBtn}><ActivityIndicator color="#fff" /></View>
+            ) : text.trim() ? (
+              <Pressable onPress={onSend} style={styles.sendBtn} hitSlop={6} accessibilityLabel="Enviar mensagem">
+                <Ionicons name="send" size={18} color="#fff" />
+              </Pressable>
+            ) : (
+              <Pressable
+                onPressIn={startRecording}
+                onPressOut={finishRecording}
+                style={[styles.sendBtn, recording && styles.sendBtnRecording]}
+                hitSlop={6}
+                accessibilityLabel="Segure para gravar áudio"
+              >
+                <Ionicons name={recording ? 'radio' : 'mic'} size={20} color="#fff" />
+              </Pressable>
+            )}
           </View>
           {showEmoji ? (
             <View style={styles.emojiBar}>
@@ -381,8 +387,8 @@ const styles = StyleSheet.create({
   attachTitle: { color: colors.text, fontWeight: '800', fontSize: 13 },
   attachText: { color: 'rgba(245,246,251,0.85)', fontSize: 12 },
   attachHint: { color: colors.cyan, fontSize: 11, fontWeight: '700' },
-  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, padding: 8, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bg },
-  toolBtn: { width: 36, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
+  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, paddingHorizontal: 10, paddingTop: 10, paddingBottom: 12, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bg },
+  toolBtn: { width: 34, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
   toolBtnRecording: { backgroundColor: `${colors.pink}33` },
   recBar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
   recDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.pink },
@@ -392,7 +398,8 @@ const styles = StyleSheet.create({
   emojiBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
   emojiText: { fontSize: 26 },
   input: { flex: 1, minHeight: 42, maxHeight: 120, borderRadius: 20, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 14, paddingVertical: 10 },
-  sendBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  sendBtnRecording: { backgroundColor: colors.pink },
   editBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 10, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
   editLabel: { color: colors.cyan, fontSize: 12, fontWeight: '700', marginBottom: 4 },
   editInput: { minHeight: 40, borderRadius: 12, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 12, paddingVertical: 8 },
