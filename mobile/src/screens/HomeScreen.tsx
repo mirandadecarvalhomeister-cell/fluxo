@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useState } from 'react';
+﻿import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -15,6 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
+import ReactionBar from '../components/ReactionBar';
+import FeedVideo from '../components/FeedVideo';
 import Interactive from '../components/Interactive';
 import { AvatarView, EmptyState, IconButton } from '../components/Ui';
 import { colors, radius, spacing } from '../lib/theme';
@@ -25,20 +27,12 @@ import type { Post } from '../types';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
-const REACTIONS = ['❤️', '🔥', '👏', '😂', '😮', '😢', '🎉', '💜'];
-
 function PostCard({ post }: { post: Post }) {
   const { users, actions } = useApp();
   const author = users[post.authorId];
   const media = firstMedia(post);
   const video = isVideoPost(post);
-  const [showReactions, setShowReactions] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-
-  const doReact = (emoji: string) => {
-    setShowReactions(false);
-    void actions.reactPost(post, emoji);
-  };
 
   const reportPost = () => {
     setShowMenu(false);
@@ -64,45 +58,29 @@ function PostCard({ post }: { post: Post }) {
       {post.text ? <Text style={styles.text}>{post.text}</Text> : null}
       <Interactive post={post} compact />
       {post.interactive?.format !== 'imageVote' && media ? (
-        <Pressable
-          onPress={() => (video ? actions.push({ name: 'reels', postId: post.id }) : actions.push({ name: 'post', postId: post.id }))}
-          style={styles.mediaWrap}
-        >
+        <View style={styles.mediaWrap}>
           {media.kind === 'photo' && media.src ? (
-            <Image source={{ uri: media.src }} style={styles.mediaFit} contentFit="contain" />
-          ) : media.src ? (
-            <View style={[styles.mediaFit, styles.videoStub]}>
-              <Ionicons name="play-circle" size={54} color="#fff" />
-              <Text style={styles.videoLabel}>Vídeo</Text>
-            </View>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => actions.push({ name: 'post', postId: post.id })}>
+              <Image source={{ uri: media.src }} style={styles.mediaFit} contentFit="contain" />
+            </Pressable>
+          ) : media.src && video ? (
+            <FeedVideo src={media.src} postId={post.id} seed={media.seed ?? undefined} />
           ) : (
             <View style={[styles.mediaFit, styles.videoStub]}>
               <Ionicons name={video ? 'videocam' : 'image'} size={40} color={colors.muted} />
             </View>
           )}
           {video ? (
-            <View style={styles.playBadge}>
+            <View style={styles.playBadge} pointerEvents="none">
               <Ionicons name="play" size={14} color="#fff" />
               <Text style={styles.playBadgeText}>Clips</Text>
             </View>
           ) : null}
-        </Pressable>
+        </View>
       ) : null}
 
       <View style={styles.actions}>
-        <Pressable
-          onPress={() => doReact(post.myReaction || '❤️')}
-          onLongPress={() => setShowReactions(true)}
-          style={styles.actionBtn}
-          hitSlop={6}
-        >
-          {post.myReaction ? (
-            <Text style={styles.reactionEmoji}>{post.myReaction}</Text>
-          ) : (
-            <Ionicons name="heart-outline" size={22} color={colors.text} />
-          )}
-          <Text style={styles.actionLabel}>{compactNumber(post.likes)}</Text>
-        </Pressable>
+        <ReactionBar post={post} compact />
         <Action icon="chatbubble-outline" label={compactNumber(post.commentCount)} onPress={() => actions.push({ name: 'comments', postId: post.id })} />
         <Action icon="paper-plane-outline" label="Enviar" onPress={() => actions.push({ name: 'shareToChat', postId: post.id })} />
         <Action icon="share-outline" label="Compartilhar" onPress={() => sharePostLink(post.id, post.text)} />
@@ -110,21 +88,6 @@ function PostCard({ post }: { post: Post }) {
         <Action icon={post.saved ? 'bookmark' : 'bookmark-outline'} color={post.saved ? colors.cyan : colors.text} label="" onPress={() => actions.toggleSave(post)} />
       </View>
     </View>
-
-    {/* Picker de reações */}
-    <Modal visible={showReactions} transparent animationType="fade" onRequestClose={() => setShowReactions(false)}>
-      <TouchableWithoutFeedback onPress={() => setShowReactions(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.reactionBar}>
-            {REACTIONS.map((emoji) => (
-              <Pressable key={emoji} onPress={() => doReact(emoji)} style={styles.reactionOption}>
-                <Text style={styles.reactionOptionEmoji}>{emoji}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      </TouchableWithoutFeedback>
-    </Modal>
 
     {/* Menu da publicação (3 pontinhos) */}
     <Modal visible={showMenu} transparent animationType="fade" onRequestClose={() => setShowMenu(false)}>
@@ -161,7 +124,14 @@ function Action({ icon, label, onPress, color = colors.text }: { icon: any; labe
 }
 
 export default function HomeScreen() {
-  const { posts, feedLoading, feedRefreshing, feedDone, actions } = useApp();
+  const { posts, feedLoading, feedRefreshing, feedDone, actions, setActiveVideoId } = useApp();
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 65 }).current;
+  const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
+    const visibleVideoId = (viewableItems || [])
+      .map((v: any) => v.item as Post)
+      .find((p: Post) => p && isVideoPost(p) && firstMedia(p)?.src)?.id || null;
+    setActiveVideoId(visibleVideoId);
+  }, [setActiveVideoId]);
 
   const renderItem = useCallback(({ item }: { item: Post }) => <PostCard post={item} />, []);
 
@@ -186,6 +156,8 @@ export default function HomeScreen() {
           renderItem={renderItem}
           contentContainerStyle={{ paddingBottom: 24 }}
           refreshControl={<RefreshControl refreshing={feedRefreshing} onRefresh={actions.refreshFeed} tintColor={colors.primary} />}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
           onEndReached={() => { if (!feedDone) actions.loadMore(); }}
           onEndReachedThreshold={0.4}
           ListEmptyComponent={<EmptyState icon="images-outline" title="Seu feed está vazio" text="Siga pessoas ou crie sua primeira publicação." />}
@@ -243,15 +215,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, gap: 14 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 4, paddingHorizontal: 4 },
   actionLabel: { color: colors.text, fontSize: 13, fontWeight: '600' },
-  reactionEmoji: { fontSize: 22, lineHeight: 24 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center' },
-  reactionBar: {
-    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6,
-    backgroundColor: colors.surface, borderRadius: radius.xl, padding: 14,
-    borderWidth: 1, borderColor: colors.border, maxWidth: '92%',
-  },
-  reactionOption: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt },
-  reactionOptionEmoji: { fontSize: 30 },
   postMenu: {
     width: '82%', maxWidth: 320, backgroundColor: colors.surface, borderRadius: radius.xl,
     borderWidth: 1, borderColor: colors.border, padding: 6, gap: 2,

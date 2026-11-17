@@ -1,5 +1,5 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, FlatList, Modal, Pressable, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,7 @@ import { useApp } from '../context/AppContext';
 import { colors, gradients } from '../lib/theme';
 import { AvatarView } from '../components/Ui';
 import { compactNumber } from '../lib/format';
+import { REACTION_CHOICES } from '../lib/interactive';
 import { isVideoPost, mediaOf } from '../lib/media';
 import { sharePostLink } from '../lib/share';
 import type { Post } from '../types';
@@ -25,6 +26,24 @@ function ReelItem({ post, active, onClose }: { post: Post; active: boolean; onCl
   const [isPortraitVideo, setIsPortraitVideo] = useState(true);
   const [muted, setMuted] = useState(!prefs.sound);
   const [playing, setPlaying] = useState(false);
+  const [showReactions, setShowReactions] = useState(false);
+  const [showVolume, setShowVolume] = useState(true);
+  const volumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const volumeOpacity = useRef(new Animated.Value(1)).current;
+
+  const revealVolume = useCallback(() => {
+    setShowVolume(true);
+    Animated.timing(volumeOpacity, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+    if (volumeTimer.current) clearTimeout(volumeTimer.current);
+    volumeTimer.current = setTimeout(() => {
+      Animated.timing(volumeOpacity, { toValue: 0, duration: 350, useNativeDriver: true }).start(() => setShowVolume(false));
+    }, 2800);
+  }, [volumeOpacity]);
+
+  useEffect(() => {
+    revealVolume();
+    return () => { if (volumeTimer.current) clearTimeout(volumeTimer.current); };
+  }, [revealVolume]);
 
   const player = useVideoPlayer(src, (p) => {
     p.loop = true;
@@ -81,7 +100,7 @@ function ReelItem({ post, active, onClose }: { post: Post; active: boolean; onCl
   return (
     <View style={styles.reel}>
       <StatusBar style="light" />
-      <Pressable style={StyleSheet.absoluteFill} onPress={togglePlay}>
+      <Pressable style={StyleSheet.absoluteFill} onPress={() => { togglePlay(); revealVolume(); }}>
         {src ? (
           <VideoView
             player={player}
@@ -104,11 +123,19 @@ function ReelItem({ post, active, onClose }: { post: Post; active: boolean; onCl
         </View>
       ) : null}
 
-      {/* Botão de volume no centro da tela (não intercepta o toque de play/pause) */}
+      {/* Botão de volume no centro: aparece ao tocar e some após ~3s */}
       <View pointerEvents="box-none" style={styles.volumeCenter}>
-        <Pressable onPress={() => setMuted((m) => !m)} hitSlop={12} style={styles.volumeBtn}>
-          <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={28} color="#fff" />
-        </Pressable>
+        {showVolume ? (
+          <Animated.View style={{ opacity: volumeOpacity }}>
+            <Pressable
+              onPress={() => { setMuted((m) => !m); revealVolume(); }}
+              hitSlop={12}
+              style={styles.volumeBtn}
+            >
+              <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={28} color="#fff" />
+            </Pressable>
+          </Animated.View>
+        ) : null}
       </View>
 
       <LinearGradient colors={gradients.top} pointerEvents="none" style={[styles.topGrad, { height: insets.top + 90 }]} />
@@ -123,7 +150,16 @@ function ReelItem({ post, active, onClose }: { post: Post; active: boolean; onCl
       </View>
 
       <View style={[styles.rail, { bottom: insets.bottom + 90 }]}>
-        <RailButton icon={post.liked ? 'heart' : 'heart-outline'} label={compactNumber(post.likes)} color={post.liked ? colors.pink : '#fff'} onPress={() => actions.toggleLike(post)} />
+        <Pressable onLongPress={() => setShowReactions(true)} onPress={() => actions.toggleLike(post)} style={styles.railBtn} hitSlop={8}>
+          <View style={styles.railIcon}>
+            {post.myReaction ? (
+              <Text style={{ fontSize: 26 }}>{post.myReaction}</Text>
+            ) : (
+              <Ionicons name="heart-outline" size={28} color="#fff" />
+            )}
+          </View>
+          <Text style={styles.railLabel}>{compactNumber(post.likes)}</Text>
+        </Pressable>
         <RailButton icon="chatbubble-ellipses-outline" label={compactNumber(post.commentCount)} onPress={() => actions.push({ name: 'comments', postId: post.id })} />
         <RailButton icon="paper-plane-outline" label="Enviar" onPress={() => actions.push({ name: 'shareToChat', postId: post.id })} />
         <RailButton icon="share-social-outline" label="Compartilhar" onPress={() => sharePostLink(post.id, post.text)} />
@@ -140,6 +176,24 @@ function ReelItem({ post, active, onClose }: { post: Post; active: boolean; onCl
         </Pressable>
         {post.text ? <Text style={styles.caption} numberOfLines={3}>{post.text}</Text> : null}
       </View>
+
+      <Modal visible={showReactions} transparent animationType="fade" onRequestClose={() => setShowReactions(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowReactions(false)}>
+          <View style={styles.rxBackdrop}>
+            <View style={styles.rxBar}>
+              {REACTION_CHOICES.slice(0, 10).map((emoji) => (
+                <Pressable
+                  key={emoji}
+                  onPress={() => { setShowReactions(false); void actions.reactPost(post, emoji); }}
+                  style={styles.rxOption}
+                >
+                  <Text style={styles.rxEmoji}>{emoji}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
@@ -258,6 +312,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
   circleBtnPlaceholder: { width: 38, height: 38 },
+  rxBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
+  rxBar: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '90%', padding: 12, borderRadius: 24, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  rxOption: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt },
+  rxEmoji: { fontSize: 26 },
   dataHint: {
     color: '#fff',
     fontSize: 12,

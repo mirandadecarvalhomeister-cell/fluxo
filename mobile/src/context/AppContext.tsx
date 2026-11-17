@@ -66,6 +66,8 @@ type AppContextValue = {
   route: Tab;
   stack: StackEntry[];
   prefs: Preferences;
+  activeVideoId: string | null;
+  setActiveVideoId: (id: string | null) => void;
   notifications: AppNotification[];
   notifSeen: number;
   unreadMessages: number;
@@ -155,6 +157,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [publishProgress, setPublishProgress] = useState('');
   const [online, setOnline] = useState(true);
   const [realtime, setRealtime] = useState<RealtimeStatus>('connecting');
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState('');
 
   const offsetRef = useRef(0);
@@ -399,20 +402,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'post_likes' },
         (payload: any) => {
-          const row = payload.new || payload.old || {};
-          const postId = String(row.post_id || '');
+          const postId = String((payload.new || payload.old || {}).post_id || '');
           if (!postId) return;
+          const emoji = String((payload.new || payload.old || {}).emoji || '❤️');
+          const actorId = String((payload.new || payload.old || {}).user_id || '');
           setPosts((current) =>
             current.map((post) => {
               if (post.id !== postId) return post;
-              const delta = payload.eventType === 'INSERT' ? 1 : payload.eventType === 'DELETE' ? -1 : 0;
-              return { ...post, likes: Math.max(0, post.likes + delta) };
+              const counts = { ...(post.reactionCounts || {}) };
+              let delta = 0;
+              if (payload.eventType === 'INSERT') {
+                delta = 1;
+                counts[emoji] = (counts[emoji] || 0) + 1;
+              } else if (payload.eventType === 'DELETE') {
+                delta = -1;
+                counts[emoji] = Math.max(0, (counts[emoji] || 0) - 1);
+              }
+              const myReaction =
+                actorId === uidValue
+                  ? payload.eventType === 'INSERT' ? emoji : (post.myReaction === emoji ? null : post.myReaction)
+                  : post.myReaction;
+              return {
+                ...post,
+                likes: Math.max(0, post.likes + delta),
+                liked: !!myReaction,
+                myReaction,
+                reactionCounts: counts,
+              };
             })
           );
-          if (payload.eventType === 'INSERT' && row.user_id !== uidValue) {
+          if (payload.eventType === 'INSERT' && actorId !== uidValue) {
             const target = postsRef.current.find((post) => post.id === postId);
             if (target?.authorId === uidValue && prefsRef.current.notifications) {
-              notifyLocally('Nova curtida', `${firstName(users[row.user_id]?.name || 'Alguém')} curtiu sua publicação.`, { postId });
+              notifyLocally('Nova reação', `${firstName(users[actorId]?.name || 'Alguém')} reagiu à sua publicação.`, { postId });
             }
           }
         }
@@ -1041,6 +1063,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     publishProgress,
     online,
     realtime,
+    activeVideoId,
+    setActiveVideoId,
     toastMessage,
     actions: {
       go,

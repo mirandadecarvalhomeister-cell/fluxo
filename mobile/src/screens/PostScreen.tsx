@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import StackHeader from '../components/StackHeader';
+import ReactionBar from '../components/ReactionBar';
 import Interactive from '../components/Interactive';
 import { AvatarView, EmptyState, GhostButton } from '../components/Ui';
 import { colors, spacing } from '../lib/theme';
@@ -58,7 +59,7 @@ export default function PostScreen({ postId }: { postId: string }) {
           </View>
         )) : null}
         <View style={styles.actions}>
-          <GhostButton title={`${compactNumber(post.likes)}`} icon={post.liked ? 'heart' : 'heart-outline'} onPress={() => actions.toggleLike(post)} />
+          <ReactionBar post={post} />
           <GhostButton title={`${compactNumber(post.commentCount)}`} icon="chatbubble-outline" onPress={() => actions.push({ name: 'comments', postId: post.id })} />
           <GhostButton title="Enviar" icon="paper-plane-outline" onPress={() => actions.push({ name: 'shareToChat', postId: post.id })} />
           <GhostButton title="Compartilhar" icon="share-outline" onPress={() => sharePostLink(post.id, post.text)} />
