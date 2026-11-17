@@ -142,6 +142,10 @@ export default function HomeScreen() {
           <Image source={require('../../assets/fluxo-logo.png')} style={styles.brandLogo} contentFit="contain" />
           <Text style={styles.logo}>Fluxo</Text>
         </View>
+        <Pressable onPress={() => actions.openQuiz()} style={styles.gamesTab} hitSlop={4} accessibilityLabel="Abrir jogos">
+          <Ionicons name="game-controller" size={15} color={colors.primary} />
+          <Text style={styles.gamesTabText}>JOGOS</Text>
+        </Pressable>
         <View style={{ flexDirection: 'row' }}>
           <IconButton name="notifications-outline" label="Notificações" onPress={() => actions.push({ name: 'notifications' })} />
           <IconButton name="settings-outline" label="Configurações" onPress={() => actions.push({ name: 'settings' })} />
@@ -182,6 +186,8 @@ const styles = StyleSheet.create({
   brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   brandLogo: { width: 30, height: 30 },
   logo: { color: colors.text, fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
+  gamesTab: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 14, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, marginLeft: 6 },
+  gamesTabText: { color: colors.primary, fontSize: 10, fontWeight: '900', letterSpacing: 0.6 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   card: {
     paddingVertical: 12,
