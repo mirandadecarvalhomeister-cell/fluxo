@@ -90,7 +90,13 @@
           "supportsPictureInPicture": true
         }
       ],
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "O Fluxo usa a câmera para fotografar, gravar clipes e iniciar lives."
+        }
+      ]
     ],
     "extra": {
       "eas": {

@@ -124,6 +124,9 @@ type AppContextValue = {
     mergeProfiles: (profiles: Profile[]) => void;
     mergePosts: (posts: Post[]) => void;
     deletePost: (postId: string) => Promise<void>;
+    editPost: (postId: string, text: string) => Promise<void>;
+    toggleCommentsDisabled: (postId: string) => Promise<void>;
+    feedFeedback: (postId: string, kind: 'notInterested' | 'lessLike' | 'muteTopic' | 'hideProfile', value?: string) => void;
     toast: (message: string) => void;
   };
 };
@@ -856,6 +859,61 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [toast]);
 
+  const editPost = useCallback(async (postId: string, text: string) => {
+    try {
+      await api.updatePost(postId, { text });
+      setPosts((current) => current.map((post) => post.id === postId ? { ...post, text } : post));
+      toast('Publicação atualizada');
+    } catch (error: any) {
+      toast(error?.message || 'Não foi possível editar.');
+    }
+  }, [toast]);
+
+  const toggleCommentsDisabled = useCallback(async (postId: string) => {
+    const post = postsRef.current.find((item) => item.id === postId);
+    if (!post) return;
+    const next = !post.commentsDisabled;
+    try {
+      await api.updatePost(postId, { commentsDisabled: next });
+      setPosts((current) => current.map((item) => item.id === postId ? { ...item, commentsDisabled: next } : item));
+      toast(next ? 'Comentários desativados' : 'Comentários ativados');
+    } catch (error: any) {
+      toast(error?.message || 'Não foi possível atualizar.');
+    }
+  }, [toast]);
+
+  const feedFeedback = useCallback((
+    postId: string,
+    kind: 'notInterested' | 'lessLike' | 'muteTopic' | 'hideProfile',
+    value?: string
+  ) => {
+    const post = postsRef.current.find((item) => item.id === postId);
+    if (!post) return;
+    setPrefs((current) => {
+      const next: Preferences = {
+        ...current,
+        hiddenPosts: [...new Set([...current.hiddenPosts, postId])],
+        mutedTopics: [...current.mutedTopics],
+        hiddenProfiles: [...current.hiddenProfiles],
+      };
+      if (kind === 'lessLike') {
+        const term = String(post.text || '').split(/\s+/).find((w) => w.length > 4);
+        if (term) next.mutedTopics = [...new Set([...next.mutedTopics, term])];
+        toast(term ? `Menos assuntos como “${term}”` : 'Vamos mostrar menos conteúdos assim');
+      } else if (kind === 'muteTopic') {
+        const term = String(value || '').trim();
+        if (term) next.mutedTopics = [...new Set([...next.mutedTopics, term])];
+        toast(term ? `Assunto “${term}” silenciado` : 'Assunto já silenciado');
+      } else if (kind === 'hideProfile') {
+        next.hiddenProfiles = [...new Set([...next.hiddenProfiles, post.authorId])];
+        toast('Publicações deste perfil ocultadas');
+      } else {
+        toast('Vamos mostrar menos conteúdos como este');
+      }
+      return next;
+    });
+  }, [toast]);
+
   const sendMessage = useCallback(async (
     userId: string,
     text: string,
@@ -1121,6 +1179,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       mergeProfiles,
       mergePosts,
       deletePost,
+      editPost,
+      toggleCommentsDisabled,
+      feedFeedback,
       toast,
     },
   }), [
@@ -1133,7 +1194,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     markNotificationsRead, loadNotifications, refreshThreads, openChat,
     sendMessage, editMessage, deleteMessage, markThreadRead, sharePostToChat,
     shareQuizResult, shareQuizChallenge, openQuiz,
-    mergeProfiles, mergePosts, deletePost, toast,
+    mergeProfiles, mergePosts, deletePost, editPost, toggleCommentsDisabled, feedFeedback, toast,
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

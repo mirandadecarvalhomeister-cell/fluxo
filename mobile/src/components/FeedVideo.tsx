@@ -1,62 +1,74 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEventListener } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useApp } from '../context/AppContext';
 import { colors } from '../lib/theme';
-import type { MediaItem } from '../types';
 
 /** Player de vídeo inline no feed: toca quando visível, pausa quando sai da tela. */
-export default function FeedVideo({ src, postId, seed }: { src: string; postId: string; seed?: string }) {
-  const { activeVideoId, setActiveVideoId, prefs } = useApp();
+export default function FeedVideo({ src, postId }: { src: string; postId: string; seed?: string }) {
+  const { activeVideoId, setActiveVideoId, prefs, actions } = useApp();
+  const [visible, setVisible] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const visibleRef = useRef(false);
-  const appActiveRef = useRef(AppState.currentState === 'active');
+  const [failed, setFailed] = useState(false);
+  const [appActive, setAppActive] = useState(AppState.currentState === 'active');
 
-  const player = useVideoPlayer({ uri: src }, (p) => {
+  // String source é o formato usado com sucesso no Clips (ReelsScreen).
+  const player = useVideoPlayer(src, (p) => {
     p.loop = true;
     p.muted = !prefs.sound;
   });
 
   useEventListener(player, 'playingChange', ({ isPlaying }: { isPlaying: boolean }) => setPlaying(isPlaying));
+  useEventListener(player, 'statusChange', ({ status }: { status: string }) => {
+    if (status === 'error') setFailed(true);
+    if (status === 'readyToPlay') setFailed(false);
+  });
 
-  // Sincroniza o player ativo global com a visibilidade e o estado do app.
   useEffect(() => {
-    const shouldPlay = visibleRef.current && activeVideoId === postId && appActiveRef.current && prefs.autoplay !== false;
+    const sub = AppState.addEventListener('change', (state) => setAppActive(state === 'active'));
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    const shouldPlay = visible && activeVideoId === postId && appActive && prefs.autoplay !== false && !failed;
     try {
       if (shouldPlay) player.play();
       else player.pause();
     } catch {}
-  }, [activeVideoId, postId, player, prefs.autoplay]);
+  }, [visible, activeVideoId, postId, appActive, prefs.autoplay, failed, player]);
 
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (state) => {
-      appActiveRef.current = state === 'active';
-      const shouldPlay = visibleRef.current && activeVideoId === postId && appActiveRef.current;
-      try { shouldPlay ? player.play() : player.pause(); } catch {}
-    });
-    return () => sub.remove();
-  }, [activeVideoId, postId, player]);
-
-  useEffect(() => {
-    return () => { try { player.pause(); } catch {} };
-  }, [player]);
+  useEffect(() => () => { try { player.pause(); } catch {} }, [player]);
 
   const onPress = () => {
-    if (activeVideoId === postId) setActiveVideoId(null);
-    else setActiveVideoId(postId);
+    if (failed) {
+      try { player.replace(src); setFailed(false); } catch {}
+      return;
+    }
+    setActiveVideoId(activeVideoId === postId ? null : postId);
   };
 
+  const openClips = () => actions.push({ name: 'reels', postId });
+
   return (
-    <View style={styles.wrap} onLayout={() => { visibleRef.current = true; }}>
+    <View style={styles.wrap} onLayout={() => setVisible(true)}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onPress}>
         <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} allowsPictureInPicture={false} />
-        {!playing ? (
+        {failed ? (
+          <View style={styles.failed}>
+            <Ionicons name="videocam-off-outline" size={30} color={colors.muted} />
+            <Text style={styles.failedText}>Não foi possível reproduzir</Text>
+            <Text style={styles.retry}>Toque para tentar novamente</Text>
+          </View>
+        ) : !playing ? (
           <View style={styles.overlay} pointerEvents="none">
             <View style={styles.playBtn}><Ionicons name="play" size={24} color="#fff" /></View>
           </View>
         ) : null}
+      </Pressable>
+      <Pressable onPress={openClips} style={styles.openBtn} hitSlop={8}>
+        <Ionicons name="expand-outline" size={16} color="#fff" />
       </Pressable>
     </View>
   );
@@ -66,4 +78,8 @@ const styles = StyleSheet.create({
   wrap: { width: '100%', height: '100%', backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
   overlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   playBtn: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
+  failed: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', gap: 6 },
+  failedText: { color: colors.text, fontSize: 13, fontWeight: '700' },
+  retry: { color: colors.cyan, fontSize: 11 },
+  openBtn: { position: 'absolute', top: 8, right: 8, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
 });

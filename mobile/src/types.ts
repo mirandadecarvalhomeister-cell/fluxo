@@ -221,4 +221,7 @@ export type Preferences = {
   sound: boolean;
   reduceMotion: boolean;
   notifications: boolean;
+  hiddenPosts: string[];
+  mutedTopics: string[];
+  hiddenProfiles: string[];
 };

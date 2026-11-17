@@ -10,6 +10,9 @@ export const DEFAULT_PREFERENCES: Preferences = {
   sound: false,
   reduceMotion: false,
   notifications: false,
+  hiddenPosts: [],
+  mutedTopics: [],
+  hiddenProfiles: [],
 };
 
 export async function loadPreferences(): Promise<Preferences> {

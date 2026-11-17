@@ -16,6 +16,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Room, RoomEvent, Track } from 'livekit-client';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { LinearGradient } from 'expo-linear-gradient';
 import { VideoView } from '@livekit/react-native';
 import { useApp } from '../context/AppContext';
 import StackHeader from '../components/StackHeader';
@@ -45,6 +47,7 @@ export default function LiveScreen({ channelId, host }: { channelId: string; hos
   const [micOn, setMicOn] = useState(host);
   const [facing, setFacing] = useState<'user' | 'environment'>('user');
   const [hearts, setHearts] = useState<Heart[]>([]);
+  const [camPerm] = useCameraPermissions();
   const roomRef = useRef<Room | null>(null);
   const mountedRef = useRef(true);
 
@@ -256,10 +259,17 @@ export default function LiveScreen({ channelId, host }: { channelId: string; hos
             <Text style={styles.stageSub}>O chat continua disponível abaixo.</Text>
           </View>
         ) : host ? (
-          <View style={styles.stageCenter}>
-            <Ionicons name="radio" size={34} color={colors.pink} />
-            <Text style={styles.stageText}>Você está ao vivo</Text>
-            <Text style={styles.stageSub}>Sua câmera e microfone estão sendo transmitidos.</Text>
+          <View style={StyleSheet.absoluteFill}>
+            {camPerm?.granted ? <CameraView style={StyleSheet.absoluteFill} facing="front" /> : null}
+            <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={styles.hostOverlay} pointerEvents="none" />
+            <View style={styles.hostBadge}>
+              <Ionicons name="radio" size={13} color="#fff" />
+              <Text style={styles.hostBadgeText}>AO VIVO</Text>
+            </View>
+            <View style={styles.hostCaption}>
+              <Text style={styles.stageText}>Você está ao vivo</Text>
+              <Text style={styles.stageSub}>Câmera e microfone sendo transmitidos.</Text>
+            </View>
           </View>
         ) : videoTrack ? (
           <Pressable style={StyleSheet.absoluteFill} onPress={sendHeart}>
@@ -348,6 +358,10 @@ const styles = StyleSheet.create({
   stageSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12, textAlign: 'center' },
   viewers: { position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.5)' },
   viewersText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  hostOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 140 },
+  hostBadge: { position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 14, backgroundColor: colors.pink },
+  hostBadgeText: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+  hostCaption: { position: 'absolute', bottom: 66, left: 0, right: 0, alignItems: 'center', gap: 4, paddingHorizontal: 20 },
   hostControls: { position: 'absolute', bottom: 12, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 10 },
   ctrl: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
   ctrlOff: { backgroundColor: 'rgba(180,40,60,0.85)' },
