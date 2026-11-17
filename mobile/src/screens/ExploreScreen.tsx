@@ -5,6 +5,7 @@ import {
   Easing,
   FlatList,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,11 +18,12 @@ import { Image } from 'expo-image';
 import { useApp } from '../context/AppContext';
 import { AvatarView, EmptyState, GhostButton, PrimaryButton } from '../components/Ui';
 import { colors, radius, spacing } from '../lib/theme';
+import { compactNumber } from '../lib/format';
 import { firstMedia, isVideoPost } from '../lib/media';
-import { searchWorkspace } from '../lib/api';
+import { fetchLiveChannels, searchWorkspace } from '../lib/api';
 import type { Post, Profile } from '../types';
 
-type Section = 'buscar' | 'adicionar' | 'radar';
+type Section = 'buscar' | 'adicionar' | 'radar' | 'lives';
 
 const STOP = new Set([
   'para', 'porque', 'quando', 'onde', 'como', 'sobre', 'entre', 'depois', 'antes',
@@ -71,6 +73,8 @@ export default function ExploreScreen() {
   const [remotePeople, setRemotePeople] = useState<Profile[]>([]);
   const [remotePosts, setRemotePosts] = useState<Post[]>([]);
   const [searching, setSearching] = useState(false);
+  const [liveChannels, setLiveChannels] = useState<any[]>([]);
+  const [loadingLives, setLoadingLives] = useState(false);
   const requestRef = useRef(0);
   const query = q.trim().toLowerCase();
 
@@ -119,6 +123,22 @@ export default function ExploreScreen() {
     return posts.filter((p) => p.text.toLowerCase().includes(query));
   }, [posts, remotePosts, query]);
 
+  // Lives ao vivo buscadas do backend quando a aba é aberta.
+  useEffect(() => {
+    if (section !== 'lives' || !online) return;
+    let active = true;
+    setLoadingLives(true);
+    void fetchLiveChannels()
+      .then(({ channels, profiles }) => {
+        if (!active) return;
+        setLiveChannels(channels);
+        if (profiles.length) mergeProfiles(profiles);
+      })
+      .catch(() => { if (active) setLiveChannels([]); })
+      .finally(() => { if (active) setLoadingLives(false); });
+    return () => { active = false; };
+  }, [section, online, mergeProfiles]);
+
   // Radar: assuntos em alta a partir das hashtags/palavras das publicações.
   const trending = useMemo(() => {
     const counts = new Map<string, { label: string; score: number }>();
@@ -162,10 +182,10 @@ export default function ExploreScreen() {
 
       {/* Sub-abas */}
       <View style={styles.segment}>
-        {(['buscar', 'adicionar', 'radar'] as Section[]).map((s) => (
+        {(['buscar', 'adicionar', 'lives', 'radar'] as Section[]).map((s) => (
           <Pressable key={s} onPress={() => setSection(s)} style={[styles.segmentBtn, section === s && styles.segmentOn]}>
             <Text style={[styles.segmentLabel, section === s && styles.segmentLabelOn]}>
-              {s === 'buscar' ? 'Buscar' : s === 'adicionar' ? 'Adicionar' : 'Radar'}
+              {s === 'buscar' ? 'Buscar' : s === 'adicionar' ? 'Adicionar' : s === 'lives' ? 'Lives' : 'Radar'}
             </Text>
           </Pressable>
         ))}
@@ -282,6 +302,37 @@ export default function ExploreScreen() {
           )) : <Text style={{ color: colors.muted }}>Nenhum assunto em alta ainda.</Text>}
         </ScrollView>
       ) : null}
+
+      {section === 'lives' ? (
+        <FlatList
+          data={liveChannels}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ padding: spacing.lg, gap: 10 }}
+          refreshControl={<RefreshControl refreshing={loadingLives} onRefresh={() => { void fetchLiveChannels().then(({ channels, profiles }) => { setLiveChannels(channels); if (profiles.length) mergeProfiles(profiles); }); }} tintColor={colors.primary} />}
+          renderItem={({ item }) => {
+            const owner = users[item.ownerId];
+            return (
+              <Pressable
+                style={styles.liveRow}
+                onPress={() => actions.push({ name: 'live', channelId: item.id, host: false })}
+              >
+                <AvatarView user={owner} size={44} />
+                <View style={{ flex: 1, gap: 3 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.liveName} numberOfLines={1}>{item.title || item.name}</Text>
+                    <View style={styles.liveBadge}><Text style={styles.liveBadgeText}>AO VIVO</Text></View>
+                  </View>
+                  <Text style={styles.liveMeta} numberOfLines={1}>{owner?.name || 'Anfitrião'} · {compactNumber(item.viewers)} assistindo</Text>
+                </View>
+                <Ionicons name="play-circle" size={26} color={colors.primary} />
+              </Pressable>
+            );
+          }}
+          ListEmptyComponent={loadingLives
+            ? <ActivityIndicator style={{ margin: 24 }} color={colors.primary} />
+            : <EmptyState icon="radio-outline" title="Nenhuma live agora" text="Quando alguém transmitir, aparece aqui." />}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -292,6 +343,11 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 24, fontWeight: '900' },
   communitiesBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 11, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
   communitiesText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
+  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  liveName: { color: colors.text, fontWeight: '800', fontSize: 14, flexShrink: 1 },
+  liveMeta: { color: colors.muted, fontSize: 12 },
+  liveBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: colors.pink },
+  liveBadgeText: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
   segment: { flexDirection: 'row', marginHorizontal: spacing.lg, marginBottom: 10, padding: 4, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
   segmentBtn: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: radius.pill },
   segmentOn: { backgroundColor: colors.primary },

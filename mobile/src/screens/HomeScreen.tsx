@@ -23,7 +23,7 @@ import { colors, radius, spacing } from '../lib/theme';
 import { compactNumber, timeAgo } from '../lib/format';
 import { firstMedia, isVideoPost } from '../lib/media';
 import { sharePostLink } from '../lib/share';
-import { fetchFollowingPage } from '../lib/api';
+import { createLiveChannel, fetchFollowingPage } from '../lib/api';
 import type { Post } from '../types';
 
 const { height: SCREEN_H } = Dimensions.get('window');
@@ -188,6 +188,20 @@ export default function HomeScreen() {
     else void loadFollowing(0, true);
   };
 
+  const startLive = async () => {
+    if (!profile?.id) { actions.toast('Entre na sua conta para transmitir.'); return; }
+    try {
+      const channel = await createLiveChannel({
+        ownerId: profile.id,
+        ownerName: profile.name || 'Você',
+        title: 'Ao vivo agora',
+      });
+      actions.push({ name: 'live', channelId: channel.id, host: true });
+    } catch (e: any) {
+      actions.toast(e?.message || 'Não foi possível iniciar a live.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <View style={styles.topBar}>
@@ -195,6 +209,10 @@ export default function HomeScreen() {
           <Image source={require('../../assets/fluxo-logo.png')} style={styles.brandLogo} contentFit="contain" />
           <Text style={styles.logo}>Fluxo</Text>
         </View>
+        <Pressable onPress={() => void startLive()} style={[styles.gamesTab, styles.liveTab]} hitSlop={4} accessibilityLabel="Iniciar live">
+          <Ionicons name="radio" size={15} color={colors.pink} />
+          <Text style={[styles.gamesTabText, { color: colors.pink }]}>AO VIVO</Text>
+        </Pressable>
         <Pressable onPress={() => actions.openQuiz()} style={styles.gamesTab} hitSlop={4} accessibilityLabel="Abrir jogos">
           <Ionicons name="game-controller" size={15} color={colors.primary} />
           <Text style={styles.gamesTabText}>JOGOS</Text>
@@ -256,6 +274,7 @@ const styles = StyleSheet.create({
   logo: { color: colors.text, fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
   gamesTab: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 14, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, marginLeft: 6 },
   gamesTabText: { color: colors.primary, fontSize: 10, fontWeight: '900', letterSpacing: 0.6 },
+  liveTab: { borderColor: colors.pink },
   feedModes: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: 6, gap: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
   modeBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: colors.surfaceAlt },
   modeBtnActive: { backgroundColor: colors.primary },
