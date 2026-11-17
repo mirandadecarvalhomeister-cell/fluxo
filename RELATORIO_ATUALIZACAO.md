@@ -12,6 +12,11 @@
 | Grade do perfil carregava só 60 posts fixos | `fetchUserPosts` paginado com `range`; `ProfileScreen` e `UserScreen` com `FlatList` 3 colunas + `onEndReached`. | Typecheck 0 erros. |
 | Navegação sem gestos e barra inferior grande | Swipe da borda para voltar/trocar aba, transições slide+fade e barra reduzida. | Typecheck 0 erros. |
 | **Erro "Algo saiu do fluxo" ao abrir Conexões no site** | O app criava canais com `kind: 'live'`, mas o site só conhecia `avisos`/`conversa`/`palco` em `KINDS` — `KINDS['live'][0]` lançava TypeError. Corrigido em 3 camadas: app passou a gravar `kind: 'palco'`; `KINDS` do site ganhou o alias `live`; `Connections.jsx` usa fallback `KINDS[kind] || KINDS.conversa`. Canal existente normalizado no banco. | 16/16 testes; build OK; deploy Cloudflare; `index-sIhCxIJl.js` no ar. |
+| **Vídeos não reproduziam no APK** | `FeedVideo` usava source em objeto (`{uri}`) e `visibleRef` sem re-render (race com `onViewableItemsChanged`). Migrado para source string (padrão que funciona no Clips), visibilidade com `useState`, `statusChange` para fallback e botão de retry/abrir Clips. | Typecheck 0 erros. |
+| **Tabela de emojis aparecia sempre no feed** | `ReactionBar` reescrita: só coração; picker aparece apenas ao segurar e some sozinho; curtir/descurtir alterna ❤️. | Typecheck 0 erros. |
+| **Posts com texto longo ficavam pequenos** | Texto limitado a 3 linhas com botão **Ler mais/Ler menos**; mídia mantém tamanho generoso. | Typecheck 0 erros. |
+| **Menu dos 3 pontinhos incompleto** | Agora replica o site: dono (editar, ativar/desativar comentários, compartilhar, copiar link, excluir) e terceiros (não tenho interesse, mostrar menos, silenciar assunto, ocultar perfil, deixar de seguir, compartilhar, copiar link, salvar, denunciar). Filtros locais persistem em `Preferences`. | Typecheck 0 erros. |
+| **Botão AO VIVO iniciava transmissão direto** | Movido para dentro de Criar; abre a câmera, mostra prévia e só inicia a live ao tocar **Iniciar live**. | Typecheck 0 erros. |
 
 ## 2. Novos recursos (integrados ao backend)
 
@@ -21,7 +26,8 @@
 - **Rascunhos locais**: editor salva texto, formato, opções, convites e mídia no AsyncStorage; restaura ao abrir, autosave e botão de descarte.
 - **Comunidades no mobile**: lista real do backend, entrar/sair com escrita em `community_members`, feed da comunidade paginado, capa/ícone/contagem de membros. Entrada pelo botão "Comunidades" em Explorar.
 - **Aba JOGOS no topo** do feed abrindo o Quiz BOOM! existente.
-- **Lives com LiveKit nativo (mesmo fluxo do site)** — `registerGlobals()` no entry point, token via Edge Function `livekit-token` com `role: host/viewer`, transmissão de câmera/microfone do celular, reprodução dos tracks remotos, controles de cam/mic/trocar câmera/sair, contagem de espectadores, corações com haptics e chat em tempo real. Botão **AO VIVO** no feed para transmitir e aba **Lives** no Explorar para assistir. Canal marcado offline ao encerrar.
+- **Fluxo de criação reformulado**: aba Criar abre direto na **câmera** (capturar foto, gravar vídeo segurando, trocar câmera, galeria); etapa de seleção com **+ para adicionar mais mídia** e **Avançar**; etapa de personalização com prévia temática, **6 estilos de cor**, escolha de capa e rodapé exclusivo com **Ao vivo / Enquete / Clips / Votação**, cada um com personalização própria (título da live, alternativas coloridas, estilos de clipe, legendas por imagem). Rodapé do app oculto nessa tela. Rascunho local preservado.
+- **Lives com LiveKit nativo (mesmo fluxo do site)** — `registerGlobals()` no entry point, token via Edge Function `livekit-token` com `role: host/viewer`, transmissão de câmera/microfone do celular, reprodução dos tracks remotos, controles de cam/mic/trocar câmera/sair, contagem de espectadores, corações com haptics, prévia da câmera para o anfitrião e chat em tempo real. A transmissão agora começa em **Criar → Ao vivo → Abrir câmera → Iniciar live**; aba **Lives** no Explorar para assistir. Canal marcado offline ao encerrar.
 - **Realtime cobre agora `comment_likes`** além das 10 tabelas anteriores.
 
 ## 3. Pendências de backend
