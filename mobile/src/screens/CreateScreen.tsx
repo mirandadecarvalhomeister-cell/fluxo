@@ -45,6 +45,16 @@ const THEMES: Theme[] = [
 const DRAFT_KEY = 'fluxo:post-draft';
 const emptyOptions = () => [{ id: 'opt-1', label: '' }, { id: 'opt-2', label: '' }];
 
+const CAPTURE_TYPES: { id: Fmt | 'clips' | 'live'; label: string; icon: any }[] = [
+  { id: 'classic', label: 'Publicação', icon: 'image-outline' },
+  { id: 'poll', label: 'Enquete', icon: 'stats-chart-outline' },
+  { id: 'question', label: 'Pergunta', icon: 'help-circle-outline' },
+  { id: 'imageVote', label: 'Votação', icon: 'images-outline' },
+  { id: 'challenge', label: 'Desafio', icon: 'flash-outline' },
+  { id: 'clips', label: 'Clips', icon: 'videocam-outline' },
+  { id: 'live', label: 'Ao vivo', icon: 'radio-outline' },
+];
+
 export default function CreateScreen() {
   const { actions, publishing, profile } = useApp();
   const [permission, requestPermission] = useCameraPermissions();
@@ -247,6 +257,21 @@ export default function CreateScreen() {
     setOptions((cur) => cur.filter((o) => o.id !== id));
   };
 
+  const selectCaptureType = (id: Fmt | 'clips' | 'live') => {
+    if (id === 'live') {
+      setLiveMode(true);
+      setFormat('classic');
+    } else {
+      setLiveMode(false);
+      setFormat(id === 'clips' ? 'classic' : id);
+    }
+    if (id === 'imageVote') {
+      setOptions(assets.slice(0, 6).map((_, i) => ({ id: `opt-${i}`, label: '', mediaIndex: i })));
+    }
+  };
+
+  const captureType = liveMode ? 'live' : format;
+
   const openPanel = (next: Exclude<Panel, null>) => {
     setPanel(next);
     if (next === 'live') setLiveMode(true);
@@ -272,6 +297,24 @@ export default function CreateScreen() {
                 <Ionicons name="camera-reverse-outline" size={24} color="#fff" />
               </Pressable>
             </View>
+            <View style={styles.captureTypes}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.captureTypesRow}>
+                {CAPTURE_TYPES.map((type) => {
+                  const active = captureType === type.id || (type.id === 'clips' && hasVideo && format === 'classic' && !liveMode);
+                  return (
+                    <Pressable
+                      key={type.id}
+                      onPress={() => selectCaptureType(type.id)}
+                      style={[styles.typeChip, active && styles.typeChipOn]}
+                    >
+                      <Ionicons name={type.icon} size={16} color={active ? '#fff' : 'rgba(255,255,255,0.85)'} />
+                      <Text style={[styles.typeChipText, active && { color: '#fff' }]}>{type.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
             <View style={styles.captureBottom}>
               <Text style={styles.captureHint}>
                 {recording ? '● Gravando… solte para parar' : liveMode ? 'Prepare a câmera para sua live' : 'Toque para fotografar · segure para gravar'}
@@ -560,6 +603,11 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   captureRoot: { flex: 1, backgroundColor: '#000' },
   captureTop: { flexDirection: 'row', justifyContent: 'space-between', padding: spacing.lg, paddingTop: 48 },
+  captureTypes: { position: 'absolute', top: 108, left: 0, right: 0 },
+  captureTypesRow: { paddingHorizontal: spacing.lg, gap: 8 },
+  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  typeChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  typeChipText: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '700' },
   roundBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
   captureBottom: { position: 'absolute', left: 0, right: 0, bottom: 30, alignItems: 'center', gap: 16 },
   captureHint: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '600' },
