@@ -93,7 +93,7 @@
 
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `a1f4076c`.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy `1f648700`.
 
 ## Fase 8 — Picker de emojis estilo mensageiro (concluído)
 
@@ -121,8 +121,10 @@
 - Clicar em uma categoria rola o quadro até a seção correspondente; busca continua filtrando em uma lista só.
 - Barra de categorias fixa no topo do quadro, com ícones visíveis e indicador na categoria ativa; linha de sugeridos removida.
 - **Bandeiras**: 61 SVGs do Noto servidos localmente em `public/emoji/flags/` — resolveram o problema em que a fonte mostrava só as iniciais (BR, US…). Válido no picker, mensagens e publicações.
+- Removido o botão de favoritos de cada emoji do picker (e a categoria Favoritos).
+- Emojis da tabela ampliados (30 px, 8 colunas no desktop e 7 no celular); ao escolher, o foco volta ao campo de texto para **Enter enviar**.
 - Migrations aplicadas no Supabase de produção: `migrate_channel_subscriptions.sql`, `migrate_communities_v2.sql`, `migrate_emoji_favorites.sql`.
 
 ## Commits desta rodada
 
-`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`, `d9191ec`, `6d49d70`, `1a4c197`, `595e4cf`, `bb09666`, `b5ebfc8`, `be70951`, `545d4bf`, `5147f08`.
+`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`, `d9191ec`, `6d49d70`, `1a4c197`, `595e4cf`, `bb09666`, `b5ebfc8`, `be70951`, `545d4bf`, `5147f08`, `9d855ef`.
