@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EMOJI_GROUPS } from '../lib/emojis';
 import { lsGet, lsSet } from '../lib/utils';
-import { useApp } from '../store/AppContext';
 import { Icon } from './Icon';
 import AnimatedEmoji from './AnimatedEmoji';
 
@@ -12,7 +11,6 @@ const ALL_EMOJIS = [...new Set(EMOJI_GROUPS.flatMap((g) => g.emojis))];
 // Ícones de linha para as categorias, no estilo dos mensageiros modernos.
 const CAT_PATHS = {
   recent: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
-  favorites: <path d="m12 3 2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.4l6-.8z" />,
   smileys: <><circle cx="12" cy="12" r="9" /><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0" /><path d="M9 9.5h.01M15 9.5h.01" /></>,
   love: <path d="M12 20s-7-4.4-9-9.2C1.6 7.4 3.7 4 7 4c2 0 3.5 1.1 5 3 1.5-1.9 3-3 5-3 3.3 0 5.4 3.4 4 6.8C19 15.6 12 20 12 20z" />,
   gestures: <path d="M7 12V6a1.5 1.5 0 0 1 3 0v5-6a1.5 1.5 0 0 1 3 0v6-5a1.5 1.5 0 0 1 3 0v6-3a1.5 1.5 0 0 1 3 0v6a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-3l-3-5a1.6 1.6 0 0 1 2.5-2z" />,
@@ -70,7 +68,6 @@ const readRecents = () => {
 };
 
 export default function EmojiPicker({ onPick, onClose, onStickers, embedded = false }) {
-  const { data, actions } = useApp();
   const [recents, setRecents] = useState(readRecents);
   const [active, setActive] = useState(recents.length ? 'recent' : EMOJI_GROUPS[0].key);
   const [query, setQuery] = useState('');
@@ -78,17 +75,14 @@ export default function EmojiPicker({ onPick, onClose, onStickers, embedded = fa
   const sectionRefs = useRef({});
   const activeRef = useRef(active);
   activeRef.current = active;
-  const favorites = data.emojiFavorites || [];
 
-  const groups = useMemo(() => {
-    const base = recents.length
-      ? [{ key: 'recent', label: 'Recentes', emojis: recents }, ...EMOJI_GROUPS]
-      : [...EMOJI_GROUPS];
-    if (favorites.length) {
-      base.unshift({ key: 'favorites', label: 'Favoritos', emojis: favorites });
-    }
-    return base;
-  }, [recents, favorites]);
+  const groups = useMemo(
+    () =>
+      recents.length
+        ? [{ key: 'recent', label: 'Recentes', emojis: recents }, ...EMOJI_GROUPS]
+        : [...EMOJI_GROUPS],
+    [recents]
+  );
 
   const results = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -166,17 +160,7 @@ export default function EmojiPicker({ onPick, onClose, onStickers, embedded = fa
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => pick(emoji)}
       >
-        <AnimatedEmoji emoji={emoji} size={26} />
-      </button>
-      <button
-        type="button"
-        className={`emoji-fav ${favorites.includes(emoji) ? 'on' : ''}`}
-        title={favorites.includes(emoji) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-        aria-label="Favoritar emoji"
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={() => actions.toggleEmojiFavorite(emoji)}
-      >
-        <Icon name="spark" />
+        <AnimatedEmoji emoji={emoji} size={32} />
       </button>
     </div>
   );

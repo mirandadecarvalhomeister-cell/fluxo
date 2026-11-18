@@ -1400,14 +1400,16 @@ export default function Messages() {
     const caret = start + emoji.length;
     caretRef.current = { start: caret, end: caret };
     setText(next);
-    // Não devolve o foco: no celular isso reabriria o teclado.
-    if (input && document.activeElement === input) {
+    // Devolve o foco ao campo para que Enter envie a mensagem após escolher.
+    requestAnimationFrame(() => {
+      if (!input) return;
+      input.focus();
       try {
         input.setSelectionRange(caret, caret);
       } catch {
         /* campo sem seleção */
       }
-    }
+    });
   };
 
   const openPicker = (tab = pickerTab) => {

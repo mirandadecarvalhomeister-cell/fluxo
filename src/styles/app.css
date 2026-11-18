@@ -1231,10 +1231,6 @@ mark{background:color-mix(in srgb,var(--accent) 30%,transparent);color:inherit;b
 .emoji-search input::placeholder{color:var(--muted)}
 .emoji-search button{border:0;background:transparent;color:var(--muted);font-size:20px;cursor:pointer}
 .emoji-tile-wrap{position:relative;display:grid;place-items:center}
-.emoji-fav{position:absolute;top:0;right:0;width:18px;height:18px;display:grid;place-items:center;border:0;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;opacity:0;transition:opacity .12s;cursor:pointer}
-.emoji-tile-wrap:hover .emoji-fav,.emoji-fav.on{opacity:1}
-.emoji-fav.on{color:#FFD54A}
-.emoji-fav .ic{width:11px;height:11px}
 
 /* Comunidades v2 — espaço próprio por comunidade. */
 .comm-space{display:grid;gap:16px}
@@ -1880,8 +1876,11 @@ html,body{max-width:100%;overflow-x:clip}
 .emoji-grid{display:block;position:relative;padding:0;gap:0}
 .emoji-section{position:relative;padding-top:2px}
 .emoji-section-label{position:sticky;top:0;z-index:1;padding:9px 14px 6px;background:var(--surface);font-weight:700;font-size:13px;color:var(--muted)}
-.emoji-section-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:2px;padding:0 10px 8px}
-@media (max-width:560px){.emoji-section-grid,.chat-picker .emoji-section-grid{grid-template-columns:repeat(8,1fr)}}
+.emoji-section-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;padding:0 10px 8px}
+.emoji-section-grid button{aspect-ratio:1;min-height:42px}
+.emoji-grid button .animated-emoji,.emoji-grid button .animated-emoji-fallback,
+.emoji-section-grid button .animated-emoji,.emoji-section-grid button .animated-emoji-fallback{width:30px;height:30px;font-size:30px;line-height:1}
+@media (max-width:560px){.emoji-section-grid,.chat-picker .emoji-section-grid{grid-template-columns:repeat(7,1fr)}}
 
 /* Barra fixa de categorias: sempre visível no topo do quadro. */
 .emoji-cats{position:sticky;top:0;z-index:5;flex:none;display:flex;justify-content:space-between;align-items:stretch;gap:2px;padding:6px 6px 0;min-height:46px;background:var(--surface);border-bottom:1px solid var(--line)}
