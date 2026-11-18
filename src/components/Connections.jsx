@@ -710,6 +710,7 @@ function Room({ channel }) {
 
 export default function Connections() {
   const { data, ui, actions } = useApp();
+  const [section, setSection] = useState('canais');
   const currentRoom = ui.room ? data.chans.find((c) => c.id === ui.room) : null;
   const missingRoom = Boolean(ui.room && !currentRoom);
   const actionsRef = useRef(actions);
@@ -784,7 +785,13 @@ export default function Connections() {
         </div>
       </div>
 
-      <div className="games-entry-grid">
+      <div className="seg" style={{ margin: '0 0 16px' }}>
+        <button className={section === 'canais' ? 'on' : ''} onClick={() => setSection('canais')}>Canais</button>
+        <button className={section === 'jogos' ? 'on' : ''} onClick={() => setSection('jogos')}>Jogos</button>
+      </div>
+
+      {section === 'jogos' ? (
+        <div className="games-entry-grid">
         <section className="card arena-entry quiz-entry">
           <div className="arena-entry-copy">
             <span className="pill acc">
@@ -817,8 +824,9 @@ export default function Connections() {
             <Icon name="play" /> Jogar agora
           </button>
         </section>
-      </div>
-
+        </div>
+      ) : (
+      <>
       <section style={{ marginBottom: 22 }}>
         <h2 className="h2" style={{ marginBottom: 10 }}>
           Ao vivo agora
@@ -862,6 +870,8 @@ export default function Connections() {
           )}
         </div>
       </section>
+      </>
+      )}
     </>
   );
 }
