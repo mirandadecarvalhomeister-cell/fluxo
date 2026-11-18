@@ -30,6 +30,7 @@ import { getConversation, uploadAudio, uploadMedia } from '../lib/api';
 import { colors, radius, spacing } from '../lib/theme';
 import { AvatarView, EmptyState } from '../components/Ui';
 import AudioBubble from '../components/AudioBubble';
+import AnimatedEmoji from '../components/AnimatedEmoji';
 import { timeAgo } from '../lib/format';
 import type { DirectMessage } from '../types';
 
@@ -116,6 +117,12 @@ function Attachment({ attachment, onOpenPost, onOpenQuiz, mine = false }: { atta
       <Text style={styles.attachText} numberOfLines={3}>{JSON.stringify(attachment).slice(0, 120)}</Text>
     </View>
   );
+}
+
+const EMOJI_ONLY_RE = /^(?:\p{Extended_Pictographic}|\uFE0F|\u200D|[\u{1F3FB}-\u{1F3FF}]){1,8}$/u;
+function isEmojiOnly(text?: string | null) {
+  const clean = String(text || '').trim();
+  return clean.length > 0 && clean.length <= 8 && EMOJI_ONLY_RE.test(clean);
 }
 
 function AttachOption({ icon, label, onPress }: { icon: any; label: string; onPress: () => void }) {
@@ -383,7 +390,11 @@ export default function ChatScreen({ userId }: { userId: string }) {
                 >
                   <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
                     {item.attachment ? <Attachment attachment={item.attachment} mine={mine} onOpenPost={(id) => actions.push({ name: 'post', postId: id })} onOpenQuiz={(id) => actions.openQuiz({ challengeId: id })} /> : null}
-                    {item.text ? <Text style={styles.bubbleText}>{item.text}</Text> : null}
+                    {isEmojiOnly(item.text) ? (
+                      <View style={styles.bigEmojis}>
+                        {Array.from(item.text!).map((emoji, i) => <AnimatedEmoji key={i} emoji={emoji} size={44} />)}
+                      </View>
+                    ) : item.text ? <Text style={styles.bubbleText}>{item.text}</Text> : null}
                     <View style={styles.bubbleMeta}>
                       {item.editedAt ? <Text style={styles.edited}>editado</Text> : null}
                       <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
@@ -452,7 +463,7 @@ export default function ChatScreen({ userId }: { userId: string }) {
             <View style={styles.emojiBar}>
               {['😀','😂','😍','🥰','😎','🤔','😢','😡','👍','👏','🙏','🔥','❤️','🎉','💯','✨'].map((emoji) => (
                 <Pressable key={emoji} onPress={() => { setText((cur) => cur + emoji); setShowEmoji(false); }} style={styles.emojiBtn}>
-                  <Text style={styles.emojiText}>{emoji}</Text>
+                  <AnimatedEmoji emoji={emoji} size={28} />
                 </Pressable>
               ))}
             </View>
@@ -484,6 +495,7 @@ const styles = StyleSheet.create({
   mine: { backgroundColor: colors.primary, borderBottomRightRadius: 6 },
   theirs: { backgroundColor: colors.surfaceAlt, borderBottomLeftRadius: 6 },
   bubbleText: { color: colors.text, fontSize: 15, lineHeight: 20 },
+  bigEmojis: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, alignItems: 'center' },
   bubbleMeta: { flexDirection: 'row', gap: 6, justifyContent: 'flex-end', alignItems: 'center' },
   time: { color: 'rgba(245,246,251,0.7)', fontSize: 11 },
   edited: { color: 'rgba(245,246,251,0.6)', fontSize: 11, fontStyle: 'italic' },

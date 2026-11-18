@@ -6,6 +6,7 @@ import { useApp } from '../context/AppContext';
 import { REACTION_CHOICES } from '../lib/interactive';
 import { colors, radius } from '../lib/theme';
 import { compactNumber } from '../lib/format';
+import AnimatedEmoji from './AnimatedEmoji';
 import type { Post } from '../types';
 
 const CHOICES = REACTION_CHOICES.slice(0, 8);
@@ -61,7 +62,7 @@ export default function ReactionBar({ post, compact = false }: { post: Post; com
         <View style={styles.picker}>
           {CHOICES.map((emoji) => (
             <Pressable key={emoji} onPress={() => react(emoji)} style={styles.option} hitSlop={4}>
-              <Text style={styles.optionEmoji}>{emoji}</Text>
+              <AnimatedEmoji emoji={emoji} size={26} />
             </Pressable>
           ))}
         </View>
@@ -78,7 +79,7 @@ export default function ReactionBar({ post, compact = false }: { post: Post; com
           accessibilityLabel={liked ? 'Remover curtida' : 'Curtir publicação (segure para reagir)'}
         >
           {liked ? (
-            <Text style={styles.myEmoji}>{post.myReaction}</Text>
+            <AnimatedEmoji emoji={post.myReaction || '❤️'} size={22} autoplay={false} />
           ) : (
             <Ionicons name="heart-outline" size={compact ? 20 : 22} color={colors.text} />
           )}
