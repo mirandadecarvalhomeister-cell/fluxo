@@ -206,6 +206,8 @@ function mergeWorkspace(base, ws, user) {
       by: asPerson(c.author_id),
       text: c.text,
       ts: new Date(c.created_at).getTime(),
+      liked: !!(ws.commentLikes?.mine || {})[c.id],
+      likes: (ws.commentLikes?.counts || {})[c.id] || 0,
     };
     (commentsByPost[c.post_id] ||= []).push(entry);
   });
@@ -1796,15 +1798,16 @@ export function AppProvider({ children }) {
             next.followers = [row.follower_id, ...followers];
           }
           next.me = { ...state.me, followers: (state.me.followers || 0) + 1 };
-        } else if (kind === 'like') {
+        } else if (kind === 'like' || kind === 'unlike') {
+          const delta = kind === 'like' ? 1 : -1;
           next.posts = state.posts.map((p) => {
             if (p.id !== row.post_id) return p;
             const emoji = row.emoji || '❤️';
             const counts = { ...(p.reactionCounts || {}) };
-            counts[emoji] = (counts[emoji] || 0) + 1;
+            counts[emoji] = Math.max(0, (counts[emoji] || 0) + delta);
             return {
               ...p,
-              likes: (p.likes || 0) + 1,
+              likes: Math.max(0, (p.likes || 0) + delta),
               reactionCounts: counts,
             };
           });
@@ -2807,6 +2810,27 @@ export function AppProvider({ children }) {
       ),
     }));
     if (sessionRef.current?.id) remote.addComment(comment, postId, sessionRef.current.id);
+  }
+
+  function reactComment(postId, commentId) {
+    const uidv = sessionRef.current?.id;
+    if (!uidv) return;
+    const post = dataRef.current?.posts.find((p) => p.id === postId);
+    const comment = post?.comments.find((c) => c.id === commentId);
+    if (!comment) return;
+    const like = !comment.liked;
+    setData((cur) => ({
+      ...cur,
+      posts: cur.posts.map((p) => p.id === postId
+        ? {
+            ...p,
+            comments: p.comments.map((c) => c.id === commentId
+              ? { ...c, liked: like, likes: Math.max(0, (c.likes || 0) + (like ? 1 : -1)) }
+              : c),
+          }
+        : p),
+    }));
+    remote.toggleCommentLikeRemote(commentId, uidv, like);
   }
 
   function deleteComment(postId, commentId) {
@@ -4868,6 +4892,7 @@ export function AppProvider({ children }) {
     openUser,
     reportPost,
     addComment,
+    reactComment,
     deleteComment,
     openEditPost,
     updatePost,

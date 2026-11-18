@@ -368,6 +368,7 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
     channelSubscriptions: (channelSubscriptions || []).map((row) => row.channel_id),
     communityExtras: await loadCommunityExtras((allComms || []).map((c) => c.id)),
     emojiFavorites: await loadEmojiFavorites(uid),
+    commentLikes: await loadCommentLikes(),
     localPostIds,
     localChanIds,
   };
@@ -892,6 +893,37 @@ export async function setCommunityMembership(communityId, uid, joined, role = 'm
   } catch (error) {
     warn(error);
   }
+}
+
+// Reações em comentários (tabela comment_likes).
+export async function loadCommentLikes() {
+  if (!enabled()) return { mine: {}, counts: {} };
+  try {
+    const uid = (await supabase.auth.getUser()).data.user?.id;
+    const { data, error } = await supabase.from('comment_likes').select('comment_id,user_id');
+    if (error) { warn(error); return { mine: {}, counts: {} }; }
+    const mine = {};
+    const counts = {};
+    (data || []).forEach((row) => {
+      counts[row.comment_id] = (counts[row.comment_id] || 0) + 1;
+      if (uid && row.user_id === uid) mine[row.comment_id] = true;
+    });
+    return { mine, counts };
+  } catch (error) {
+    warn(error);
+    return { mine: {}, counts: {} };
+  }
+}
+
+export async function toggleCommentLikeRemote(commentId, uid, like) {
+  if (!enabled() || !uid) return false;
+  try {
+    const { error } = like
+      ? await supabase.from('comment_likes').upsert({ comment_id: commentId, user_id: uid })
+      : await supabase.from('comment_likes').delete().eq('comment_id', commentId).eq('user_id', uid);
+    if (error) { warn(error); return false; }
+    return true;
+  } catch (error) { warn(error); return false; }
 }
 
 // Emojis favoritos (sincronizados por conta).
@@ -1806,6 +1838,11 @@ export function subscribeNotifications(uid, callback) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'post_likes' },
         (payload) => callback('like', payload.new)
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'post_likes' },
+        (payload) => callback('unlike', payload.old)
       )
       .on(
         'postgres_changes',

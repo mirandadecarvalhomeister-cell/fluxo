@@ -37,6 +37,17 @@ export function Comments({ post }) {
                   <p>
                     <TagText text={c.text} />
                   </p>
+                  <button
+                    type="button"
+                    className={`cm-like ${c.liked ? 'on' : ''}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      actions.reactComment(post.id, c.id);
+                    }}
+                    aria-label={c.liked ? 'Remover curtida' : 'Curtir comentário'}
+                  >
+                    <Icon name="heart" /> {c.likes > 0 ? c.likes : ''}
+                  </button>
                 </div>
                 {c.by === 'me' ? (
                   <button
