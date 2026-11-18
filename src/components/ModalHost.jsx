@@ -22,6 +22,7 @@ import MediaEditor, { EditOverlay } from './MediaEditor';
 import Post from './Post';
 import { PostThumb } from './Profile';
 import SearchModal from './SearchModal';
+import CommunitySpace from './CommunitySpace';
 
 function ProfileEditModal() {
   const { data, actions } = useApp();
@@ -2380,6 +2381,7 @@ const FOCUSABLE =
 
 export default function ModalHost() {
   const { data, ui, actions } = useApp();
+  const [commAdmin, setCommAdmin] = useState(false);
   const modal = ui.modal;
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
@@ -2387,6 +2389,10 @@ export default function ModalHost() {
   const modalRef = useRef(false);
 
   // Botão voltar fecha a janela/modal em vez de sair do app ou trocar de rota.
+  useEffect(() => {
+    setCommAdmin(false);
+  }, [modal?.id, modal?.type]);
+
   useEffect(() => {
     const wasOpen = modalRef.current;
     modalRef.current = !!modal;
@@ -2540,7 +2546,11 @@ export default function ModalHost() {
   } else if (modal.type === 'comm') {
     const community = data.comms.find((c) => c.id === modal.id);
     content = community ? (
-      <CommunityModal community={community} />
+      commAdmin ? (
+        <CommunityModal community={community} />
+      ) : (
+        <CommunitySpace community={community} onAdmin={() => setCommAdmin(true)} />
+      )
     ) : (
       <p className="muted">Comunidade indisponível.</p>
     );

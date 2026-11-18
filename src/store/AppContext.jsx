@@ -684,6 +684,7 @@ function mergeWorkspace(base, ws, user) {
     followers,
     posts,
     comms,
+    commExtras: ws.communityExtras || { gallery: [], events: [], rsvps: [], classifieds: [], notifications: [] },
     chans,
     chats,
     customStickerPacks,
@@ -3678,6 +3679,112 @@ export function AppProvider({ children }) {
     toast('Tópico removido');
   }
 
+  // --- Comunidades v2 ---
+  function addCommunityGalleryItem(entry) {
+    const row = { id: uid(), author_id: sessionRef.current?.id, created_at: new Date().toISOString(), ...entry };
+    setData((cur) => ({
+      ...cur,
+      commExtras: { ...cur.commExtras, gallery: [row, ...(cur.commExtras?.gallery || [])] },
+    }));
+    if (sessionRef.current?.id) remote.addCommunityGallery(row);
+    toast('Mídia adicionada à galeria');
+  }
+
+  function removeCommunityGalleryItem(id) {
+    setData((cur) => ({
+      ...cur,
+      commExtras: { ...cur.commExtras, gallery: (cur.commExtras?.gallery || []).filter((g) => g.id !== id) },
+    }));
+    remote.removeCommunityGallery(id);
+    toast('Mídia removida');
+  }
+
+  function addCommunityEventEntry(entry) {
+    const row = { id: uid(), created_by: sessionRef.current?.id, created_at: new Date().toISOString(), ...entry };
+    setData((cur) => ({
+      ...cur,
+      commExtras: { ...cur.commExtras, events: [row, ...(cur.commExtras?.events || [])] },
+    }));
+    if (sessionRef.current?.id) remote.addCommunityEvent(row);
+    toast('Evento criado');
+  }
+
+  function editCommunityEventEntry(id, patch) {
+    setData((cur) => ({
+      ...cur,
+      commExtras: { ...cur.commExtras, events: (cur.commExtras?.events || []).map((e) => e.id === id ? { ...e, ...patch } : e) },
+    }));
+    remote.updateCommunityEvent(id, patch);
+    toast('Evento atualizado');
+  }
+
+  function removeCommunityEventEntry(id) {
+    setData((cur) => ({
+      ...cur,
+      commExtras: { ...cur.commExtras, events: (cur.commExtras?.events || []).filter((e) => e.id !== id) },
+    }));
+    remote.removeCommunityEvent(id);
+    toast('Evento removido');
+  }
+
+  function toggleCommunityRsvpEntry(eventId) {
+    const uidv = sessionRef.current?.id;
+    if (!uidv) return;
+    const current = (dataRef.current?.commExtras?.rsvps || []).some((r) => r.event_id === eventId && r.user_id === uidv);
+    setData((cur) => ({
+      ...cur,
+      commExtras: {
+        ...cur.commExtras,
+        rsvps: current
+          ? (cur.commExtras?.rsvps || []).filter((r) => !(r.event_id === eventId && r.user_id === uidv))
+          : [...(cur.commExtras?.rsvps || []), { event_id: eventId, user_id: uidv }],
+      },
+    }));
+    remote.toggleCommunityRsvp(eventId, uidv, !current);
+    toast(current ? 'Presença cancelada' : 'Presença confirmada');
+  }
+
+  function addCommunityClassifiedEntry(entry) {
+    const row = { id: uid(), author_id: sessionRef.current?.id, created_at: new Date().toISOString(), status: 'active', ...entry };
+    setData((cur) => ({
+      ...cur,
+      commExtras: { ...cur.commExtras, classifieds: [row, ...(cur.commExtras?.classifieds || [])] },
+    }));
+    if (sessionRef.current?.id) remote.addCommunityClassified(row);
+    toast('Anúncio publicado');
+  }
+
+  function editCommunityClassifiedEntry(id, patch) {
+    setData((cur) => ({
+      ...cur,
+      commExtras: { ...cur.commExtras, classifieds: (cur.commExtras?.classifieds || []).map((c) => c.id === id ? { ...c, ...patch } : c) },
+    }));
+    remote.updateCommunityClassified(id, patch);
+    toast('Anúncio atualizado');
+  }
+
+  function removeCommunityClassifiedEntry(id) {
+    setData((cur) => ({
+      ...cur,
+      commExtras: { ...cur.commExtras, classifieds: (cur.commExtras?.classifieds || []).filter((c) => c.id !== id) },
+    }));
+    remote.removeCommunityClassified(id);
+    toast('Anúncio removido');
+  }
+
+  function pinCommunityTopic(commId, topicId) {
+    const topic = dataRef.current?.comms.find((c) => c.id === commId)?.topics.find((t) => t.id === topicId);
+    const pinned = !topic?.pinned;
+    setData((cur) => ({
+      ...cur,
+      comms: cur.comms.map((c) => c.id === commId
+        ? { ...c, topics: c.topics.map((t) => t.id === topicId ? { ...t, pinned } : t) }
+        : c),
+    }));
+    remote.setTopicPinned(topicId, pinned);
+    toast(pinned ? 'Tópico fixado' : 'Tópico desafixado');
+  }
+
   function openChat(id) {
     const chat = dataRef.current?.chats.find((c) => c.id === id);
     setData((cur) => ({
@@ -4808,6 +4915,16 @@ export function AppProvider({ children }) {
     removeModerator,
     addTopic,
     deleteTopic,
+    pinCommunityTopic,
+    addCommunityGalleryItem,
+    removeCommunityGalleryItem,
+    addCommunityEventEntry,
+    editCommunityEventEntry,
+    removeCommunityEventEntry,
+    toggleCommunityRsvpEntry,
+    addCommunityClassifiedEntry,
+    editCommunityClassifiedEntry,
+    removeCommunityClassifiedEntry,
     setCommSeed: (commSeed) => setUi((u) => ({ ...u, commSeed })),
     openChat,
     backChat: () => setUi((u) => ({ ...u, chatOpen: false })),

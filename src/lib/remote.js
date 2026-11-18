@@ -366,6 +366,7 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
     channelPolls,
     channelPollVotes,
     channelSubscriptions: (channelSubscriptions || []).map((row) => row.channel_id),
+    communityExtras: await loadCommunityExtras((allComms || []).map((c) => c.id)),
     localPostIds,
     localChanIds,
   };
@@ -890,6 +891,128 @@ export async function setCommunityMembership(communityId, uid, joined, role = 'm
   } catch (error) {
     warn(error);
   }
+}
+
+// --- Comunidades v2: galeria, eventos, classificados e notificações -------
+export async function loadCommunityExtras(communityIds) {
+  if (!enabled() || !communityIds?.length) {
+    return { gallery: [], events: [], rsvps: [], classifieds: [], notifications: [] };
+  }
+  try {
+    const [gallery, events, rsvps, classifieds, notifications] = await Promise.all([
+      safe(supabase.from('community_gallery').select('*').in('community_id', communityIds)),
+      safe(supabase.from('community_events').select('*').in('community_id', communityIds)),
+      safe(supabase.from('community_event_rsvps').select('*')),
+      safe(supabase.from('community_classifieds').select('*').in('community_id', communityIds)),
+      safe(supabase.from('community_notifications').select('*')),
+    ]);
+    return {
+      gallery: gallery || [], events: events || [], rsvps: rsvps || [],
+      classifieds: classifieds || [], notifications: notifications || [],
+    };
+  } catch (error) {
+    warn(error);
+    return { gallery: [], events: [], rsvps: [], classifieds: [], notifications: [] };
+  }
+}
+
+export async function addCommunityGallery(data) {
+  if (!enabled()) return false;
+  try {
+    const { error } = await supabase.from('community_gallery').insert(data);
+    if (error) { warn(error); return false; }
+    return true;
+  } catch (error) { warn(error); return false; }
+}
+
+export async function removeCommunityGallery(id) {
+  if (!enabled()) return false;
+  try {
+    const { error } = await supabase.from('community_gallery').delete().eq('id', id);
+    if (error) { warn(error); return false; }
+    return true;
+  } catch (error) { warn(error); return false; }
+}
+
+export async function addCommunityEvent(data) {
+  if (!enabled()) return null;
+  try {
+    const { data: row, error } = await supabase.from('community_events').insert(data).select().single();
+    if (error) { warn(error); return null; }
+    return row;
+  } catch (error) { warn(error); return null; }
+}
+
+export async function updateCommunityEvent(id, patch) {
+  if (!enabled()) return false;
+  try {
+    const { error } = await supabase.from('community_events').update(patch).eq('id', id);
+    if (error) { warn(error); return false; }
+    return true;
+  } catch (error) { warn(error); return false; }
+}
+
+export async function removeCommunityEvent(id) {
+  if (!enabled()) return false;
+  try {
+    const { error } = await supabase.from('community_events').delete().eq('id', id);
+    if (error) { warn(error); return false; }
+    return true;
+  } catch (error) { warn(error); return false; }
+}
+
+export async function toggleCommunityRsvp(eventId, uid, join) {
+  if (!enabled()) return false;
+  try {
+    const { error } = join
+      ? await supabase.from('community_event_rsvps').upsert({ event_id: eventId, user_id: uid })
+      : await supabase.from('community_event_rsvps').delete().eq('event_id', eventId).eq('user_id', uid);
+    if (error) { warn(error); return false; }
+    return true;
+  } catch (error) { warn(error); return false; }
+}
+
+export async function addCommunityClassified(data) {
+  if (!enabled()) return null;
+  try {
+    const { data: row, error } = await supabase.from('community_classifieds').insert(data).select().single();
+    if (error) { warn(error); return null; }
+    return row;
+  } catch (error) { warn(error); return null; }
+}
+
+export async function updateCommunityClassified(id, patch) {
+  if (!enabled()) return false;
+  try {
+    const { error } = await supabase.from('community_classifieds').update(patch).eq('id', id);
+    if (error) { warn(error); return false; }
+    return true;
+  } catch (error) { warn(error); return false; }
+}
+
+export async function removeCommunityClassified(id) {
+  if (!enabled()) return false;
+  try {
+    const { error } = await supabase.from('community_classifieds').delete().eq('id', id);
+    if (error) { warn(error); return false; }
+    return true;
+  } catch (error) { warn(error); return false; }
+}
+
+export async function setCommunityNotificationRead(id) {
+  if (!enabled()) return;
+  try {
+    await supabase.from('community_notifications').update({ read: true }).eq('id', id);
+  } catch (error) { warn(error); }
+}
+
+export async function setTopicPinned(id, pinned) {
+  if (!enabled()) return false;
+  try {
+    const { error } = await supabase.from('topics').update({ pinned }).eq('id', id);
+    if (error) { warn(error); return false; }
+    return true;
+  } catch (error) { warn(error); return false; }
 }
 
 // Inscrição em canais (modelo YouTube).
