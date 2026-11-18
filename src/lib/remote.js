@@ -265,6 +265,7 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
     stickerRows,
     channelPolls,
     channelPollVotes,
+    channelSubscriptions,
   ] = await Promise.all([
     safe(
       supabase
@@ -312,6 +313,7 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
     safe(supabase.from('stickers').select('*')),
     safe(supabase.from('channel_polls').select('*')),
     safe(supabase.from('channel_poll_votes').select('*')),
+    safe(supabase.from('channel_subscriptions').select('channel_id').eq('user_id', uid)),
   ]);
 
   const follows = allFollows
@@ -363,6 +365,7 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
     stickerRows,
     channelPolls,
     channelPollVotes,
+    channelSubscriptions: (channelSubscriptions || []).map((row) => row.channel_id),
     localPostIds,
     localChanIds,
   };
@@ -886,6 +889,45 @@ export async function setCommunityMembership(communityId, uid, joined, role = 'm
     }
   } catch (error) {
     warn(error);
+  }
+}
+
+// Inscrição em canais (modelo YouTube).
+export async function loadChannelSubscriptions(uid) {
+  if (!enabled() || !uid) return [];
+  try {
+    const { data, error } = await supabase
+      .from('channel_subscriptions')
+      .select('channel_id')
+      .eq('user_id', uid);
+    if (error) { warn(error); return []; }
+    return (data || []).map((row) => row.channel_id);
+  } catch (error) {
+    warn(error);
+    return [];
+  }
+}
+
+export async function setChannelSubscription(channelId, uid, subscribe) {
+  if (!enabled() || !uid) return false;
+  try {
+    if (subscribe) {
+      const { error } = await supabase
+        .from('channel_subscriptions')
+        .upsert({ channel_id: channelId, user_id: uid });
+      if (error) { warn(error); return false; }
+    } else {
+      const { error } = await supabase
+        .from('channel_subscriptions')
+        .delete()
+        .eq('channel_id', channelId)
+        .eq('user_id', uid);
+      if (error) { warn(error); return false; }
+    }
+    return true;
+  } catch (error) {
+    warn(error);
+    return false;
   }
 }
 

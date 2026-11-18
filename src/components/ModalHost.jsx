@@ -881,17 +881,21 @@ function NewChannelModal() {
   const { actions } = useApp();
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
-  const [kind, setKind] = useState('avisos');
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
         if (!name.trim()) return;
-        actions.createChannel({ name: name.trim(), desc: desc.trim(), kind });
+        actions.createChannel({ name: name.trim(), desc: desc.trim(), kind: 'palco' });
       }}
     >
       <h2>Criar canal</h2>
+      <p className="muted sm" style={{ marginBottom: 12 }}>
+        Seu canal reúne seus vídeos. Quem se inscreve acompanha seus lançamentos
+        e pode curtir, comentar e compartilhar. Com um canal criado você também
+        pode iniciar lives.
+      </p>
       <div className="field">
         <label htmlFor="chName">Nome do canal</label>
         <input
@@ -912,58 +916,11 @@ function NewChannelModal() {
           className="in"
           id="chDesc"
           type="text"
-          maxLength={100}
-          placeholder="Do que se trata?"
+          maxLength={140}
+          placeholder="Do que se trata seu canal?"
           value={desc}
           onChange={(event) => setDesc(event.target.value)}
         />
-      </div>
-      <div className="field">
-        <label>Tipo</label>
-        <div className="radios">
-          <label>
-            <input
-              type="radio"
-              name="chKind"
-              value="avisos"
-              checked={kind === 'avisos'}
-              onChange={() => setKind('avisos')}
-            />
-            <span>
-              <b>Avisos</b>
-              <br />
-              <span className="muted sm">Só você publica; os outros reagem.</span>
-            </span>
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="chKind"
-              value="conversa"
-              checked={kind === 'conversa'}
-              onChange={() => setKind('conversa')}
-            />
-            <span>
-              <b>Conversa</b>
-              <br />
-              <span className="muted sm">Sala aberta, todo mundo escreve.</span>
-            </span>
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="chKind"
-              value="palco"
-              checked={kind === 'palco'}
-              onChange={() => setKind('palco')}
-            />
-            <span>
-              <b>Palco ao vivo</b>
-              <br />
-              <span className="muted sm">Transmissões com chat ao lado.</span>
-            </span>
-          </label>
-        </div>
       </div>
       <button className="btn primary block" type="submit">
         Criar canal

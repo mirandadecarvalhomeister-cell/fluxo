@@ -340,6 +340,65 @@ function NewPollForm({ channel }) {
   );
 }
 
+function ChannelVideos({ channel, author }) {
+  const { data, actions } = useApp();
+  const ownerId = typeof channel.owner === 'string' ? channel.owner : author?.id;
+  const videos = (data.posts || [])
+    .filter((p) => p.kind === 'video' && (p.by === 'me' ? 'me' : p.by?.id) === ownerId)
+    .sort((a, b) => b.ts - a.ts);
+
+  if (!videos.length) {
+    return (
+      <section style={{ margin: '0 0 22px' }}>
+        <h2 className="h2" style={{ marginBottom: 10 }}>Vídeos do canal</h2>
+        <Empty
+          title="Nenhum vídeo ainda"
+          text={channel.owner === 'me'
+            ? 'Publique um vídeo no feed e ele aparecerá aqui.'
+            : 'Este canal ainda não publicou vídeos.'}
+        />
+      </section>
+    );
+  }
+
+  return (
+    <section style={{ margin: '0 0 22px' }}>
+      <div className="sechead">
+        <h2 className="h2">Vídeos do canal</h2>
+        <span className="muted sm">{videos.length} vídeo(s)</span>
+      </div>
+      <div className="channel-video-grid">
+        {videos.map((post) => {
+          const src = post.src || post.media?.[0]?.src;
+          return (
+            <button
+              type="button"
+              key={post.id}
+              className="channel-video-card"
+              onClick={() => actions.openPost(post.id)}
+            >
+              <div className="channel-video-thumb">
+                {src ? (
+                  <video src={src} muted preload="metadata" playsInline />
+                ) : (
+                  <div className="channel-video-ph"><Icon name="video" /></div>
+                )}
+                <span className="channel-video-play"><Icon name="play" /></span>
+              </div>
+              <div className="channel-video-info">
+                <b className="ell">{post.text || 'Vídeo'}</b>
+                <span className="muted sm">
+                  {fmt(post.likes || 0)} curtidas · {(post.comments || []).length} comentários
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function Room({ channel }) {
   const { data, ui, actions } = useApp();
   const [text, setText] = useState('');
@@ -449,14 +508,26 @@ function Room({ channel }) {
             <Icon name="trash" />
           </button>
         ) : (
-          <button
-            className={`btn ${channel.joined ? 'ghost' : 'primary'}`}
-            onClick={actions.joinRoom}
-          >
-            {channel.joined ? 'Sair do canal' : 'Entrar no canal'}
-          </button>
+          <>
+            <button
+              className={`btn ${channel.subscribed ? 'ghost' : 'primary'}`}
+              onClick={() => actions.toggleChannelSubscription(channel.id)}
+            >
+              {channel.subscribed ? 'Inscrito' : 'Inscrever-se'}
+            </button>
+            <button
+              className={`btn ${channel.joined ? 'ghost' : 'tonal'}`}
+              onClick={actions.joinRoom}
+            >
+              {channel.joined ? 'Sair' : 'Entrar'}
+            </button>
+          </>
         )}
       </div>
+
+      {!live ? (
+        <ChannelVideos channel={channel} author={author} />
+      ) : null}
 
       <div className={`room-grid${liveStage ? ' room-live' : ''}`}>
         <div style={{ minWidth: 0 }}>

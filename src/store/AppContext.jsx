@@ -426,12 +426,13 @@ function mergeWorkspace(base, ws, user) {
       name: c.name,
       desc: c.description || '',
       kind: c.kind || 'conversa',
-      followers: chanMemberCounts.get(c.id) || 0,
+      followers: Number(c.followers) || 0,
       live: !!c.is_live,
       livekit: !!c.livekit,
       title: c.title || '',
       viewers: c.viewers || 0,
       joined: ws.chanMembers.has(c.id),
+      subscribed: (ws.channelSubscriptions || []).includes(c.id),
       seed: c.seed || c.id + '-palco',
       polls: (ws.channelPolls || [])
         .filter((poll) => poll.channel_id === c.id)
@@ -4007,6 +4008,22 @@ export function AppProvider({ children }) {
     toast('Canal criado');
   }
 
+  function toggleChannelSubscription(channelId) {
+    const channel = dataRef.current?.chans.find((c) => c.id === channelId);
+    if (!channel) return;
+    const subscribe = !channel.subscribed;
+    setData((cur) => ({
+      ...cur,
+      chans: cur.chans.map((c) => c.id === channelId
+        ? { ...c, subscribed: subscribe, followers: Math.max(0, (c.followers || 0) + (subscribe ? 1 : -1)) }
+        : c),
+    }));
+    if (sessionRef.current?.id) {
+      remote.setChannelSubscription(channelId, sessionRef.current.id, subscribe);
+    }
+    toast(subscribe ? `Você se inscreveu em ${channel.name}` : `Você saiu de ${channel.name}`);
+  }
+
   function deleteChannel(id) {
     const channel = dataRef.current?.chans.find((c) => c.id === id);
     if (!channel || channel.owner !== 'me') return;
@@ -4827,6 +4844,7 @@ export function AppProvider({ children }) {
     },
     joinRoom,
     createChannel,
+    toggleChannelSubscription,
     deleteChannel,
     toggleLiveAlert,
     toggleChatMute,
@@ -4840,7 +4858,15 @@ export function AppProvider({ children }) {
     openEditProfile: () => setUi((u) => ({ ...u, modal: { type: 'profile' } })),
     openNewComm: () => setUi((u) => ({ ...u, modal: { type: 'newcomm' } })),
     openNewChannel: () => setUi((u) => ({ ...u, modal: { type: 'newchan' } })),
-    openLive: () => setUi((u) => ({ ...u, modal: { type: 'live' } })),
+    openLive: () => {
+      const hasChannel = (dataRef.current?.chans || []).some((c) => c.owner === 'me');
+      if (!hasChannel) {
+        toast('Crie um canal antes de iniciar uma live.');
+        setUi((u) => ({ ...u, modal: { type: 'newchan' } }));
+        return;
+      }
+      setUi((u) => ({ ...u, modal: { type: 'live' } }));
+    },
   };
 
   const value = {
