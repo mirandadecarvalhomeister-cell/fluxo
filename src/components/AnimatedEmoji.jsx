@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import lottie from 'lottie-web';
-import { animatedEmojiUrl, getEmojiAnimation } from '../lib/animatedEmoji';
+import { animatedEmojiUrl, flagCode, getEmojiAnimation } from '../lib/animatedEmoji';
+import FlagEmoji from './FlagEmoji';
 
 /** Renderiza um emoji animado do Noto; cai para o Unicode se não houver assets. */
 export default function AnimatedEmoji({ emoji, size = 44, autoplay = true, loop = false, className = '' }) {
@@ -46,6 +47,9 @@ export default function AnimatedEmoji({ emoji, size = 44, autoplay = true, loop 
   const replay = () => { if (animRef.current) animRef.current.goToAndPlay(0, true); };
 
   if (!url || failed) {
+    if (flagCode(emoji)) {
+      return <FlagEmoji emoji={emoji} size={size} className={className} />;
+    }
     return <span className={`animated-emoji-fallback ${className}`} style={{ fontSize: size, lineHeight: 1 }}>{emoji}</span>;
   }
 

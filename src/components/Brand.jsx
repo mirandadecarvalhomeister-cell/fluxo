@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { logo } from '../lib/art';
 import { splitTags } from '../lib/utils';
 import { useApp } from '../store/AppContext';
+import { flagCode } from '../lib/animatedEmoji';
+import FlagEmoji from './FlagEmoji';
 
 const ASSET_VERSION = '6';
 
@@ -18,9 +20,13 @@ function renderWithEmojis(text) {
     if (part) nodes.push(<span key={`t${i}`}>{part}</span>);
     if (emojis[i]) {
       nodes.push(
-        <span className="msg-emoji" key={`e${i}`}>
-          {emojis[i]}
-        </span>
+        flagCode(emojis[i]) ? (
+          <FlagEmoji key={`e${i}`} emoji={emojis[i]} size={20} className="msg-emoji" />
+        ) : (
+          <span className="msg-emoji" key={`e${i}`}>
+            {emojis[i]}
+          </span>
+        )
       );
     }
     return nodes;

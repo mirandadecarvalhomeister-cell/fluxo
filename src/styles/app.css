@@ -1895,3 +1895,8 @@ html,body{max-width:100%;overflow-x:clip}
 @media (max-width:820px){
   .comm-chat-picker{position:fixed;left:0;right:0;bottom:0;width:100%;max-width:100%;border-radius:18px 18px 0 0;padding-bottom:env(safe-area-inset-bottom,0px);max-height:min(560px,78dvh)}
 }
+
+/* Bandeiras: SVG local evita que a fonte mostre só as iniciais (BR, US…). */
+.flag-emoji{display:inline-block;vertical-align:-0.14em;object-fit:contain;border-radius:2px;flex:none}
+.flag-emoji.msg-emoji{width:1.25em;height:1.25em}
+.emoji-grid .flag-emoji,.emoji-suggested .flag-emoji{vertical-align:middle}

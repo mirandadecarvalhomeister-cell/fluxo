@@ -184,6 +184,18 @@ export function hasAnimatedEmoji(emoji) {
   return Boolean(ANIMATED[emoji]);
 }
 
+// Bandeiras não têm Lottie no catálogo do Google: são servidas como SVG local.
+export function flagCode(emoji) {
+  const points = [...String(emoji || '')].map((char) => char.codePointAt(0));
+  if (
+    points.length === 2 &&
+    points.every((point) => point >= 0x1f1e6 && point <= 0x1f1ff)
+  ) {
+    return points.map((point) => point.toString(16)).join('_');
+  }
+  return null;
+}
+
 export function animatedEmojiUrl(emoji) {
   const code = ANIMATED[emoji];
   return code ? `/emoji/${code}.json` : null;
