@@ -3,6 +3,7 @@ import { EMOJI_GROUPS } from '../lib/emojis';
 import { lsGet, lsSet } from '../lib/utils';
 import { useApp } from '../store/AppContext';
 import { Icon } from './Icon';
+import AnimatedEmoji from './AnimatedEmoji';
 
 const RECENT_KEY = 'fluxo.emojis.recent';
 const MAX_RECENT = 24;
@@ -136,7 +137,7 @@ export default function EmojiPicker({ onPick, onClose, embedded = false }) {
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => pick(emoji)}
             >
-              {emoji}
+              <AnimatedEmoji emoji={emoji} size={26} />
             </button>
             <button
               type="button"

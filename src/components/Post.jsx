@@ -7,6 +7,7 @@ import { userOf } from '../lib/selectors';
 import { useCompact } from '../lib/useCompact';
 import { ago, fmt, fmtDur } from '../lib/utils';
 import { fxFor, REACTIONS as REACTIONS_PADRAO } from '../lib/reactionFx';
+import AnimatedEmoji from './AnimatedEmoji';
 import { useApp } from '../store/AppContext';
 import { LiveAvatar } from './Avatar';
 import { TagText, Verified } from './Brand';
@@ -495,7 +496,7 @@ export default function Post({ post, detail = false }) {
                 onClick={() => handleReact(emoji)}
                 aria-label={`Reagir com ${emoji}`}
               >
-                {emoji}
+                <AnimatedEmoji emoji={emoji} size={24} />
               </button>
             ))}
             <button

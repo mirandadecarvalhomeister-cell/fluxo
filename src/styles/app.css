@@ -1186,6 +1186,13 @@ mark{background:color-mix(in srgb,var(--accent) 30%,transparent);color:inherit;b
 .pgitem .pgvideo-src{width:100%;height:100%;object-fit:cover;display:block}
 .pgov{gap:12px;font-size:11px}
 
+/* Emojis animados do Noto. */
+.animated-emoji-fallback{display:inline-block;line-height:1}
+.animated-emoji svg,.animated-emoji>svg{width:100%!important;height:100%!important}
+.react-picker button .animated-emoji,.react-picker button .animated-emoji-fallback{display:block;width:24px;height:24px;font-size:24px}
+.emoji-grid button .animated-emoji,.emoji-grid button .animated-emoji-fallback{display:block;width:26px;height:26px;font-size:26px}
+.rfx-main .animated-emoji,.rfx-main .animated-emoji-fallback{width:100%;height:100%;font-size:inherit}
+
 /* Curtidas em comentários. */
 .cm-like{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:3px 7px;border:0;border-radius:999px;background:transparent;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer}
 .cm-like .ic{width:14px;height:14px}
