@@ -1,10 +1,11 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { fmt, hm } from '../lib/utils';
 import { art } from '../lib/art';
 import { mediaOf } from '../lib/media';
 import { Avatar, LiveAvatar } from './Avatar';
-import AnimatedEmoji from './AnimatedEmoji';
+import EmojiPicker from './EmojiPicker';
+import EmojiText from './EmojiText';
 import Empty from './Empty';
 import { Icon } from './Icon';
 import { Verified } from './Brand';
@@ -22,19 +23,18 @@ const NAV = [
   ['admin', 'Administração', 'shield'],
 ];
 
-const QUICK_EMOTES = ['❤️', '🔥', '👏', '😂', '🎉', '👍', '💜', '🚀'];
-
 function personOf(data, id) {
   if (id === 'me') return data.me;
   return data.users?.[id] || { id, name: String(id || '').slice(0, 8) };
 }
 
-// Composer da comunidade: comunicação livre com texto, áudio, fotos e vídeos.
-function CommunityComposer({ community, canPost }) {
+// Barra de digitação da comunidade, no mesmo estilo da aba Mensagens.
+function CommunityChatComposer({ community, canPost }) {
   const { ui, actions } = useApp();
   const [text, setText] = useState('');
-  const [recording, setRecording] = useState(false);
-  const recRef = useRef(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const fileRef = useRef(null);
+  const inputRef = useRef(null);
   const media = ui.draft?.media || [];
 
   function submit(event) {
@@ -43,43 +43,12 @@ function CommunityComposer({ community, canPost }) {
     actions.publish(text, community.id);
     setText('');
     actions.resetDraft();
-  }
-
-  async function toggleRecord() {
-    if (recording) {
-      recRef.current?.stop();
-      setRecording(false);
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(
-        (type) => MediaRecorder.isTypeSupported?.(type)
-      );
-      const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-      const chunks = [];
-      recorder.ondataavailable = (event) => {
-        if (event.data.size) chunks.push(event.data);
-      };
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
-        const file = new File([blob], `audio-${Date.now()}.webm`, { type: blob.type });
-        actions.attachMedia([file]);
-        stream.getTracks().forEach((track) => track.stop());
-        recRef.current = null;
-      };
-      recorder.start();
-      recRef.current = recorder;
-      setRecording(true);
-    } catch {
-      actions.notify?.('Não foi possível acessar o microfone.');
-      setRecording(false);
-    }
+    setPickerOpen(false);
   }
 
   if (!canPost) {
     return (
-      <div className="card comm-compose locked">
+      <div className="card comm-chat-locked">
         <Icon name="lock" />
         <span>Entre na comunidade para participar das conversas.</span>
       </div>
@@ -87,35 +56,44 @@ function CommunityComposer({ community, canPost }) {
   }
 
   return (
-    <form className="card comm-compose" onSubmit={submit}>
-      <textarea
-        className="in comm-compose-text"
-        rows={2}
-        maxLength={600}
-        placeholder={`Escreva para ${community.name}…`}
-        aria-label="Escrever na comunidade"
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-      />
-      <div className="comm-compose-emotes" aria-label="Emojis rápidos">
-        {QUICK_EMOTES.map((emoji) => (
+    <form className="comm-chat-composer" onSubmit={submit}>
+      {pickerOpen ? (
+        <>
           <button
-            key={emoji}
+            className="pop-scrim"
             type="button"
-            title={`Inserir ${emoji}`}
-            onClick={() => setText((value) => value + emoji)}
-          >
-            <AnimatedEmoji emoji={emoji} size={22} />
-          </button>
-        ))}
-      </div>
+            aria-label="Fechar emojis"
+            onClick={() => setPickerOpen(false)}
+          />
+          <div className="comm-chat-picker">
+            <EmojiPicker
+              embedded
+              onPick={(emoji) => {
+                setText((value) => value + emoji);
+                setPickerOpen(false);
+                inputRef.current?.focus();
+              }}
+              onClose={() => setPickerOpen(false)}
+            />
+          </div>
+        </>
+      ) : null}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*,video/*"
+        multiple
+        hidden
+        onChange={(event) => {
+          if (event.target.files?.length) actions.attachMedia(event.target.files);
+          event.target.value = '';
+        }}
+      />
       {media.length ? (
-        <div className="comm-compose-media">
+        <div className="comm-chat-media">
           {media.map((item, index) => (
-            <div className="comm-compose-thumb" key={index}>
-              {item.kind === 'audio' ? (
-                <span><Icon name="mic" /> Áudio</span>
-              ) : item.kind === 'video' ? (
+            <div className="comm-chat-thumb" key={index}>
+              {item.kind === 'video' ? (
                 <video src={item.src} muted preload="metadata" />
               ) : (
                 <img src={item.src} alt="Mídia selecionada" />
@@ -131,35 +109,98 @@ function CommunityComposer({ community, canPost }) {
           ))}
         </div>
       ) : null}
-      <div className="comm-compose-actions">
-        <label className="btn ghost sm" htmlFor={`comm-media-${community.id}`}>
-          <Icon name="camera" /> Fotos, vídeos e áudios
-        </label>
-        <input
-          id={`comm-media-${community.id}`}
-          type="file"
-          accept="image/*,video/*,audio/*"
-          multiple
-          hidden
-          onChange={(event) => {
-            if (event.target.files?.length) actions.attachMedia(event.target.files);
-            event.target.value = '';
+      <div className="comm-chat-bar">
+        <button
+          className={`icon-btn ${pickerOpen ? 'on' : ''}`}
+          type="button"
+          aria-label="Emojis"
+          title="Emojis"
+          onClick={() => setPickerOpen((open) => !open)}
+        >
+          <Icon name="smile" />
+        </button>
+        <button
+          className="icon-btn"
+          type="button"
+          aria-label="Anexar fotos ou vídeos"
+          title="Anexar"
+          onClick={() => fileRef.current?.click()}
+        >
+          <Icon name="paperclip" />
+        </button>
+        <textarea
+          ref={inputRef}
+          className="comm-chat-input"
+          rows={1}
+          maxLength={600}
+          placeholder={`Escreva para ${community.name}…`}
+          aria-label="Escrever na comunidade"
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }
           }}
         />
-        <button
-          type="button"
-          className={`btn ${recording ? 'hot' : 'tonal'} sm`}
-          onClick={toggleRecord}
-          aria-pressed={recording}
-        >
-          <Icon name="mic" /> {recording ? 'Gravando… toque para parar' : 'Gravar áudio'}
-        </button>
-        <span className="grow" />
-        <button className="btn primary sm" type="submit">
-          <Icon name="send" /> Publicar
+        <button className="icon-btn send" type="submit" aria-label="Enviar" title="Enviar">
+          <Icon name="send" />
         </button>
       </div>
     </form>
+  );
+}
+
+// Conversa da comunidade: mensagens em balões, como um chat amplo.
+function CommunityChat({ posts, canPost, community }) {
+  const { data } = useApp();
+  const boxRef = useRef(null);
+
+  useEffect(() => {
+    const box = boxRef.current;
+    if (box) box.scrollTop = box.scrollHeight;
+  }, [posts.length]);
+
+  return (
+    <div className="comm-chat">
+      <div className="comm-chat-list" ref={boxRef}>
+        {posts.map((post) => {
+          const person = personOf(data, post.by);
+          const mine = post.by === 'me';
+          const items = mediaOf(post).filter(
+            (item) => item.src && ['photo', 'video'].includes(item.kind)
+          );
+          return (
+            <div className={`comm-chat-msg${mine ? ' me' : ''}`} key={post.id}>
+              {!mine ? <Avatar user={person} size={32} /> : null}
+              <div className="comm-chat-body">
+                <div className="comm-chat-head">
+                  <b>{person.name}</b> <time>{hm(post.ts)}</time>
+                </div>
+                <div className="comm-chat-bubble">
+                  {post.text ? <p><EmojiText text={post.text} size={19} /></p> : null}
+                  {items.map((item, index) =>
+                    item.kind === 'video' ? (
+                      <video key={index} src={item.src} controls preload="metadata" />
+                    ) : (
+                      <img key={index} src={item.src} alt="Foto da comunidade" loading="lazy" />
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {!posts.length ? (
+          <Empty
+            title="Nenhuma mensagem ainda"
+            text="Seja a primeira pessoa a escrever nesta comunidade."
+          />
+        ) : null}
+      </div>
+      <CommunityChatComposer community={community} canPost={canPost} />
+    </div>
   );
 }
 
@@ -174,7 +215,10 @@ export default function CommunitySpace({ community, onAdmin }) {
   const uid = data.me?.id || 'me';
 
   const posts = useMemo(
-    () => (data.posts || []).filter((p) => p.communityId === community.id),
+    () =>
+      (data.posts || []).filter(
+        (p) => p.communityId === community.id && p.kind !== 'audio'
+      ),
     [data.posts, community.id]
   );
   // Galeria = somente mídias publicadas dentro das publicações da comunidade.
@@ -182,7 +226,7 @@ export default function CommunitySpace({ community, onAdmin }) {
     () =>
       posts.flatMap((post) =>
         mediaOf(post)
-          .filter((item) => item.src)
+          .filter((item) => item.src && ['photo', 'video'].includes(item.kind))
           .map((item, index) => ({
             id: `${post.id}-${index}`,
             kind: item.kind,
@@ -298,21 +342,9 @@ export default function CommunitySpace({ community, onAdmin }) {
 
         <main className="comm-main">
           {tab === 'publicacoes' ? (
-            <div className="comm-section">
+            <div className="comm-section comm-chat-section">
               <h2 className="h2">Publicações</h2>
-              <CommunityComposer community={community} canPost={canPost} />
-              {posts.length ? (
-                <div className="comm-posts">
-                  {posts.map((post) => (
-                    <Post key={post.id} post={post} />
-                  ))}
-                </div>
-              ) : (
-                <Empty
-                  title="Nenhuma publicação ainda"
-                  text="Mensagens, áudios, fotos e vídeos aparecem aqui."
-                />
-              )}
+              <CommunityChat posts={posts} canPost={canPost} community={community} />
             </div>
           ) : null}
 

@@ -76,6 +76,9 @@ export default function EmojiPicker({ onPick, onClose, onStickers, embedded = fa
   const [active, setActive] = useState(recents.length ? 'recent' : EMOJI_GROUPS[0].key);
   const [query, setQuery] = useState('');
   const gridRef = useRef(null);
+  const sectionRefs = useRef({});
+  const activeRef = useRef(active);
+  activeRef.current = active;
   const favorites = data.emojiFavorites || [];
 
   const groups = useMemo(() => {
@@ -88,8 +91,6 @@ export default function EmojiPicker({ onPick, onClose, onStickers, embedded = fa
     return base;
   }, [recents, favorites]);
 
-  const group = groups.find((item) => item.key === active) || groups[0];
-
   const results = useMemo(() => {
     const term = query.trim().toLowerCase();
     if (!term) return null;
@@ -101,9 +102,41 @@ export default function EmojiPicker({ onPick, onClose, onStickers, embedded = fa
     });
   }, [query]);
 
+  // Um quadro único com todas as categorias; ao rolar, a barra acompanha.
+  const sections = results
+    ? [{ key: 'search', label: 'Resultados', emojis: results }]
+    : groups;
+
   useEffect(() => {
     if (gridRef.current) gridRef.current.scrollTop = 0;
-  }, [active, query]);
+  }, [query]);
+
+  const onScroll = () => {
+    if (results) return;
+    const grid = gridRef.current;
+    if (!grid) return;
+    const top = grid.scrollTop + 28;
+    let current = sections[0]?.key;
+    for (const item of sections) {
+      const el = sectionRefs.current[item.key];
+      if (el && el.offsetTop <= top) current = item.key;
+    }
+    if (current && current !== activeRef.current) setActive(current);
+  };
+
+  const goTo = (key) => {
+    if (results) {
+      setQuery('');
+      setActive(key);
+      return;
+    }
+    const el = sectionRefs.current[key];
+    const grid = gridRef.current;
+    if (el && grid) {
+      grid.scrollTo({ top: Math.max(0, el.offsetTop - 4), behavior: 'smooth' });
+    }
+    setActive(key);
+  };
 
   useEffect(() => {
     const onKey = (event) => {
@@ -124,7 +157,31 @@ export default function EmojiPicker({ onPick, onClose, onStickers, embedded = fa
   };
 
   const suggested = recents.length ? recents.slice(0, 10) : SUGGESTED;
-  const displayEmojis = results || group.emojis;
+  const currentLabel = results ? 'Resultados' : sections.find((s) => s.key === active)?.label || '';
+
+  const renderTile = (emoji, index, keyPrefix) => (
+    <div className="emoji-tile-wrap" key={`${keyPrefix}-${index}-${emoji}`}>
+      <button
+        type="button"
+        title={emoji}
+        aria-label={`Emoji ${emoji}`}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => pick(emoji)}
+      >
+        <AnimatedEmoji emoji={emoji} size={26} />
+      </button>
+      <button
+        type="button"
+        className={`emoji-fav ${favorites.includes(emoji) ? 'on' : ''}`}
+        title={favorites.includes(emoji) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+        aria-label="Favoritar emoji"
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => actions.toggleEmojiFavorite(emoji)}
+      >
+        <Icon name="spark" />
+      </button>
+    </div>
+  );
 
   return (
     <div
@@ -132,35 +189,37 @@ export default function EmojiPicker({ onPick, onClose, onStickers, embedded = fa
       role="dialog"
       aria-label="Escolher emoji"
     >
-      <div className="emoji-cats" role="tablist" aria-label="Categorias de emoji">
-        {groups.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            role="tab"
-            aria-selected={item.key === group.key}
-            className={item.key === group.key ? 'on' : ''}
-            title={item.label}
-            aria-label={item.label}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => setActive(item.key)}
-          >
-            <CatIcon groupKey={item.key} />
-          </button>
-        ))}
-        {onStickers ? (
-          <button
-            type="button"
-            className="emoji-cat-stickers"
-            title="Figurinhas"
-            aria-label="Figurinhas"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={onStickers}
-          >
-            <Icon name="sticker" />
-          </button>
-        ) : null}
-      </div>
+      {!results ? (
+        <div className="emoji-cats" role="tablist" aria-label="Categorias de emoji">
+          {groups.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              role="tab"
+              aria-selected={item.key === active}
+              className={item.key === active ? 'on' : ''}
+              title={item.label}
+              aria-label={item.label}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => goTo(item.key)}
+            >
+              <CatIcon groupKey={item.key} />
+            </button>
+          ))}
+          {onStickers ? (
+            <button
+              type="button"
+              className="emoji-cat-stickers"
+              title="Figurinhas"
+              aria-label="Figurinhas"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={onStickers}
+            >
+              <Icon name="sticker" />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="emoji-search">
         <Icon name="search" />
@@ -179,56 +238,43 @@ export default function EmojiPicker({ onPick, onClose, onStickers, embedded = fa
       </div>
 
       {!results ? (
-        <>
-          <div className="emoji-suggested" aria-label="Emojis sugeridos">
-            {suggested.map((emoji, index) => (
-              <button
-                key={`${emoji}-${index}`}
-                type="button"
-                title={emoji}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => pick(emoji)}
-              >
-                <AnimatedEmoji emoji={emoji} size={24} />
-              </button>
-            ))}
-          </div>
-          <div className="emoji-section-label">{group.label}</div>
-        </>
-      ) : null}
-
-      <div className="emoji-grid" ref={gridRef} key={results ? 'search' : group.key}>
-        {displayEmojis.map((emoji, index) => (
-          <div className="emoji-tile-wrap" key={`${results ? 'search' : group.key}-${index}-${emoji}`}>
+        <div className="emoji-suggested" aria-label="Emojis sugeridos">
+          {suggested.map((emoji, index) => (
             <button
+              key={`${emoji}-${index}`}
               type="button"
               title={emoji}
-              aria-label={`Emoji ${emoji}`}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => pick(emoji)}
             >
-              <AnimatedEmoji emoji={emoji} size={26} />
+              <AnimatedEmoji emoji={emoji} size={24} />
             </button>
-            <button
-              type="button"
-              className={`emoji-fav ${favorites.includes(emoji) ? 'on' : ''}`}
-              title={favorites.includes(emoji) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-              aria-label="Favoritar emoji"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => actions.toggleEmojiFavorite(emoji)}
-            >
-              <Icon name="spark" />
-            </button>
-          </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="emoji-grid" ref={gridRef} onScroll={onScroll}>
+        {sections.map((item) => (
+          <section
+            key={item.key}
+            className="emoji-section"
+            ref={(el) => { sectionRefs.current[item.key] = el; }}
+          >
+            <div className="emoji-section-label">{item.label}</div>
+            <div className="emoji-section-grid">
+              {item.emojis.map((emoji, index) => renderTile(emoji, index, item.key))}
+            </div>
+          </section>
         ))}
-        {!displayEmojis.length ? (
-          <p className="muted" style={{ gridColumn: '1 / -1', padding: 16 }}>
+        {results && !results.length ? (
+          <p className="muted" style={{ padding: 16 }}>
             Nenhum emoji encontrado para “{query}”.
           </p>
         ) : null}
       </div>
+
       <div className="emoji-foot">
-        <span>{results ? `${results.length} resultado(s)` : group.label}</span>
+        <span>{results ? `${results.length} resultado(s)` : currentLabel}</span>
         {onClose ? (
           <button type="button" className="link-btn" onClick={onClose}>
             Fechar

@@ -1297,25 +1297,33 @@ mark{background:color-mix(in srgb,var(--accent) 30%,transparent);color:inherit;b
 .comm-event-date span{font-size:11px;text-transform:uppercase}
 .comm-gallery-meta b{max-width:160px}
 
-/* Comunidade como canal: composer, palco OBS e mídias. */
-.comm-compose{display:grid;gap:10px;padding:14px;margin-bottom:14px}
-.comm-compose.locked{display:flex;align-items:center;gap:10px;color:var(--muted)}
-.comm-compose.locked .ic{width:18px;height:18px}
-.comm-compose-text{width:100%;min-height:72px;resize:vertical;line-height:1.45}
-.comm-compose-emotes{display:flex;gap:5px;flex-wrap:wrap}
-.comm-compose-emotes button{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;border:1px solid transparent;background:var(--surface2)}
-.comm-compose-emotes button:hover{border-color:var(--accent);transform:translateY(-2px)}
-.comm-compose-media{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
-.comm-compose-thumb{position:relative;flex:none;width:96px;height:72px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--surface2);display:grid;place-items:center}
-.comm-compose-thumb img,.comm-compose-thumb video{width:100%;height:100%;object-fit:cover}
-.comm-compose-thumb span{display:grid;gap:2px;place-items:center;font-size:11px;color:var(--muted)}
-.comm-compose-thumb .ic{width:18px;height:18px}
-.comm-compose-thumb button{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.65);color:#fff}
-.comm-compose-thumb button .ic{width:12px;height:12px}
-.comm-compose-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.comm-gallery-audio{display:grid;place-items:center;gap:6px;padding:14px 10px;background:var(--surface2)}
-.comm-gallery-audio .ic{width:22px;height:22px;color:var(--accent)}
-.comm-gallery-audio audio{width:100%;height:34px}
+/* Comunidade como chat gigante: barra de digitação igual à de Mensagens. */
+.comm-chat{display:flex;flex-direction:column;min-height:0;gap:10px}
+.comm-chat-list{display:flex;flex-direction:column;gap:12px;min-height:260px;max-height:min(62dvh,720px);overflow-y:auto;padding:4px 2px 8px;overscroll-behavior:contain}
+.comm-chat-msg{display:flex;gap:10px;align-items:flex-end;max-width:min(78%,680px)}
+.comm-chat-msg.me{align-self:flex-end;flex-direction:row-reverse}
+.comm-chat-body{display:grid;gap:3px;min-width:0}
+.comm-chat-head{display:flex;gap:8px;align-items:baseline;font-size:12px;color:var(--muted)}
+.comm-chat-head b{color:var(--fg);font-size:13px}
+.comm-chat-bubble{display:grid;gap:6px;padding:9px 13px;border-radius:16px 16px 16px 4px;background:var(--surface2);overflow-wrap:anywhere}
+.comm-chat-msg.me .comm-chat-bubble{border-radius:16px 16px 4px 16px;background:var(--accent-soft)}
+.comm-chat-bubble p{margin:0;font-size:14px;line-height:1.45}
+.comm-chat-bubble img,.comm-chat-bubble video{display:block;max-width:100%;max-height:min(46dvh,420px);border-radius:11px;object-fit:cover}
+.comm-chat-locked{display:flex;align-items:center;gap:10px;padding:14px;color:var(--muted)}
+.comm-chat-locked .ic{width:18px;height:18px}
+.comm-chat-composer{position:relative;display:grid;gap:8px}
+.comm-chat-bar{display:flex;align-items:flex-end;gap:4px;padding:5px 6px;border-radius:22px;background:var(--surface2);border:1px solid var(--line)}
+.comm-chat-bar:focus-within{border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
+.comm-chat-input{flex:1;min-width:0;border:0;background:transparent;color:var(--fg);padding:10px 6px;line-height:1.35;resize:none;max-height:120px;outline:none}
+.comm-chat-input::placeholder{color:var(--muted)}
+.comm-chat-bar .icon-btn{width:36px;height:36px;flex:none}
+.comm-chat-bar .send{color:var(--accent)}
+.comm-chat-media{display:flex;gap:8px;overflow-x:auto;padding:2px}
+.comm-chat-thumb{position:relative;flex:none;width:88px;height:68px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--surface)}
+.comm-chat-thumb img,.comm-chat-thumb video{width:100%;height:100%;object-fit:cover}
+.comm-chat-thumb button{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.65);color:#fff}
+.comm-chat-thumb button .ic{width:12px;height:12px}
+.comm-chat-picker{position:absolute;left:0;bottom:calc(100% + 8px);z-index:40}
 
 /* Áudio em publicações. */
 .media-audio{display:flex;align-items:center;gap:12px;padding:16px;border-radius:14px;background:var(--surface2);border:1px solid var(--line)}
@@ -1867,3 +1875,10 @@ html,body{max-width:100%;overflow-x:clip}
   .mobtop{max-width:100%}
   .chat-picker{max-width:100vw;width:100vw;left:0;right:0;border-radius:18px 18px 0 0}
 }
+
+/* Quadro único: todas as categorias em uma rolagem só. */
+.emoji-grid{display:block;position:relative;padding:0;gap:0}
+.emoji-section{position:relative;padding-top:2px}
+.emoji-section-label{position:sticky;top:0;z-index:1;padding:9px 14px 6px;background:var(--surface);font-weight:700;font-size:13px;color:var(--muted)}
+.emoji-section-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:2px;padding:0 10px 8px}
+@media (max-width:560px){.emoji-section-grid,.chat-picker .emoji-section-grid{grid-template-columns:repeat(8,1fr)}}
