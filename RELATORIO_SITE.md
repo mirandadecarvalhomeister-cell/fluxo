@@ -51,13 +51,21 @@
 - "Emojis grandes" em mensagens (exibição especial para mensagens só com emojis).
 - Painel de figurinhas com formatos animados (hoje figurinhas são emoji grande ou imagem estática do storage).
 
+## Fase 4b — Emojis animados do Noto (concluído)
+
+- Fonte: **Google Noto Emoji Animation** (`googlefonts.github.io/noto-emoji-animation`), licenças **OFL 1.1 / Apache 2.0**. Caminho seguro (sem usar animações do Telegram).
+- 16 animações Lottie baixadas do CDN do Google (`fonts.gstatic.com/s/e/notoemoji/latest/{codepoint}/lottie.json`) e servidas **localmente** em `public/emoji/` (site) e `mobile/assets/emoji/` (APK) — sem dependência externa em runtime. Total ~800 KB.
+- **Site**: `lottie-web` + componente `AnimatedEmoji` com fallback Unicode, respeitando `prefers-reduced-motion`. Integrado no overlay de reação do feed (`ReactionFx`), no picker de reações (`Post`) e no painel de emojis do chat (`EmojiPicker`).
+- **APK**: `lottie-react-native` + `AnimatedEmoji` integrado na `ReactionBar` (picker e emoji atual), no picker do chat e em **emojis grandes** em mensagens que contêm apenas emojis.
+- Emojis sem animação disponível continuam com o Unicode normal (fallback transparente).
+
 ## Validação
 
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `9414638b`.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy `56cfdc9c`.
 - Migrations aplicadas no Supabase de produção: `migrate_channel_subscriptions.sql`, `migrate_communities_v2.sql`, `migrate_emoji_favorites.sql`.
 
 ## Commits desta rodada
 
-`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`.
+`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`.
