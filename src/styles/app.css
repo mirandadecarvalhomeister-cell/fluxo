@@ -1305,6 +1305,10 @@ mark{background:color-mix(in srgb,var(--accent) 30%,transparent);color:inherit;b
 .comm-chat-msg.me .comm-chat-bubble{border-radius:16px 16px 4px 16px;background:var(--accent-soft)}
 .comm-chat-bubble p{margin:0;font-size:14px;line-height:1.45}
 .comm-chat-bubble img,.comm-chat-bubble video{display:block;max-width:100%;max-height:min(46dvh,420px);border-radius:11px;object-fit:cover}
+.comm-chat-bubble audio{display:block;width:min(260px,60vw);height:36px}
+.comm-chat-bar .mic.on{color:var(--hot);background:color-mix(in srgb,var(--hot) 14%,transparent)}
+.comm-chat-recording{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--hot);padding:2px 4px}
+.comm-chat-recording .rec-dot{width:8px;height:8px;border-radius:50%;background:var(--hot);animation:blink 1s infinite}
 .comm-chat-locked{display:flex;align-items:center;gap:10px;padding:14px;color:var(--muted)}
 .comm-chat-locked .ic{width:18px;height:18px}
 .comm-chat-composer{position:relative;display:grid;gap:8px}

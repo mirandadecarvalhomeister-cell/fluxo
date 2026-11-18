@@ -33,8 +33,10 @@ function CommunityChatComposer({ community, canPost }) {
   const { ui, actions } = useApp();
   const [text, setText] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [recording, setRecording] = useState(false);
   const fileRef = useRef(null);
   const inputRef = useRef(null);
+  const recRef = useRef(null);
   const media = ui.draft?.media || [];
 
   function submit(event) {
@@ -44,6 +46,37 @@ function CommunityChatComposer({ community, canPost }) {
     setText('');
     actions.resetDraft();
     setPickerOpen(false);
+  }
+
+  async function toggleRecord() {
+    if (recRef.current) {
+      recRef.current.stop();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(
+        (type) => MediaRecorder.isTypeSupported?.(type)
+      );
+      const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      const chunks = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size) chunks.push(event.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+        stream.getTracks().forEach((track) => track.stop());
+        recRef.current = null;
+        setRecording(false);
+        if (blob.size) actions.sendCommunityAudio(community.id, blob);
+      };
+      recorder.start();
+      recRef.current = recorder;
+      setRecording(true);
+    } catch {
+      actions.notify?.('Não foi possível acessar o microfone.');
+      setRecording(false);
+    }
   }
 
   if (!canPost) {
@@ -144,10 +177,27 @@ function CommunityChatComposer({ community, canPost }) {
             }
           }}
         />
-        <button className="icon-btn send" type="submit" aria-label="Enviar" title="Enviar">
-          <Icon name="send" />
-        </button>
+        {text.trim() || media.length ? (
+          <button className="icon-btn send" type="submit" aria-label="Enviar" title="Enviar">
+            <Icon name="send" />
+          </button>
+        ) : (
+          <button
+            className={`icon-btn mic ${recording ? 'on' : ''}`}
+            type="button"
+            onClick={toggleRecord}
+            aria-label={recording ? 'Parar gravação e enviar áudio' : 'Gravar áudio'}
+            title={recording ? 'Toque para enviar' : 'Gravar áudio'}
+          >
+            <Icon name="mic" />
+          </button>
+        )}
       </div>
+      {recording ? (
+        <span className="comm-chat-recording">
+          <span className="rec-dot" /> Gravando… toque no microfone para enviar
+        </span>
+      ) : null}
     </form>
   );
 }
@@ -168,9 +218,9 @@ function CommunityChat({ posts, canPost, community }) {
         {posts.map((post) => {
           const person = personOf(data, post.by);
           const mine = post.by === 'me';
-          const items = mediaOf(post).filter(
-            (item) => item.src && ['photo', 'video'].includes(item.kind)
-          );
+          const allMedia = mediaOf(post).filter((item) => item.src);
+          const items = allMedia.filter((item) => ['photo', 'video'].includes(item.kind));
+          const audios = allMedia.filter((item) => item.kind === 'audio');
           return (
             <div className={`comm-chat-msg${mine ? ' me' : ''}`} key={post.id}>
               {!mine ? <Avatar user={person} size={32} /> : null}
@@ -187,6 +237,9 @@ function CommunityChat({ posts, canPost, community }) {
                       <img key={index} src={item.src} alt="Foto da comunidade" loading="lazy" />
                     )
                   )}
+                  {audios.map((item, index) => (
+                    <audio key={`a${index}`} src={item.src} controls preload="metadata" />
+                  ))}
                 </div>
               </div>
             </div>
@@ -215,10 +268,7 @@ export default function CommunitySpace({ community, onAdmin }) {
   const uid = data.me?.id || 'me';
 
   const posts = useMemo(
-    () =>
-      (data.posts || []).filter(
-        (p) => p.communityId === community.id && p.kind !== 'audio'
-      ),
+    () => (data.posts || []).filter((p) => p.communityId === community.id),
     [data.posts, community.id]
   );
   // Galeria = somente mídias publicadas dentro das publicações da comunidade.

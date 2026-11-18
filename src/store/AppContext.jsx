@@ -2166,6 +2166,41 @@ export function AppProvider({ children }) {
     window.scrollTo(0, 0);
   };
 
+  // Áudio enviado direto no chat da comunidade (barra de digitação).
+  async function sendCommunityAudio(communityId, blob) {
+    if (!communityId || !blob) return;
+    const file = new File([blob], `audio-${Date.now()}.webm`, {
+      type: blob.type || 'audio/webm',
+    });
+    let src = URL.createObjectURL(blob);
+    if (sessionRef.current?.id) {
+      const uploaded = await remote.uploadMedia(file, sessionRef.current.id);
+      if (uploaded) src = uploaded;
+    }
+    const media = [{ kind: 'audio', src, name: file.name }];
+    const post = {
+      id: uid(),
+      by: 'me',
+      ts: Date.now(),
+      text: '',
+      kind: 'audio',
+      media,
+      src,
+      likes: 0,
+      liked: false,
+      myReaction: null,
+      reactionCounts: {},
+      saved: false,
+      commentsDisabled: false,
+      comments: [],
+      interactive: null,
+      interactions: [],
+      communityId,
+    };
+    setData((cur) => ({ ...cur, posts: [post, ...cur.posts] }));
+    if (sessionRef.current?.id) remote.savePost(post, sessionRef.current.id);
+  }
+
   async function attachMedia(files) {
     const list = Array.from(files || []).filter(Boolean);
     if (!list.length) return;
@@ -4925,6 +4960,7 @@ export function AppProvider({ children }) {
     removePostMedia,
     applyPostMediaEdit,
     publish,
+    sendCommunityAudio,
     votePost,
     answerPost,
     joinChallenge,
