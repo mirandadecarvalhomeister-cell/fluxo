@@ -93,7 +93,7 @@
 
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `1a4cfb27`.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy `09355fe6`.
 
 ## Fase 8 — Picker de emojis estilo mensageiro (concluído)
 
@@ -108,8 +108,19 @@
 - Picker ampliado (até 430 px no desktop, largura total no celular).
 - **176 emojis animados** (16 anteriores + 160 novos) com Lottie do Noto servido localmente em `public/emoji/`.
 - Contenção mobile: `overflow-x:clip` em `html/body/#root/.app`, largura do chat corrigida e picker limitado à viewport.
+
+## Fase 10 — Feed/comunidades só foto e vídeo, comunidade como chat (concluído)
+
+- Removido áudio do feed e das comunidades: composer aceita apenas `image/*,video/*`; postagens e mídias de áudio antigas não aparecem no feed nem na comunidade.
+- Comunidade vira **chat gigante**: aba Publicações mostra mensagens em balões (avatar, nome, hora, texto com emojis animados e fotos/vídeos) com **barra de digitação igual à de Mensagens** (emoji, anexar, campo, enviar; Enter envia).
+- Galeria da comunidade exibe apenas fotos e vídeos publicados.
+
+## Fase 11 — Quadro de emojis único (concluído)
+
+- Todas as categorias em **um quadro contínuo** com cabeçalhos fixos; ao rolar, a barra superior destaca automaticamente a categoria visível.
+- Clicar em uma categoria rola o quadro até a seção correspondente; busca continua filtrando em uma lista só.
 - Migrations aplicadas no Supabase de produção: `migrate_channel_subscriptions.sql`, `migrate_communities_v2.sql`, `migrate_emoji_favorites.sql`.
 
 ## Commits desta rodada
 
-`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`, `d9191ec`, `6d49d70`, `1a4c197`, `595e4cf`, `bb09666`, `b5ebfc8`.
+`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`, `d9191ec`, `6d49d70`, `1a4c197`, `595e4cf`, `bb09666`, `b5ebfc8`, `be70951`.
