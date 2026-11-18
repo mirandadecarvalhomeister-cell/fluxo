@@ -44,7 +44,9 @@ function buildTrending(data) {
 
   data.posts.forEach((post) => {
     if (post.kind === 'story') return;
-    const weight = 1 + (post.likes || 0) + (post.comments?.length || 0) * 2;
+    let weight = 1 + (post.likes || 0) + (post.comments?.length || 0) * 2;
+    // Assuntos muito comentados dentro de comunidades ganham destaque no Radar.
+    if (post.communityId && (post.comments?.length || 0) > 0) weight *= 1.6;
     const recency = post.ts
       ? Math.max(0.2, 1 - (Date.now() - post.ts) / (1000 * 60 * 60 * 24 * 14))
       : 0.5;
@@ -160,6 +162,26 @@ export default function SearchModal() {
   };
 
   const trending = useMemo(() => buildTrending(data), [data]);
+  // Comunidades em alta: engajamento recente das publicações internas.
+  const hotCommunities = useMemo(() => {
+    const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    return (data.comms || [])
+      .map((comm) => {
+        const posts = (data.posts || []).filter((p) => p.communityId === comm.id);
+        const score = posts.reduce((total, post) => {
+          const engagement =
+            (post.likes || 0) +
+            (post.comments?.length || 0) * 2 +
+            (post.interactions?.length || 0);
+          const recency = post.ts >= dayAgo ? 2 : 1;
+          return total + engagement * recency;
+        }, 0);
+        return { comm, score, posts: posts.length };
+      })
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+  }, [data.comms, data.posts]);
   const lives = useMemo(
     () => data.chans.filter((c) => c.live).sort((a, b) => (b.viewers || 0) - (a.viewers || 0)).slice(0, 4),
     [data]
@@ -362,6 +384,35 @@ export default function SearchModal() {
               </span>
             </div>
           </div>
+
+          {hotCommunities.length ? (
+            <Section title="Comunidades em alta" icon="spark">
+              <div className="hot-comms">
+                {hotCommunities.map(({ comm, score, posts }) => (
+                  <button
+                    type="button"
+                    className="hot-comm"
+                    key={comm.id}
+                    onClick={() => openComm(comm.id)}
+                  >
+                    <span
+                      className="hot-comm-icon"
+                      style={{
+                        backgroundImage: `url('${comm.iconUrl || commIcon(comm, 72)}')`,
+                      }}
+                    />
+                    <span className="grow">
+                      <b className="ell">{comm.name}</b>
+                      <span className="muted sm">
+                        {posts} publicações · em alta
+                      </span>
+                    </span>
+                    <span className="hot-comm-score">{score}</span>
+                  </button>
+                ))}
+              </div>
+            </Section>
+          ) : null}
 
           {data.me.interests?.length ? (
             <Section title="Ajustado para você" icon="orbit">

@@ -363,12 +363,12 @@ function Composer() {
       <div className="comp-actions">
         <div className="row">
           <label className="btn ghost sm" htmlFor="cmedia">
-            <Icon name="image" /> Fotos e vídeos
+            <Icon name="image" /> Fotos, vídeos e áudios
           </label>
           <input
             id="cmedia"
             type="file"
-            accept="image/*,video/*"
+            accept="image/*,video/*,audio/*"
             multiple
             hidden
             onChange={(event) => {
@@ -546,7 +546,9 @@ export default function Feed() {
   const prefs = feedPrefs(ui.settings);
   const followedTerms = interestTerms(data.me, data.comms);
   const commById = new Map((data.comms || []).map((item) => [item.id, item]));
-  const enriched = data.posts.map((post) => {
+  // Publicações de comunidade vivem dentro da comunidade (e do Radar quando
+  // estão em alta), nunca no feed principal.
+  const enriched = data.posts.filter((post) => !post.communityId).map((post) => {
     const community = post.communityId ? commById.get(post.communityId) : null;
     return {
       ...post,

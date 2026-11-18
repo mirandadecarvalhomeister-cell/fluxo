@@ -19,11 +19,8 @@ const Arena = lazy(() => import('../games/arena/Arena'));
 const QuizBoom = lazy(() => import('../games/quiz/QuizBoom'));
 
 const QUICK_EMOTES = ['❤️', '🔥', '👏', '😂', '🎉', '👍', '💜', '🚀'];
+// A conta do usuário é o canal: o diretório mostra quem está ao vivo.
 const liveDirectory = (data) => data.chans.filter((c) => c.live);
-const followedChannels = (data) =>
-  data.chans.filter(
-    (c) => !c.live && (c.joined || c.owner === 'me' || data.follows.includes(c.owner))
-  );
 
 function LiveCard({ channel }) {
   const { data, actions } = useApp();
@@ -54,42 +51,6 @@ function LiveCard({ channel }) {
             {channel.owner === 'me' ? ' (você)' : ''}
           </span>
         </div>
-      </div>
-    </button>
-  );
-}
-
-function ChannelRow({ channel }) {
-  const { data, actions } = useApp();
-  const owner = userOf(data, channel.owner);
-  const last = channel.msgs[channel.msgs.length - 1];
-  const kind = KINDS[channel.kind] || KINDS.conversa;
-  return (
-    <button className="chan" onClick={() => actions.openRoom(channel.id)}>
-      <LiveAvatar user={owner} size={48} data={data} />
-      <div className="grow">
-        <b className="ell" style={{ display: 'block' }}>
-          {channel.name}
-        </b>
-        <span className="kind">
-          <Icon name={kind[0]} /> {kind[1]} · {owner.name} <Verified user={owner} />
-          {channel.owner === 'me' ? ' (você)' : ''}
-        </span>
-        <div className="muted sm ell">
-          {last
-            ? `${userOf(data, last.by).name.split(' ')[0]}: ${last.text}`
-            : channel.desc}
-        </div>
-      </div>
-      <div className="meta">
-        {channel.live ? (
-          <span className="livepill">AO VIVO</span>
-        ) : last ? (
-          <span>{ago(last.ts)}</span>
-        ) : null}
-        <span>
-          <Icon name="users" /> {fmt(channel.followers)}
-        </span>
       </div>
     </button>
   );
@@ -464,10 +425,11 @@ function Room({ channel }) {
         </button>
         <LiveAvatar user={author} size={46} data={data} />
         <div className="grow">
-          <h1 style={{ fontSize: '1.4rem' }}>{channel.name}</h1>
+          <h1 style={{ fontSize: '1.4rem' }}>
+            {author.name} <Verified user={author} />
+          </h1>
           <span className="kind">
-            <Icon name={kind[0]} /> {kind[1]} · {author.name} <Verified user={author} /> ·{' '}
-            {fmt(channel.followers)} participantes
+            <Icon name={kind[0]} /> {kind[1]} · {fmt(channel.followers)} seguidores
           </span>
         </div>
         {!owner && channel.kind === 'palco' ? (
@@ -500,29 +462,18 @@ function Room({ channel }) {
           <Icon name="share" />
         </button>
         {owner ? (
-          <button
-            className="icon-btn danger"
-            onClick={() => actions.deleteChannel(channel.id)}
-            aria-label="Excluir canal"
-            title="Excluir canal"
-          >
-            <Icon name="trash" />
-          </button>
+          live ? (
+            <button className="btn hot" onClick={actions.endLive}>
+              Encerrar live
+            </button>
+          ) : null
         ) : (
-          <>
-            <button
-              className={`btn ${channel.subscribed ? 'ghost' : 'primary'}`}
-              onClick={() => actions.toggleChannelSubscription(channel.id)}
-            >
-              {channel.subscribed ? 'Inscrito' : 'Inscrever-se'}
-            </button>
-            <button
-              className={`btn ${channel.joined ? 'ghost' : 'tonal'}`}
-              onClick={actions.joinRoom}
-            >
-              {channel.joined ? 'Sair' : 'Entrar'}
-            </button>
-          </>
+          <button
+            className={`btn ${data.follows.includes(channel.owner) ? 'ghost' : 'primary'}`}
+            onClick={() => actions.follow(channel.owner)}
+          >
+            {data.follows.includes(channel.owner) ? 'Seguindo' : 'Seguir'}
+          </button>
         )}
       </div>
 
@@ -857,17 +808,6 @@ export default function Connections() {
   if (currentRoom) return <Room channel={currentRoom} />;
 
   const lives = liveDirectory(data);
-  const channels = followedChannels(data);
-  const filter = ui.chanFilter;
-  const list = channels.filter(
-    (c) => filter === 'all' || c.kind === filter
-  );
-  const filters = [
-    ['all', 'Todos'],
-    ['avisos', 'Avisos'],
-    ['conversa', 'Conversas'],
-    ['palco', 'Palcos'],
-  ];
 
   return (
     <>
@@ -891,12 +831,6 @@ export default function Connections() {
           onClick={() => setSection('ao-vivo')}
         >
           Ao vivo
-        </button>
-        <button
-          className={section === 'canais' ? 'on' : ''}
-          onClick={() => setSection('canais')}
-        >
-          Canais
         </button>
         <button
           className={section === 'jogos' ? 'on' : ''}
@@ -960,33 +894,7 @@ export default function Connections() {
             />
           )}
         </section>
-      ) : (
-        <section>
-          <div className="sechead">
-            <h2 className="h2">Canais que você segue</h2>
-            <div className="seg">
-              {filters.map(([value, label]) => (
-                <button
-                  key={value}
-                  className={filter === value ? 'on' : ''}
-                  onClick={() => actions.setChanFilter(value)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="card chans">
-            {list.length ? (
-              list.map((channel) => <ChannelRow key={channel.id} channel={channel} />)
-            ) : (
-              <p className="muted" style={{ padding: 20 }}>
-                Nenhum canal neste filtro.
-              </p>
-            )}
-          </div>
-        </section>
-      )}
+      ) : null}
     </>
   );
 }

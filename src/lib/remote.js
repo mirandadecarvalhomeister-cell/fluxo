@@ -415,10 +415,11 @@ export async function savePost(post, uid) {
   try {
     const media = (post.media || [])
       .map((item) => ({
-        kind: item.kind === 'video' ? 'video' : 'photo',
+        kind: ['video', 'audio'].includes(item.kind) ? item.kind : 'photo',
         src: item.src && !item.src.startsWith('blob:') ? item.src : null,
         seed: item.seed || post.seed || post.id,
         dur: durSeconds(item.dur),
+        name: item.name || null,
         edit: item.edit && typeof item.edit === 'object' ? item.edit : null,
       }))
       .filter((item) => item.src || item.seed);
@@ -480,16 +481,17 @@ export async function updatePost(post) {
     }
     if (Array.isArray(post.media)) {
       patch.media = post.media.map((item) => ({
-        kind: item.kind === 'video' ? 'video' : 'photo',
+        kind: ['video', 'audio'].includes(item.kind) ? item.kind : 'photo',
         src: item.src && !item.src.startsWith('blob:') ? item.src : null,
         seed: item.seed || post.seed || post.id,
         dur: durSeconds(item.dur),
+        name: item.name || null,
         edit: item.edit && typeof item.edit === 'object' ? item.edit : null,
       }));
       const first = post.media[0];
       patch.media_url =
         first?.src && !first.src.startsWith('blob:') ? first.src : null;
-      patch.kind = first?.kind === 'video' ? 'video' : first ? 'photo' : 'text';
+      patch.kind = ['video', 'audio'].includes(first?.kind) ? first.kind : first ? 'photo' : 'text';
     }
     let { error } = await supabase.from('posts').update(patch).eq('id', post.id);
     if (error && /media|comments_disabled|interactive|column/i.test(error.message || '')) {

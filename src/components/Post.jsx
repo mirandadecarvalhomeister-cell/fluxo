@@ -29,6 +29,29 @@ function MediaItem({ item, author, index }) {
   const edit = item.edit && hasEdits(item.edit) ? item.edit : null;
   const style = mediaDisplayStyle(edit);
 
+  if (item.kind === 'audio') {
+    if (!item.src) {
+      return (
+        <div className="media-audio media-fallback">
+          <Icon name="mic" /> Áudio indisponível
+        </div>
+      );
+    }
+    return (
+      <div className="media-audio">
+        <span className="media-audio-ic">
+          <Icon name="mic" />
+        </span>
+        <audio
+          controls
+          preload="metadata"
+          src={item.src}
+          aria-label={`Áudio publicado por ${author.name}`}
+        />
+      </div>
+    );
+  }
+
   if (item.kind === 'video') {
     if (item.src && !videoFailed) {
       return (
@@ -288,7 +311,8 @@ export default function Post({ post, detail = false }) {
   const totalLikes = post.likes || 0;
   const interactive = normalizeInteractive(post.interactive);
   const media = mediaOf(post);
-  const hasMedia = media.length > 0 || post.kind === 'photo' || post.kind === 'video';
+  const hasMedia =
+    media.length > 0 || ['photo', 'video', 'audio'].includes(post.kind);
   const longText = !detail && (post.text || '').length > 320;
   const reactionChoices =
     interactive?.format === 'reactions' && interactive.reactions.length

@@ -4,7 +4,7 @@ import { fetchIngress, isLiveKitEnabled } from '../lib/livekit';
 import { MAX_POST_MEDIA, mediaOf } from '../lib/media';
 import { ALGO_LEVELS, FEED_FORMATS, FEED_MODES, communityActivity, feedPrefs } from '../lib/feed';
 import { mediaDisplayStyle } from '../lib/mediaEdit';
-import { CATS, COVERS, KINDS } from '../lib/seed';
+import { CATS, COVERS } from '../lib/seed';
 import {
   groupNotifications,
   likesGroupText,
@@ -191,16 +191,12 @@ function CommunityModal({ community }) {
   const inviteCandidates = data.follows.filter(
     (id) => id !== 'me' && !members.includes(id)
   );
-  const linkableChannels = (data.chans || []).filter(
-    (channel) => channel.owner === 'me' || channel.joined
-  );
   const linkedChannels = (community.channelIds || [])
     .map((id) => (data.chans || []).find((channel) => channel.id === id))
     .filter(Boolean);
   const [topic, setTopic] = useState('');
   const [modSel, setModSel] = useState(candidates[0] || '');
   const [inviteSel, setInviteSel] = useState(inviteCandidates[0] || '');
-  const [chanSel, setChanSel] = useState('');
   const coverInputRef = useRef(null);
   const iconInputRef = useRef(null);
 
@@ -446,70 +442,16 @@ function CommunityModal({ community }) {
         ) : null}
 
         <section>
-          <h3 className="h3">Canais da comunidade</h3>
-          {linkedChannels.length ? (
-            linkedChannels.map((channel) => (
-              <div className="mrow" key={channel.id}>
-                <span className="comm-chan-ic">
-                  <Icon name={KINDS[channel.kind]?.[0] || 'chat'} />
-                </span>
-                <div className="grow">
-                  <b>{channel.name}</b>
-                  <div className="muted sm">
-                    {KINDS[channel.kind]?.[1] || 'Conversa'}
-                    {channel.live ? ' · ao vivo' : ''}
-                  </div>
-                </div>
-                <button
-                  className="btn ghost sm"
-                  onClick={() => actions.openRoom(channel.id)}
-                >
-                  Abrir
-                </button>
-                {canManage ? (
-                  <button
-                    className="icon-btn"
-                    onClick={() => actions.unlinkCommChannel(community.id, channel.id)}
-                    aria-label="Desvincular canal"
-                    title="Desvincular canal"
-                  >
-                    <Icon name="x" />
-                  </button>
-                ) : null}
-              </div>
-            ))
-          ) : (
-            <p className="muted sm">Nenhum canal vinculado ainda.</p>
-          )}
-          {canManage && linkableChannels.length ? (
-            <form
-              className="cmform"
-              style={{ marginTop: 8 }}
-              onSubmit={(event) => {
-                event.preventDefault();
-                actions.linkCommChannel(community.id, chanSel);
-                setChanSel('');
-              }}
-            >
-              <select
-                className="in"
-                value={chanSel}
-                onChange={(event) => setChanSel(event.target.value)}
-                aria-label="Canal para vincular"
-              >
-                <option value="">Escolher canal…</option>
-                {linkableChannels
-                  .filter((channel) => !(community.channelIds || []).includes(channel.id))
-                  .map((channel) => (
-                    <option key={channel.id} value={channel.id}>
-                      {channel.name}
-                    </option>
-                  ))}
-              </select>
-              <button className="btn tonal sm" type="submit">
-                Vincular
-              </button>
-            </form>
+          <h3 className="h3">Transmissão</h3>
+          <p className="muted sm">
+            A conta de cada pessoa é o canal. Para transmitir nesta comunidade,
+            use “Iniciar live” ou o OBS Studio na página da comunidade — a sala
+            técnica é criada automaticamente, sem precisar criar canais.
+          </p>
+          {linkedChannels.some((channel) => channel.live) ? (
+            <span className="pill live">
+              <Icon name="radio" /> Live da comunidade no ar
+            </span>
           ) : null}
         </section>
 

@@ -267,13 +267,13 @@ function mergeWorkspace(base, ws, user) {
       const media = parseRemoteMedia(p.media);
       if (!media.length && p.media_url) {
         media.push({
-          kind: p.kind === 'video' ? 'video' : 'photo',
+          kind: ['video', 'audio'].includes(p.kind) ? p.kind : 'photo',
           src: p.media_url,
           seed: p.seed || p.id,
           dur: p.dur,
         });
       }
-      if (!media.length && (p.kind === 'photo' || p.kind === 'video')) {
+      if (!media.length && ['photo', 'video', 'audio'].includes(p.kind)) {
         media.push({ kind: p.kind, seed: p.seed || p.id, dur: p.dur });
       }
       const isStory =
@@ -2198,7 +2198,12 @@ export function AppProvider({ children }) {
           );
           continue;
         }
-        let src = kind === 'photo' ? await fileToDataURL(file, 1080) : URL.createObjectURL(file);
+        let src =
+          kind === 'photo'
+            ? await fileToDataURL(file, 1080)
+            : kind === 'audio'
+              ? await fileToRawDataURL(file)
+              : URL.createObjectURL(file);
         if (isSupabaseEnabled && sessionRef.current?.id) {
           const uploaded = await remote.uploadMedia(file, sessionRef.current.id);
           if (uploaded) src = uploaded;
@@ -2430,7 +2435,9 @@ export function AppProvider({ children }) {
         let src =
           kind === 'photo'
             ? await fileToDataURL(file, 1080)
-            : URL.createObjectURL(file);
+            : kind === 'audio'
+              ? await fileToRawDataURL(file)
+              : URL.createObjectURL(file);
         if (isSupabaseEnabled && sessionRef.current?.id) {
           const uploaded = await remote.uploadMedia(file, sessionRef.current.id);
           if (uploaded) src = uploaded;
@@ -2504,12 +2511,12 @@ export function AppProvider({ children }) {
     );
   }
 
-  function publish(text) {
+  function publish(text, communityIdOverride = null) {
     const draft = uiRef.current.draft;
     const trimmed = text.trim();
     const media = draft.media || [];
     const format = draft.format || 'classic';
-    const communityId = draft.communityId || null;
+    const communityId = communityIdOverride || draft.communityId || null;
     const scheduled = draft.schedule?.mode === 'scheduled';
     if (scheduled && !isSchedulable(format)) {
       toast('Publicações programadas são para enquetes, perguntas, votações e desafios.');
@@ -3358,6 +3365,91 @@ export function AppProvider({ children }) {
       me: { ...cur.me, scraps: [scrap, ...cur.me.scraps] },
     }));
     if (sessionRef.current?.id) remote.addScrap(scrap, sessionRef.current.id, sessionRef.current.id);
+  }
+
+  // A conta do usuário é o "canal". O palco vinculado à comunidade é apenas
+  // a sala técnica usada pelo LiveKit/OBS — não aparece como canal na interface.
+  function stageChannelOf(communityId) {
+    const cur = dataRef.current;
+    const comm = cur?.comms?.find((c) => c.id === communityId);
+    if (!comm || !cur) return null;
+    const ids = comm.channelIds || [];
+    return (
+      cur.chans.find((c) => ids.includes(c.id) && c.kind === 'palco') || null
+    );
+  }
+
+  async function ensureCommunityStage(communityId) {
+    const existing = stageChannelOf(communityId);
+    if (existing) return existing;
+    const cur = dataRef.current;
+    if (!cur?.me) return null;
+    const channel = {
+      id: uid(),
+      owner: 'me',
+      name: cur.me.name,
+      desc: 'Transmissão da comunidade.',
+      kind: 'palco',
+      followers: 1,
+      live: false,
+      livekit: isLiveKitEnabled && !!sessionRef.current?.id,
+      title: '',
+      viewers: 0,
+      joined: true,
+      msgs: [],
+      polls: [],
+      seed: communityId + '-stage',
+    };
+    setData((s) => ({
+      ...s,
+      chans: [channel, ...s.chans],
+      comms: s.comms.map((c) =>
+        c.id === communityId
+          ? { ...c, channelIds: [...(c.channelIds || []), channel.id] }
+          : c
+      ),
+    }));
+    if (sessionRef.current?.id) {
+      await remote.saveChannel(channel, sessionRef.current.id);
+      await remote.saveCommunityChannel(communityId, channel.id);
+    }
+    return channel;
+  }
+
+  async function startCommunityLive(communityId) {
+    if (uiRef.current.myLive) {
+      toast('Você já está ao vivo. Encerre a transmissão atual primeiro.');
+      return;
+    }
+    const channel = await ensureCommunityStage(communityId);
+    if (!channel) return;
+    const comm = dataRef.current?.comms.find((c) => c.id === communityId);
+    const updated = {
+      ...channel,
+      live: true,
+      livekit: isLiveKitEnabled && !!sessionRef.current?.id,
+      title: comm?.name || channel.title,
+      viewers: 1,
+    };
+    setData((s) => ({
+      ...s,
+      chans: s.chans.map((c) => (c.id === updated.id ? updated : c)),
+    }));
+    if (sessionRef.current?.id) remote.saveChannel(updated, sessionRef.current.id);
+    setUi((u) => ({ ...u, myLive: { id: updated.id, start: Date.now(), peak: 1 } }));
+    toast('Live da comunidade iniciada');
+  }
+
+  function endCommunityLive(communityId) {
+    const channel = stageChannelOf(communityId);
+    if (!channel?.live) return;
+    requestConfirm({
+      title: 'Encerrar a live da comunidade?',
+      text: 'A transmissão será finalizada para todos os membros que estão assistindo.',
+      confirmLabel: 'Encerrar',
+      tone: 'hot',
+      action: () => finishLive({ id: channel.id }),
+    });
   }
 
   function openComm(id) {
@@ -4235,8 +4327,8 @@ export function AppProvider({ children }) {
       channel = {
         id: uid(),
         owner: 'me',
-        name: title,
-        desc: String(category || '').trim() || 'Transmissão ao vivo.',
+        name: cur.me.name,
+        desc: String(category || '').trim() || `Transmissão de ${cur.me.name}`,
         kind: 'palco',
         followers: 1,
         live: true,
@@ -4883,6 +4975,12 @@ export function AppProvider({ children }) {
     setAuthTab: (authTab) => setUi((u) => ({ ...u, authTab })),
     openSearch: () => setUi((u) => ({ ...u, modal: { type: 'search' } })),
     openObs: (id) => setUi((u) => ({ ...u, modal: { type: 'obs', id } })),
+    openCommunityObs: async (id) => {
+      const channel = await ensureCommunityStage(id);
+      if (channel) setUi((u) => ({ ...u, modal: { type: 'obs', id: channel.id } }));
+    },
+    startCommunityLive,
+    endCommunityLive,
     toggleTheme: () =>
       setUi((u) => ({ ...u, theme: u.theme === 'dark' ? 'light' : 'dark' })),
     go,
@@ -4898,6 +4996,19 @@ export function AppProvider({ children }) {
     toggleDraftInvite,
     clearDraftMedia: () =>
       setUi((u) => ({ ...u, draft: { ...u.draft, media: [] } })),
+    resetDraft: () =>
+      setUi((u) => ({
+        ...u,
+        draft: {
+          ...u.draft,
+          text: '',
+          media: [],
+          format: 'classic',
+          options: [],
+          communityId: null,
+          live: null,
+        },
+      })),
     removeDraftMedia,
     applyMediaEdit,
     attachMedia,

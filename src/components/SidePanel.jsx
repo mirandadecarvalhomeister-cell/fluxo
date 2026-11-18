@@ -8,7 +8,19 @@ export default function SidePanel() {
   const { data, actions, mode } = useApp();
   const people = Object.values(data.users);
   const suggestions = people.filter((u) => !data.follows.includes(u.id)).slice(0, 3);
-  const hot = [...data.comms].sort((a, b) => b.subs - a.subs).slice(0, 4);
+  const hot = [...data.comms]
+    .map((comm) => {
+      const score = (data.posts || [])
+        .filter((post) => post.communityId === comm.id)
+        .reduce(
+          (total, post) =>
+            total + (post.likes || 0) + (post.comments?.length || 0) * 2,
+          0
+        );
+      return { ...comm, heat: score };
+    })
+    .sort((a, b) => b.heat - a.heat || b.subs - a.subs)
+    .slice(0, 4);
 
   return (
     <>
@@ -57,7 +69,9 @@ export default function SidePanel() {
               <b className="ell" style={{ display: 'block' }}>
                 {c.name}
               </b>
-              <span className="muted sm">{fmt(c.subs)} inscritos</span>
+              <span className="muted sm">
+                em alta · {fmt(c.heat)} interações
+              </span>
             </div>
           </button>
         ))}

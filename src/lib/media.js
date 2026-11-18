@@ -12,16 +12,17 @@ export function mediaOf(post) {
     return post.media.filter((item) => item && (item.src || item.seed));
   }
   if (post.src) {
+    const kind = ['video', 'audio'].includes(post.kind) ? post.kind : 'photo';
     return [
       {
-        kind: post.kind === 'video' ? 'video' : 'photo',
+        kind,
         src: post.src,
         seed: post.seed || post.id,
         dur: post.dur,
       },
     ];
   }
-  if (post.kind === 'photo' || post.kind === 'video') {
+  if (post.kind === 'photo' || post.kind === 'video' || post.kind === 'audio') {
     return [
       {
         kind: post.kind,
@@ -38,7 +39,10 @@ export function firstMedia(post) {
 }
 
 export function mediaKind(file) {
-  return String(file?.type || '').startsWith('video/') ? 'video' : 'photo';
+  const type = String(file?.type || '');
+  if (type.startsWith('video/')) return 'video';
+  if (type.startsWith('audio/')) return 'audio';
+  return 'photo';
 }
 
 export function parseRemoteMedia(value) {
