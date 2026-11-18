@@ -191,9 +191,6 @@ function CommunityModal({ community }) {
   const inviteCandidates = data.follows.filter(
     (id) => id !== 'me' && !members.includes(id)
   );
-  const linkedChannels = (community.channelIds || [])
-    .map((id) => (data.chans || []).find((channel) => channel.id === id))
-    .filter(Boolean);
   const [topic, setTopic] = useState('');
   const [modSel, setModSel] = useState(candidates[0] || '');
   const [inviteSel, setInviteSel] = useState(inviteCandidates[0] || '');
@@ -440,20 +437,6 @@ function CommunityModal({ community }) {
             })}
           </section>
         ) : null}
-
-        <section>
-          <h3 className="h3">Transmissão</h3>
-          <p className="muted sm">
-            A conta de cada pessoa é o canal. Para transmitir nesta comunidade,
-            use “Iniciar live” ou o OBS Studio na página da comunidade — a sala
-            técnica é criada automaticamente, sem precisar criar canais.
-          </p>
-          {linkedChannels.some((channel) => channel.live) ? (
-            <span className="pill live">
-              <Icon name="radio" /> Live da comunidade no ar
-            </span>
-          ) : null}
-        </section>
 
         {community.joined && inviteCandidates.length ? (
           <section>

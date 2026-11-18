@@ -1298,9 +1298,6 @@ mark{background:color-mix(in srgb,var(--accent) 30%,transparent);color:inherit;b
 .comm-gallery-meta b{max-width:160px}
 
 /* Comunidade como canal: composer, palco OBS e mídias. */
-.comm-pills .pill.live{color:#fff;background:var(--hot);border-color:transparent}
-.comm-stage{margin-bottom:18px;padding:0;overflow:hidden}
-.comm-stage .stage{margin-bottom:0;border-radius:18px}
 .comm-compose{display:grid;gap:10px;padding:14px;margin-bottom:14px}
 .comm-compose.locked{display:flex;align-items:center;gap:10px;color:var(--muted)}
 .comm-compose.locked .ic{width:18px;height:18px}

@@ -1,17 +1,14 @@
-import React, { lazy, Suspense, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { fmt, hm } from '../lib/utils';
 import { art } from '../lib/art';
 import { mediaOf } from '../lib/media';
-import { isLiveKitEnabled } from '../lib/livekit';
 import { Avatar, LiveAvatar } from './Avatar';
 import AnimatedEmoji from './AnimatedEmoji';
 import Empty from './Empty';
 import { Icon } from './Icon';
 import { Verified } from './Brand';
 import Post from './Post';
-
-const LiveStage = lazy(() => import('./LiveStage'));
 
 const NAV = [
   ['publicacoes', 'Publicações', 'chat'],
@@ -206,9 +203,6 @@ export default function CommunitySpace({ community, onAdmin }) {
     (a, b) => Number(!!b.pinned) - Number(!!a.pinned)
   );
   const members = community.members || [];
-  const stageChannel = (community.channelIds || [])
-    .map((id) => (data.chans || []).find((c) => c.id === id))
-    .find((c) => c && c.kind === 'palco');
 
   const [topic, setTopic] = useState('');
   const [evTitle, setEvTitle] = useState('');
@@ -262,11 +256,6 @@ export default function CommunitySpace({ community, onAdmin }) {
               <span className="pill">
                 <Icon name="image" /> {gallery.length} mídias
               </span>
-              {stageChannel?.live ? (
-                <span className="pill live">
-                  <Icon name="radio" /> Ao vivo
-                </span>
-              ) : null}
             </div>
           </div>
           <div className="comm-hero-actions">
@@ -281,69 +270,13 @@ export default function CommunitySpace({ community, onAdmin }) {
                   : 'Entrar na comunidade'}
             </button>
             {canManage ? (
-              <>
-                <button
-                  className="btn hot"
-                  onClick={() =>
-                    stageChannel?.live
-                      ? actions.endCommunityLive(community.id)
-                      : actions.startCommunityLive(community.id)
-                  }
-                >
-                  <Icon name="radio" />
-                  {stageChannel?.live ? 'Encerrar live' : 'Iniciar live'}
-                </button>
-                <button
-                  className="btn tonal"
-                  onClick={() => actions.openCommunityObs(community.id)}
-                  title="Transmitir com OBS Studio"
-                >
-                  <Icon name="screen" /> OBS
-                </button>
-                <button className="btn tonal" onClick={() => setTab('admin')}>
-                  <Icon name="shield" /> Administração
-                </button>
-              </>
+              <button className="btn tonal" onClick={() => setTab('admin')}>
+                <Icon name="shield" /> Administração
+              </button>
             ) : null}
           </div>
         </div>
       </header>
-
-      {stageChannel?.live ? (
-        <section className="card comm-stage">
-          {stageChannel.livekit && isLiveKitEnabled ? (
-            <Suspense
-              fallback={
-                <div className="stage lk-stage">
-                  <div className="lk-status">
-                    <span className="lk-dot" /> Carregando transmissão...
-                  </div>
-                </div>
-              }
-            >
-              <LiveStage channel={stageChannel} owner={false} clock="" hearts={null} />
-            </Suspense>
-          ) : (
-            <div
-              className="stage"
-              style={{
-                backgroundImage: `url('${art(community.id, 960, 540)}')`,
-              }}
-            >
-              <span className="glowb" />
-              <div className="tl">
-                <span className="livepill">AO VIVO</span>
-                <span className="vpill">
-                  <Icon name="eye" /> {fmt(stageChannel.viewers)}
-                </span>
-              </div>
-              <div className="cap">
-                <b>{community.name}</b>
-              </div>
-            </div>
-          )}
-        </section>
-      ) : null}
 
       <div className="comm-layout">
         <nav className="comm-nav" aria-label="Navegação da comunidade">

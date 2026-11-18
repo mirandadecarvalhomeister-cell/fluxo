@@ -83,7 +83,7 @@
 - Removida a aba **Conversas**; a galeria agora exibe **apenas mídias publicadas nas publicações** da comunidade (foto, vídeo e áudio).
 - **Posts de comunidade fora do feed**: `Feed.jsx` filtra `communityId`; os posts permanecem em `data.posts` para alimentar o Radar.
 - **Radar**: assuntos de comunidade com muitos comentários ganham peso em `buildTrending`; nova seção "Comunidades em alta" por engajamento recente; `SidePanel` também ordena por interações.
-- **OBS Studio na comunidade**: administração pode iniciar/encerrar a live e abrir o modal OBS. A sala técnica é um palco interno vinculado via `community_channels`, criado automaticamente — **nenhuma migration ou Edge Function nova foi necessária**.
+- **Lives/OBS apenas em Conexões**: comunidades não têm lives nem OBS (correção aplicada). A conta do usuário é o canal e o OBS continua exclusivo da aba Conexões.
 - **Áudio em publicações**: `mediaKind` reconhece `audio/*`, upload/persistência preservam o tipo e `Post.jsx` renderiza player de áudio.
 - **Conta como canal**: removida a aba "Canais" e a lista de canais em Conexões; diretório mostra quem está ao vivo; no palco, o botão de inscrição foi trocado por "Seguir" (relacionamento entre contas).
 
@@ -93,9 +93,15 @@
 
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `662e6850`.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy `5f07999f`.
+
+## Fase 8 — Picker de emojis estilo mensageiro (concluído)
+
+- Barra de categorias com ícones de linha no topo (recentes, favoritos, carinhas, amor, gestos, pessoas, animais, comida, viagem, atividades, objetos, símbolos, bandeiras), com indicador na categoria ativa.
+- Busca em pílula, linha de sugeridos/recentes e cabeçalho da seção antes da grade, seguindo o modelo de referência.
+- Grade responsiva (9 colunas no desktop, 8 no celular) mantendo emojis animados do Noto e favoritos.
 - Migrations aplicadas no Supabase de produção: `migrate_channel_subscriptions.sql`, `migrate_communities_v2.sql`, `migrate_emoji_favorites.sql`.
 
 ## Commits desta rodada
 
-`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`, `d9191ec`, `6d49d70`, `1a4c197`.
+`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`, `d9191ec`, `6d49d70`, `1a4c197`, `595e4cf`.

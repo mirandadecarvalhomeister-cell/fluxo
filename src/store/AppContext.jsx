@@ -3367,91 +3367,6 @@ export function AppProvider({ children }) {
     if (sessionRef.current?.id) remote.addScrap(scrap, sessionRef.current.id, sessionRef.current.id);
   }
 
-  // A conta do usuário é o "canal". O palco vinculado à comunidade é apenas
-  // a sala técnica usada pelo LiveKit/OBS — não aparece como canal na interface.
-  function stageChannelOf(communityId) {
-    const cur = dataRef.current;
-    const comm = cur?.comms?.find((c) => c.id === communityId);
-    if (!comm || !cur) return null;
-    const ids = comm.channelIds || [];
-    return (
-      cur.chans.find((c) => ids.includes(c.id) && c.kind === 'palco') || null
-    );
-  }
-
-  async function ensureCommunityStage(communityId) {
-    const existing = stageChannelOf(communityId);
-    if (existing) return existing;
-    const cur = dataRef.current;
-    if (!cur?.me) return null;
-    const channel = {
-      id: uid(),
-      owner: 'me',
-      name: cur.me.name,
-      desc: 'Transmissão da comunidade.',
-      kind: 'palco',
-      followers: 1,
-      live: false,
-      livekit: isLiveKitEnabled && !!sessionRef.current?.id,
-      title: '',
-      viewers: 0,
-      joined: true,
-      msgs: [],
-      polls: [],
-      seed: communityId + '-stage',
-    };
-    setData((s) => ({
-      ...s,
-      chans: [channel, ...s.chans],
-      comms: s.comms.map((c) =>
-        c.id === communityId
-          ? { ...c, channelIds: [...(c.channelIds || []), channel.id] }
-          : c
-      ),
-    }));
-    if (sessionRef.current?.id) {
-      await remote.saveChannel(channel, sessionRef.current.id);
-      await remote.saveCommunityChannel(communityId, channel.id);
-    }
-    return channel;
-  }
-
-  async function startCommunityLive(communityId) {
-    if (uiRef.current.myLive) {
-      toast('Você já está ao vivo. Encerre a transmissão atual primeiro.');
-      return;
-    }
-    const channel = await ensureCommunityStage(communityId);
-    if (!channel) return;
-    const comm = dataRef.current?.comms.find((c) => c.id === communityId);
-    const updated = {
-      ...channel,
-      live: true,
-      livekit: isLiveKitEnabled && !!sessionRef.current?.id,
-      title: comm?.name || channel.title,
-      viewers: 1,
-    };
-    setData((s) => ({
-      ...s,
-      chans: s.chans.map((c) => (c.id === updated.id ? updated : c)),
-    }));
-    if (sessionRef.current?.id) remote.saveChannel(updated, sessionRef.current.id);
-    setUi((u) => ({ ...u, myLive: { id: updated.id, start: Date.now(), peak: 1 } }));
-    toast('Live da comunidade iniciada');
-  }
-
-  function endCommunityLive(communityId) {
-    const channel = stageChannelOf(communityId);
-    if (!channel?.live) return;
-    requestConfirm({
-      title: 'Encerrar a live da comunidade?',
-      text: 'A transmissão será finalizada para todos os membros que estão assistindo.',
-      confirmLabel: 'Encerrar',
-      tone: 'hot',
-      action: () => finishLive({ id: channel.id }),
-    });
-  }
-
   function openComm(id) {
     const hash = `#comunidade/${encodeURIComponent(id)}`;
     if (location.hash !== hash) location.hash = hash;
@@ -4975,12 +4890,6 @@ export function AppProvider({ children }) {
     setAuthTab: (authTab) => setUi((u) => ({ ...u, authTab })),
     openSearch: () => setUi((u) => ({ ...u, modal: { type: 'search' } })),
     openObs: (id) => setUi((u) => ({ ...u, modal: { type: 'obs', id } })),
-    openCommunityObs: async (id) => {
-      const channel = await ensureCommunityStage(id);
-      if (channel) setUi((u) => ({ ...u, modal: { type: 'obs', id: channel.id } }));
-    },
-    startCommunityLive,
-    endCommunityLive,
     toggleTheme: () =>
       setUi((u) => ({ ...u, theme: u.theme === 'dark' ? 'light' : 'dark' })),
     go,
