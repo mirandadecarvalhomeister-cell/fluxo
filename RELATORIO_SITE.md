@@ -77,13 +77,25 @@
 - **Enquetes do dono da live**: formulário de criação (modos chat/fluxo, 2–6 alternativas, duração até 24 h) e cards de voto/encerramento já existentes, mantidos e integrados ao chat da transmissão.
 - **Animações na prévia do feed**: `EmojiText` aplicado ao texto dos posts e ao emoji da reação atual; picker de reações remonta ao abrir para a animação Lottie rodar no feed, não só na postagem aberta.
 
+## Fase 7 — Comunidade como canal, conta como canal e OBS (concluído)
+
+- **Comunidade como canal**: aba **Publicações** é a principal e traz composer com texto, **áudio gravado no navegador**, fotos e vídeos da galeria. Em comunidades abertas, qualquer pessoa pode publicar.
+- Removida a aba **Conversas**; a galeria agora exibe **apenas mídias publicadas nas publicações** da comunidade (foto, vídeo e áudio).
+- **Posts de comunidade fora do feed**: `Feed.jsx` filtra `communityId`; os posts permanecem em `data.posts` para alimentar o Radar.
+- **Radar**: assuntos de comunidade com muitos comentários ganham peso em `buildTrending`; nova seção "Comunidades em alta" por engajamento recente; `SidePanel` também ordena por interações.
+- **OBS Studio na comunidade**: administração pode iniciar/encerrar a live e abrir o modal OBS. A sala técnica é um palco interno vinculado via `community_channels`, criado automaticamente — **nenhuma migration ou Edge Function nova foi necessária**.
+- **Áudio em publicações**: `mediaKind` reconhece `audio/*`, upload/persistência preservam o tipo e `Post.jsx` renderiza player de áudio.
+- **Conta como canal**: removida a aba "Canais" e a lista de canais em Conexões; diretório mostra quem está ao vivo; no palco, o botão de inscrição foi trocado por "Seguir" (relacionamento entre contas).
+
+**Verificação LiveKit (18/11)**: autorização via `lk cloud auth --user-auth` concluída. Projeto `fluxo` (`p_gqlzc8tipro`), subdomínio `fluxo-mn2zb5o7`. Secrets e Edge Functions (`livekit-token` v3, `livekit-ingress` v1) ativos; endpoint responde OK. Uso em novembro: **21 sessões, ~133 participant-minutos de 5.000** do plano Build, **0 sessões ativas** — sem sinal de limite atingido ou cobrança.
+
 ## Validação
 
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `d801c3f3`.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy `662e6850`.
 - Migrations aplicadas no Supabase de produção: `migrate_channel_subscriptions.sql`, `migrate_communities_v2.sql`, `migrate_emoji_favorites.sql`.
 
 ## Commits desta rodada
 
-`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`, `d9191ec`, `6d49d70`.
+`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`, `d9191ec`, `6d49d70`, `1a4c197`.
