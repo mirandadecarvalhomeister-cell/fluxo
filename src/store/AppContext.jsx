@@ -388,6 +388,7 @@ function mergeWorkspace(base, ws, user) {
             id: t.id,
             by: asPerson(t.author_id),
             title: t.title,
+            pinned: !!t.pinned,
             replies: t.replies || 0,
             ts: new Date(t.created_at).getTime(),
           }))
@@ -709,7 +710,7 @@ const readHash = () => {
   const raw = path || 'feed';
   const [route, param, extra] = raw.split('/');
   const params = new URLSearchParams(query || '');
-  const valid = ['feed', 'perfil', 'mensagens', 'conexoes'].includes(route)
+  const valid = ['feed', 'perfil', 'mensagens', 'conexoes', 'comunidade'].includes(route)
     ? route
     : 'feed';
   let room = null;
@@ -717,6 +718,10 @@ const readHash = () => {
   let quizOpen = false;
   let quizChallenge = null;
   let quizInvite = null;
+  let commId = null;
+  if (valid === 'comunidade' && param) {
+    try { commId = decodeURIComponent(param); } catch { commId = param; }
+  }
   if (valid === 'conexoes' && param) {
     if (param === 'arena') {
       arenaCode = extra
@@ -740,7 +745,7 @@ const readHash = () => {
       }
     }
   }
-  return { route, room, arenaCode, quizOpen, quizChallenge, quizInvite };
+  return { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, commId };
 };
 
 // Convites/compartilhamentos chegam com parâmetros na URL (ex.:
@@ -791,7 +796,7 @@ const clearInviteParams = () => {
 };
 
 const initialUi = () => {
-  const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite } = readHash();
+  const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, commId } = readHash();
   return {
     route,
     draft: {
@@ -816,6 +821,7 @@ const initialUi = () => {
     quizOpen,
     quizChallenge,
     quizInvite,
+    commId,
     chanFilter: 'all',
     myLive: null,
     authTab: 'in',
@@ -922,15 +928,16 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     const onHash = () => {
-      const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite } = readHash();
+      const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, commId } = readHash();
       setUi((u) =>
         u.route === route &&
         u.room === room &&
         u.arenaCode === arenaCode &&
         u.quizOpen === quizOpen &&
+        u.commId === commId &&
         (u.quizChallenge || null) === (quizChallenge || null)
           ? u
-          : { ...u, route, room, arenaCode, quizOpen, quizChallenge, quizInvite }
+          : { ...u, route, room, arenaCode, quizOpen, quizChallenge, quizInvite, commId }
       );
       window.scrollTo(0, 0);
     };
@@ -3354,7 +3361,10 @@ export function AppProvider({ children }) {
   }
 
   function openComm(id) {
-    setUi((u) => ({ ...u, modal: { type: 'comm', id } }));
+    const hash = `#comunidade/${encodeURIComponent(id)}`;
+    if (location.hash !== hash) location.hash = hash;
+    setUi((u) => ({ ...u, route: 'comunidade', commId: id, modal: null, room: null }));
+    window.scrollTo(0, 0);
   }
 
   function closeModal() {
@@ -3618,7 +3628,16 @@ export function AppProvider({ children }) {
       topics: [],
     };
     setData((cur) => ({ ...cur, comms: [community, ...cur.comms] }));
-    setUi((u) => ({ ...u, profTab: 'comms', modal: { type: 'comm', id: community.id } }));
+    const hash = `#comunidade/${encodeURIComponent(community.id)}`;
+    if (location.hash !== hash) location.hash = hash;
+    setUi((u) => ({
+      ...u,
+      profTab: 'comms',
+      route: 'comunidade',
+      commId: community.id,
+      modal: null,
+      room: null,
+    }));
     if (sessionRef.current?.id) remote.saveCommunity(community, sessionRef.current.id);
     toast('Comunidade criada');
   }
@@ -4937,6 +4956,7 @@ export function AppProvider({ children }) {
     uploadCover,
     addScrap,
     openComm,
+    openCommAdmin: (id) => setUi((u) => ({ ...u, modal: { type: 'comm', id, admin: true } })),
     closeModal,
     toggleComm,
     createComm,

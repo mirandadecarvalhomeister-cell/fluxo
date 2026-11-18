@@ -3,6 +3,7 @@ import { unreadNotifications, unreadTotal } from '../lib/selectors';
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import { Logo, Verified } from './Brand';
+import CommunitySpace from './CommunitySpace';
 import Connections from './Connections';
 import Feed from './Feed';
 import { Icon } from './Icon';
@@ -23,6 +24,7 @@ const TITLES = {
   perfil: 'Perfil',
   mensagens: 'Mensagens',
   conexoes: 'Conexões',
+  comunidade: 'Comunidade',
 };
 
 // Ordem das abas para a navegação por deslize horizontal no mobile.
@@ -292,6 +294,12 @@ export default function Shell() {
     setTimeout(() => document.getElementById('ctext')?.focus(), 60);
   };
 
+  // A comunidade é uma rota própria (ambiente interno), não um modal.
+  const community =
+    ui.route === 'comunidade'
+      ? (data.comms || []).find((c) => c.id === ui.commId)
+      : null;
+
   return (
     <>
       <a
@@ -369,6 +377,20 @@ export default function Shell() {
             {ui.route === 'perfil' && <Profile />}
             {ui.route === 'mensagens' && <Messages />}
             {ui.route === 'conexoes' && <Connections />}
+            {community ? (
+              <CommunitySpace
+                community={community}
+                onAdmin={() => actions.openCommAdmin(community.id)}
+              />
+            ) : ui.route === 'comunidade' ? (
+              <div className="card comm-missing">
+                <b>Comunidade indisponível</b>
+                <p className="muted sm">Ela pode ter sido removida ou o link está incorreto.</p>
+                <button className="btn primary" onClick={() => actions.go('conexoes')}>
+                  Voltar ao Fluxo
+                </button>
+              </div>
+            ) : null}
           </main>
         </div>
 

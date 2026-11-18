@@ -28,3 +28,24 @@ export function animatedEmojiUrl(emoji) {
   const code = ANIMATED[emoji];
   return code ? `/emoji/${code}.json` : null;
 }
+
+// Cache em memória: evita fetch assíncrono no momento da reação (overlay dura ~1,5s).
+const cache = new Map();
+let preloadStarted = false;
+
+export function getEmojiAnimation(emoji) {
+  const url = animatedEmojiUrl(emoji);
+  return url ? cache.get(url) || null : null;
+}
+
+export function preloadEmojiAnimations() {
+  if (preloadStarted || typeof window === 'undefined') return;
+  preloadStarted = true;
+  Object.values(ANIMATED).forEach((code) => {
+    const url = `/emoji/${code}.json`;
+    fetch(url)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) cache.set(url, data); })
+      .catch(() => {});
+  });
+}

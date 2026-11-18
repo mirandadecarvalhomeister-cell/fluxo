@@ -9,6 +9,8 @@ import { TagText, Verified } from './Brand';
 import ChatPicker from './ChatPicker';
 import { Icon } from './Icon';
 import { VideoViewer } from './VideoPlayer';
+import AnimatedEmoji from './AnimatedEmoji';
+import { hasAnimatedEmoji } from '../lib/animatedEmoji';
 
 const ATTACH_LABEL = {
   photo: 'Foto',
@@ -385,18 +387,6 @@ function Attachment({ attachment, onOpen, onForward, onOpenArena }) {
             loading="lazy"
           />
         </button>
-        <button
-          type="button"
-          className="att-forward"
-          onClick={(event) => {
-            event.stopPropagation();
-            onForward?.();
-          }}
-          aria-label="Encaminhar foto"
-          title="Encaminhar"
-        >
-          <Icon name="forward" />
-        </button>
       </span>
     );
   }
@@ -420,18 +410,6 @@ function Attachment({ attachment, onOpen, onForward, onOpenArena }) {
             <Icon name="play" className="fill" />
           </span>
         </button>
-        <button
-          type="button"
-          className="att-forward"
-          onClick={(event) => {
-            event.stopPropagation();
-            onForward?.();
-          }}
-          aria-label="Encaminhar vídeo"
-          title="Encaminhar"
-        >
-          <Icon name="forward" />
-        </button>
       </span>
     );
   }
@@ -454,6 +432,19 @@ function Attachment({ attachment, onOpen, onForward, onOpenArena }) {
       <Icon name="file" />
       <span className="ell">{attachment.name || 'Arquivo'}</span>
     </button>
+  );
+}
+
+// Texto com emojis animados do Noto inline (links continuam funcionando via TagText).
+function MessageText({ text }) {
+  const value = String(text || '');
+  const parts = value.split(/(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)/gu);
+  return (
+    <>
+      {parts.map((part, i) => hasAnimatedEmoji(part)
+        ? <AnimatedEmoji key={i} emoji={part} size={21} />
+        : <TagText key={i} text={part} links />)}
+    </>
   );
 }
 
@@ -601,9 +592,7 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia, onForw
           title="Segure para mais opções"
         >
           {message.text ? (
-            <p>
-              <TagText text={message.text} links />
-            </p>
+            <p><MessageText text={message.text} /></p>
           ) : null}
           {(() => {
             const match = !message.attachment && typeof message.text === 'string'
@@ -640,6 +629,15 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia, onForw
             </i>
           ) : null}
         </div>
+        <button
+          type="button"
+          className="msg-forward"
+          onClick={(event) => { event.stopPropagation(); forwardMessage(); }}
+          aria-label="Encaminhar mensagem"
+          title="Encaminhar"
+        >
+          <Icon name="forward" />
+        </button>
       </div>
     </div>
   );

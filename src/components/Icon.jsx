@@ -77,6 +77,8 @@ export default function IconSprite() {
         <symbol id="i-skull" viewBox="0 0 24 24"><path d="M12 3a8 8 0 0 0-5 14.2V20a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.8A8 8 0 0 0 12 3z" /><circle cx="9" cy="11" r="1.5" /><circle cx="15" cy="11" r="1.5" /><path d="M10 17h4M11 20v1M13 20v1" /></symbol>
         <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></symbol>
         <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M15 9V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4" /></symbol>
+        <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 4h8l10 10-8 8L3 12z" /><circle cx="7.5" cy="7.5" r="1.5" /></symbol>
+        <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7" /></symbol>
       </defs>
     </svg>
   );

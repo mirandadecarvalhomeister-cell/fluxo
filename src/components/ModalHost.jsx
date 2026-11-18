@@ -2546,7 +2546,7 @@ export default function ModalHost() {
   } else if (modal.type === 'comm') {
     const community = data.comms.find((c) => c.id === modal.id);
     content = community ? (
-      commAdmin ? (
+      commAdmin || modal.admin ? (
         <CommunityModal community={community} />
       ) : (
         <CommunitySpace community={community} onAdmin={() => setCommAdmin(true)} />

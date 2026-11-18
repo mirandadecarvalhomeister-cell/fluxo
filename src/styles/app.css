@@ -840,7 +840,13 @@ body.lock{overflow:hidden}
 .msg-shell{position:relative;z-index:1;display:flex;width:100%;align-items:flex-end;gap:8px;transition:transform .18s ease;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .msg-shell.me{justify-content:flex-end}
 .msg-shell.them{justify-content:flex-start}
-.msg-shell .b{max-width:min(68%,400px)}
+.msg-shell .b{max-width:min(72%,420px)}
+.msg-forward{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface);color:var(--muted);opacity:.65;transition:opacity .15s,color .15s;cursor:pointer}
+.msg-forward:hover{opacity:1;color:var(--accent)}
+.msg-forward .ic{width:16px;height:16px}
+.msg-shell.them .msg-forward{margin-left:2px}
+.msg-shell.me .msg-forward{margin-right:2px}
+.msg-shell .b{padding-right:14px}
 .msg-trash{position:absolute;right:8px;top:50%;z-index:0;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--hot);color:#fff;opacity:0;transform:translateY(-50%) scale(.7);transition:opacity .16s,transform .16s;pointer-events:none;box-shadow:0 10px 24px -10px rgba(0,0,0,.6)}
 .msg-wrap.dragging .msg-trash{opacity:1;transform:translateY(-50%) scale(1)}
 .msg-wrap.revealed .msg-trash{opacity:1;transform:translateY(-50%) scale(1);pointer-events:auto;z-index:2}
@@ -1234,6 +1240,62 @@ mark{background:color-mix(in srgb,var(--accent) 30%,transparent);color:inherit;b
 .comm-event-date{display:grid;text-align:center;min-width:48px;color:var(--accent)}
 .comm-event-date b{font-size:1.3rem}
 .comm-topic .pill{margin-right:6px}
+
+/* Comunidade como ambiente interno — rota própria, página completa. */
+.comm-page{display:grid;gap:18px;padding-bottom:24px}
+.comm-hero{border-radius:20px;overflow:hidden;border:1px solid var(--line);background:var(--surface);box-shadow:0 18px 40px -30px rgba(0,0,0,.8)}
+.comm-cover{height:190px;position:relative;background-size:cover;background-position:center}
+.comm-back{position:absolute;left:14px;top:14px;background:color-mix(in srgb,var(--surface) 86%,transparent);backdrop-filter:blur(10px)}
+.comm-hero-body{display:flex;align-items:flex-end;gap:16px;padding:0 18px 18px;flex-wrap:wrap;margin-top:-30px}
+.comm-hero-body .comm-icon{margin-top:0;width:90px;height:90px;border-radius:24px;border-width:4px;position:relative;z-index:1}
+.comm-hero-info{flex:1;min-width:220px;padding-top:34px}
+.comm-hero-info h1{margin:0 0 4px;font-size:1.5rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.comm-hero-info p{margin:0 0 10px}
+.comm-pills{display:flex;flex-wrap:wrap;gap:6px}
+.comm-pills .pill{display:inline-flex;align-items:center;gap:5px}
+.comm-pills .ic{width:14px;height:14px;color:var(--accent)}
+.comm-hero-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:34px}
+.comm-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:18px;align-items:start}
+.comm-nav{position:sticky;top:14px;display:flex;flex-direction:column;gap:3px;padding:10px;border-radius:18px;border:1px solid var(--line);background:var(--surface)}
+.comm-nav-title{display:flex;align-items:center;gap:7px;padding:6px 10px 10px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.comm-nav-title .ic{width:15px;height:15px;color:var(--accent)}
+.comm-nav button{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:12px;color:var(--muted);font-weight:650;font-size:13.5px;text-align:left;transition:background .15s,color .15s}
+.comm-nav button .ic{width:18px;height:18px;flex:none}
+.comm-nav button:hover{background:var(--surface2);color:var(--fg)}
+.comm-nav button.on{background:var(--accent-soft);color:var(--accent)}
+.comm-main{min-width:0;display:grid;gap:14px}
+.comm-main .comm-section{padding:16px;border-radius:18px;border:1px solid var(--line);background:var(--surface)}
+.comm-main .h2{margin:0 0 4px;font-size:1.2rem}
+.comm-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.comm-stat{display:grid;gap:2px;padding:14px}
+.comm-stat b{font-size:1.5rem}
+.comm-sub{display:grid;gap:10px;padding-top:6px}
+.comm-sub h3{margin:6px 0 0;font-size:1rem}
+.comm-members{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
+.comm-main .comm-member{width:100%;cursor:pointer}
+.comm-main .comm-member .ic{width:16px;height:16px;color:var(--muted)}
+.comm-missing{display:grid;justify-items:start;gap:10px;padding:24px}
+.comm-event-date span{font-size:11px;text-transform:uppercase}
+.comm-gallery-meta b{max-width:160px}
+.comm-main .comm-event p,.comm-main .comm-classified p{margin:2px 0}
+
+@media (max-width:900px){
+  .comm-layout{grid-template-columns:minmax(0,1fr)}
+  .comm-nav{position:static;flex-direction:row;overflow-x:auto;border-radius:14px;padding:8px;gap:6px}
+  .comm-nav-title{display:none}
+  .comm-nav button{width:auto;white-space:nowrap;padding:8px 12px}
+  .comm-cover{height:150px}
+  .comm-hero-body{padding:0 14px 14px}
+  .comm-hero-body .comm-icon{width:72px;height:72px;border-radius:20px}
+  .comm-hero-info,.comm-hero-actions{padding-top:24px}
+}
+@media (max-width:560px){
+  .comm-hero-body{gap:10px}
+  .comm-hero-info h1{font-size:1.25rem}
+  .comm-hero-actions{width:100%}
+  .comm-hero-actions .btn{flex:1;justify-content:center}
+  .comm-main .comm-section{padding:12px;border-radius:14px}
+}
 
 /* Grade de vídeos do canal (modelo YouTube). */
 .channel-video-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}

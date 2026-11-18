@@ -1,3 +1,4 @@
+import React from 'react';
 import { useApp } from './store/AppContext';
 import Auth from './components/Auth';
 import { Logo } from './components/Brand';
@@ -7,9 +8,12 @@ import ModalHost from './components/ModalHost';
 import ResetPassword from './components/ResetPassword';
 import Shell from './components/Shell';
 import Toast from './components/Toast';
+import { preloadEmojiAnimations } from './lib/animatedEmoji';
 
 export default function App() {
   const { data, ready, recovery, guest } = useApp();
+
+  React.useEffect(() => { preloadEmojiAnimations(); }, []);
 
   return (
     <>
