@@ -93,15 +93,23 @@
 
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `5f07999f`.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy `1a4cfb27`.
 
 ## Fase 8 — Picker de emojis estilo mensageiro (concluído)
 
 - Barra de categorias com ícones de linha no topo (recentes, favoritos, carinhas, amor, gestos, pessoas, animais, comida, viagem, atividades, objetos, símbolos, bandeiras), com indicador na categoria ativa.
 - Busca em pílula, linha de sugeridos/recentes e cabeçalho da seção antes da grade, seguindo o modelo de referência.
 - Grade responsiva (9 colunas no desktop, 8 no celular) mantendo emojis animados do Noto e favoritos.
+
+## Fase 9 — Chat e catálogo ampliado (concluído)
+
+- Botão de emojis do chat colocado **ao lado do botão de anexar**.
+- **Uma barra só de navegação** no picker: removidas as abas Emojis/Figurinhas; o acesso às figurinhas virou ícone no fim da barra de categorias.
+- Picker ampliado (até 430 px no desktop, largura total no celular).
+- **176 emojis animados** (16 anteriores + 160 novos) com Lottie do Noto servido localmente em `public/emoji/`.
+- Contenção mobile: `overflow-x:clip` em `html/body/#root/.app`, largura do chat corrigida e picker limitado à viewport.
 - Migrations aplicadas no Supabase de produção: `migrate_channel_subscriptions.sql`, `migrate_communities_v2.sql`, `migrate_emoji_favorites.sql`.
 
 ## Commits desta rodada
 
-`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`, `d9191ec`, `6d49d70`, `1a4c197`, `595e4cf`.
+`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`, `d9191ec`, `6d49d70`, `1a4c197`, `595e4cf`, `bb09666`, `b5ebfc8`.
