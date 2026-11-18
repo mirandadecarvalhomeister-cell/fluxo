@@ -685,6 +685,7 @@ function mergeWorkspace(base, ws, user) {
     posts,
     comms,
     commExtras: ws.communityExtras || { gallery: [], events: [], rsvps: [], classifieds: [], notifications: [] },
+    emojiFavorites: ws.emojiFavorites || [],
     chans,
     chats,
     customStickerPacks,
@@ -3679,6 +3680,19 @@ export function AppProvider({ children }) {
     toast('Tópico removido');
   }
 
+  function toggleEmojiFavoriteAction(emoji) {
+    const uidv = sessionRef.current?.id;
+    const current = dataRef.current?.emojiFavorites || [];
+    const favorite = !current.includes(emoji);
+    setData((cur) => ({
+      ...cur,
+      emojiFavorites: favorite
+        ? [...(cur.emojiFavorites || []), emoji]
+        : (cur.emojiFavorites || []).filter((e) => e !== emoji),
+    }));
+    if (uidv) remote.toggleEmojiFavorite(uidv, emoji, favorite);
+  }
+
   // --- Comunidades v2 ---
   function addCommunityGalleryItem(entry) {
     const row = { id: uid(), author_id: sessionRef.current?.id, created_at: new Date().toISOString(), ...entry };
@@ -4915,6 +4929,7 @@ export function AppProvider({ children }) {
     removeModerator,
     addTopic,
     deleteTopic,
+    toggleEmojiFavorite: toggleEmojiFavoriteAction,
     pinCommunityTopic,
     addCommunityGalleryItem,
     removeCommunityGalleryItem,

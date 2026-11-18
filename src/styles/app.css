@@ -1186,6 +1186,18 @@ mark{background:color-mix(in srgb,var(--accent) 30%,transparent);color:inherit;b
 .pgitem .pgvideo-src{width:100%;height:100%;object-fit:cover;display:block}
 .pgov{gap:12px;font-size:11px}
 
+/* Emoji picker: busca e favoritos. */
+.emoji-search{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.emoji-search .ic{width:16px;height:16px;color:var(--muted);flex:none}
+.emoji-search input{flex:1;min-width:0;border:0;background:transparent;color:var(--fg);font:inherit;outline:none}
+.emoji-search input::placeholder{color:var(--muted)}
+.emoji-search button{border:0;background:transparent;color:var(--muted);font-size:20px;cursor:pointer}
+.emoji-tile-wrap{position:relative;display:grid;place-items:center}
+.emoji-fav{position:absolute;top:0;right:0;width:18px;height:18px;display:grid;place-items:center;border:0;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;opacity:0;transition:opacity .12s;cursor:pointer}
+.emoji-tile-wrap:hover .emoji-fav,.emoji-fav.on{opacity:1}
+.emoji-fav.on{color:#FFD54A}
+.emoji-fav .ic{width:11px;height:11px}
+
 /* Comunidades v2 — espaço próprio por comunidade. */
 .comm-space{display:grid;gap:16px}
 .comm-hero{border-radius:18px;overflow:hidden;border:1px solid var(--line);background:var(--surface)}

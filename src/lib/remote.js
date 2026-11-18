@@ -367,6 +367,7 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
     channelPollVotes,
     channelSubscriptions: (channelSubscriptions || []).map((row) => row.channel_id),
     communityExtras: await loadCommunityExtras((allComms || []).map((c) => c.id)),
+    emojiFavorites: await loadEmojiFavorites(uid),
     localPostIds,
     localChanIds,
   };
@@ -891,6 +892,30 @@ export async function setCommunityMembership(communityId, uid, joined, role = 'm
   } catch (error) {
     warn(error);
   }
+}
+
+// Emojis favoritos (sincronizados por conta).
+export async function loadEmojiFavorites(uid) {
+  if (!enabled() || !uid) return [];
+  try {
+    const { data, error } = await supabase
+      .from('emoji_favorites')
+      .select('emoji')
+      .eq('user_id', uid);
+    if (error) { warn(error); return []; }
+    return (data || []).map((row) => row.emoji);
+  } catch (error) { warn(error); return []; }
+}
+
+export async function toggleEmojiFavorite(uid, emoji, favorite) {
+  if (!enabled() || !uid) return false;
+  try {
+    const { error } = favorite
+      ? await supabase.from('emoji_favorites').upsert({ user_id: uid, emoji })
+      : await supabase.from('emoji_favorites').delete().eq('user_id', uid).eq('emoji', emoji);
+    if (error) { warn(error); return false; }
+    return true;
+  } catch (error) { warn(error); return false; }
 }
 
 // --- Comunidades v2: galeria, eventos, classificados e notificações -------
