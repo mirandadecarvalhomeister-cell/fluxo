@@ -1827,3 +1827,31 @@ html.video-open,body.video-open{overflow:hidden!important}
 
 /* Emojis enviados nas mensagens do chat aparecem maiores que o texto. */
 .b p .msg-emoji{font-size:1.85em;line-height:1;vertical-align:-0.12em;display:inline-block;margin:0 1px}
+
+/* Seletor de emojis estilo mensageiro: categorias em ícones no topo, busca e grade. */
+.emoji-picker{width:min(392px,calc(100vw - 24px));max-height:min(440px,72dvh);border-radius:16px}
+.emoji-cats{gap:2px;padding:6px 8px 0;border-bottom:1px solid var(--line);justify-content:space-between}
+.emoji-cats button{flex:1 1 0;width:auto;height:38px;border-radius:8px;border-bottom:2px solid transparent;color:var(--muted);filter:none;opacity:1}
+.emoji-cats button.on{background:transparent;color:var(--accent);border-bottom-color:var(--accent)}
+.emoji-cats button.on b{display:none}
+.emoji-cat-ic{width:21px;height:21px}
+.emoji-search{margin:10px 12px 6px;padding:0 12px;height:38px;border:1px solid var(--line);border-radius:999px;background:var(--surface2)}
+.emoji-search:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.emoji-search .ic{width:17px;height:17px}
+.emoji-search button .ic{width:15px;height:15px}
+.emoji-suggested{display:flex;gap:2px;padding:4px 10px 8px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.emoji-suggested::-webkit-scrollbar{display:none}
+.emoji-suggested button{flex:1 0 auto;min-width:34px;height:34px;border-radius:8px;display:grid;place-items:center}
+.emoji-suggested button:hover{background:var(--surface2)}
+.emoji-section-label{padding:10px 14px 4px;font-weight:700;font-size:13px;color:var(--muted)}
+.emoji-grid{grid-template-columns:repeat(9,1fr);gap:2px;padding:6px 10px 10px;max-height:250px}
+.emoji-grid button{font-size:22px;border-radius:8px}
+.emoji-grid button .animated-emoji,.emoji-grid button .animated-emoji-fallback{width:24px;height:24px;font-size:24px}
+.emoji-foot{padding:8px 12px}
+.chat-picker .emoji-grid,.chat-picker .emoji-grid button{font-size:22px}
+.chat-picker .emoji-grid{grid-template-columns:repeat(9,1fr);gap:2px;padding:6px 10px 10px;max-height:none}
+.chat-picker .emoji-cats button{width:auto;height:38px;font-size:initial}
+@media (max-width:560px){
+  .emoji-picker{width:100%;max-height:56dvh;border-radius:18px 18px 0 0}
+  .emoji-grid,.chat-picker .emoji-grid{grid-template-columns:repeat(8,1fr);max-height:none}
+}
