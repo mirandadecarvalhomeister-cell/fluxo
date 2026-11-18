@@ -69,13 +69,21 @@
 - **Integridade de dados**: corrigido o mapeamento dos tópicos para preservar `pinned` e usar `by` (autor) e `desc` (descrição) conforme o modelo real. Adicionados ícones `tag` e `chevron-right` ao `IconSprite`.
 - Mantido o escopo: sem lives, Radar, busca nova nem alterações no feed principal dentro da comunidade.
 
+## Fase 6 — Conexões estilo Twitch (concluído)
+
+- **Live sem criar canal**: `openLive` abre o modal diretamente; `LiveModal` pede só título e categoria opcional; `startLive` reaproveita um palco próprio ou cria um automaticamente e **não insere mais mensagem fictícia** no chat.
+- **Diretório de lives**: aba "Ao vivo" com grade de todas as transmissões (thumbnail, categoria, espectadores, criador), aba "Canais" com filtros (Todos/Avisos/Conversas/Palcos) e aba "Jogos".
+- **Chat interativo real**: mensagens persistidas em `channel_messages` com realtime + fallback de 4,5 s, barra de emojis rápidos Noto animados e texto com `EmojiText` (emojis animados inline). O painel "Sobre" usa apenas dados reais (criador, espectadores, seguidores, mensagens, enquetes) — removida a lista falsa de "Na sala".
+- **Enquetes do dono da live**: formulário de criação (modos chat/fluxo, 2–6 alternativas, duração até 24 h) e cards de voto/encerramento já existentes, mantidos e integrados ao chat da transmissão.
+- **Animações na prévia do feed**: `EmojiText` aplicado ao texto dos posts e ao emoji da reação atual; picker de reações remonta ao abrir para a animação Lottie rodar no feed, não só na postagem aberta.
+
 ## Validação
 
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `53dde957`.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy `d801c3f3`.
 - Migrations aplicadas no Supabase de produção: `migrate_channel_subscriptions.sql`, `migrate_communities_v2.sql`, `migrate_emoji_favorites.sql`.
 
 ## Commits desta rodada
 
-`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`.
+`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`, `d9191ec`, `6d49d70`.
