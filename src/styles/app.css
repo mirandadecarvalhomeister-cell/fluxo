@@ -1882,3 +1882,16 @@ html,body{max-width:100%;overflow-x:clip}
 .emoji-section-label{position:sticky;top:0;z-index:1;padding:9px 14px 6px;background:var(--surface);font-weight:700;font-size:13px;color:var(--muted)}
 .emoji-section-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:2px;padding:0 10px 8px}
 @media (max-width:560px){.emoji-section-grid,.chat-picker .emoji-section-grid{grid-template-columns:repeat(8,1fr)}}
+
+/* Barra fixa de categorias: sempre visível no topo do quadro. */
+.emoji-cats{position:sticky;top:0;z-index:5;flex:none;display:flex;justify-content:space-between;align-items:stretch;gap:2px;padding:6px 6px 0;min-height:46px;background:var(--surface);border-bottom:1px solid var(--line)}
+.emoji-cats button{flex:1 1 0;width:auto;min-width:0;height:40px;padding:0;border-radius:9px 9px 0 0;border-bottom:2px solid transparent;color:var(--muted);opacity:1;filter:none;display:grid;place-items:center}
+.emoji-cats button.on{background:var(--accent-soft);color:var(--accent);border-bottom-color:var(--accent);opacity:1}
+.emoji-cats button:hover{background:var(--surface2);color:var(--fg)}
+.emoji-cat-ic{width:22px;height:22px}
+.emoji-suggested{display:none}
+.comm-chat-picker .emoji-picker.embedded{position:static;width:100%;max-height:none;border:0;box-shadow:none;border-radius:0;background:transparent}
+.comm-chat-picker .emoji-grid{max-height:min(400px,58dvh)}
+@media (max-width:820px){
+  .comm-chat-picker{position:fixed;left:0;right:0;bottom:0;width:100%;max-width:100%;border-radius:18px 18px 0 0;padding-bottom:env(safe-area-inset-bottom,0px);max-height:min(560px,78dvh)}
+}

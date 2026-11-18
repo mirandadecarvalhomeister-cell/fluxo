@@ -8,7 +8,6 @@ import AnimatedEmoji from './AnimatedEmoji';
 const RECENT_KEY = 'fluxo.emojis.recent';
 const MAX_RECENT = 24;
 const ALL_EMOJIS = [...new Set(EMOJI_GROUPS.flatMap((g) => g.emojis))];
-const SUGGESTED = ['😂', '❤️', '👍', '😍', '🔥', '🎉', '👏', '😭', '🙏', '😎'];
 
 // Ícones de linha para as categorias, no estilo dos mensageiros modernos.
 const CAT_PATHS = {
@@ -156,7 +155,6 @@ export default function EmojiPicker({ onPick, onClose, onStickers, embedded = fa
     onPick?.(emoji);
   };
 
-  const suggested = recents.length ? recents.slice(0, 10) : SUGGESTED;
   const currentLabel = results ? 'Resultados' : sections.find((s) => s.key === active)?.label || '';
 
   const renderTile = (emoji, index, keyPrefix) => (
@@ -236,22 +234,6 @@ export default function EmojiPicker({ onPick, onClose, onStickers, embedded = fa
           </button>
         ) : null}
       </div>
-
-      {!results ? (
-        <div className="emoji-suggested" aria-label="Emojis sugeridos">
-          {suggested.map((emoji, index) => (
-            <button
-              key={`${emoji}-${index}`}
-              type="button"
-              title={emoji}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => pick(emoji)}
-            >
-              <AnimatedEmoji emoji={emoji} size={24} />
-            </button>
-          ))}
-        </div>
-      ) : null}
 
       <div className="emoji-grid" ref={gridRef} onScroll={onScroll}>
         {sections.map((item) => (
