@@ -59,13 +59,23 @@
 - **APK**: `lottie-react-native` + `AnimatedEmoji` integrado na `ReactionBar` (picker e emoji atual), no picker do chat e em **emojis grandes** em mensagens que contêm apenas emojis.
 - Emojis sem animação disponível continuam com o Unicode normal (fallback transparente).
 
+## Fase 5 — Animações no uso real, chat e comunidade como ambiente (concluído)
+
+- **Cache/preload de Lottie**: `animatedEmoji.js` agora mantém cache em memória e `App.jsx` pré-carrega as 16 animações. Corrige o problema em que a animação só aparecia na tabela de emojis: no overlay de reação (~1,5 s) e nas mensagens o fetch assíncrono não terminava a tempo.
+- **Emojis animados em mensagens**: novo `MessageText` em `Messages.jsx` divide o texto e renderiza `AnimatedEmoji` inline para os emojis com animação (links continuam via `TagText`).
+- **Botão Encaminhar fora do balão**: removido de dentro dos anexos de foto/vídeo e posicionado ao lado do balão (`.msg-forward`), com bordas do balão mais abertas (maior largura e respiro à direita).
+- **Comunidade como rota própria**: `#comunidade/<id>` vira página completa (não modal/card/painel). `openComm` navega para a rota; `openCommAdmin` abre o painel de gerenciamento. A criação de comunidade também entra direto na página.
+- **`CommunitySpace` reescrito**: cabeçalho exclusivo (capa, ícone, nome, descrição, privacidade, participantes, mídias, eventos), ações conforme permissão e navegação interna lateral no desktop / abas horizontais no mobile com 10 seções: Visão geral, Conversas, Publicações, Comunicados, Galeria, Enquetes, Eventos, Classificados, Membros e Administração. Botão "Voltar ao Fluxo" integrado.
+- **Integridade de dados**: corrigido o mapeamento dos tópicos para preservar `pinned` e usar `by` (autor) e `desc` (descrição) conforme o modelo real. Adicionados ícones `tag` e `chevron-right` ao `IconSprite`.
+- Mantido o escopo: sem lives, Radar, busca nova nem alterações no feed principal dentro da comunidade.
+
 ## Validação
 
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `56cfdc9c`.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy `53dde957`.
 - Migrations aplicadas no Supabase de produção: `migrate_channel_subscriptions.sql`, `migrate_communities_v2.sql`, `migrate_emoji_favorites.sql`.
 
 ## Commits desta rodada
 
-`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`.
+`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`.
