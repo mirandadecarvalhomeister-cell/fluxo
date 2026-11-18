@@ -828,7 +828,7 @@ body.lock{overflow:hidden}
 /* chat attachments and composer */
 .msg-row{display:flex;align-items:flex-end;gap:8px;width:100%}
 .msg-row.me{justify-content:flex-end}
-.msg-row .b{max-width:min(76%,460px)}
+.msg-row .b{max-width:min(68%,400px)}
 .att-img,.att-video{display:block;max-width:100%;max-height:320px;border-radius:12px;margin:2px 0}
 .att-audio{display:block;width:240px;max-width:100%;margin:4px 0}
 .att-file{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.12);text-decoration:none;color:inherit;max-width:100%}
@@ -840,7 +840,7 @@ body.lock{overflow:hidden}
 .msg-shell{position:relative;z-index:1;display:flex;width:100%;align-items:flex-end;gap:8px;transition:transform .18s ease;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .msg-shell.me{justify-content:flex-end}
 .msg-shell.them{justify-content:flex-start}
-.msg-shell .b{max-width:min(76%,460px)}
+.msg-shell .b{max-width:min(68%,400px)}
 .msg-trash{position:absolute;right:8px;top:50%;z-index:0;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--hot);color:#fff;opacity:0;transform:translateY(-50%) scale(.7);transition:opacity .16s,transform .16s;pointer-events:none;box-shadow:0 10px 24px -10px rgba(0,0,0,.6)}
 .msg-wrap.dragging .msg-trash{opacity:1;transform:translateY(-50%) scale(1)}
 .msg-wrap.revealed .msg-trash{opacity:1;transform:translateY(-50%) scale(1);pointer-events:auto;z-index:2}
@@ -932,7 +932,7 @@ body.lock{overflow:hidden}
   .emoji-grid{grid-template-columns:repeat(7,1fr)}
   .wall-panel,.msg-menu{width:100%}
   .cform{padding:8px 10px}
-  .msg-shell .b{max-width:min(82%,460px)}
+  .msg-shell .b{max-width:min(74%,400px)}
   .wall-grid{grid-template-columns:repeat(3,1fr)}
 }
 
@@ -1189,11 +1189,11 @@ mark{background:color-mix(in srgb,var(--accent) 30%,transparent);color:inherit;b
 /* Lista de conversas + mensagens não lidas. */
 .ci{padding:11px 12px;gap:11px}
 .ci.on{background:color-mix(in srgb,var(--accent) 14%,transparent);box-shadow:inset 3px 0 0 var(--accent)}
-.ci-badge{flex:none;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:linear-gradient(135deg,#FF2D6F,#FF6B3D);color:#fff;font:800 11.5px/22px var(--f-body);text-align:center;box-shadow:0 0 0 3px color-mix(in srgb,var(--hot) 16%,transparent),0 0 14px rgba(255,45,111,.55);animation:badgePulse 2.6s ease-in-out infinite}
+.ci-badge{flex:none;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:linear-gradient(135deg,#7DD3FC,#38BDF8);color:#04283B;font:800 11.5px/22px var(--f-body);text-align:center;box-shadow:0 0 0 3px color-mix(in srgb,#7DD3FC 18%,transparent),0 0 14px rgba(56,189,248,.5);animation:badgePulse 2.6s ease-in-out infinite}
 @keyframes badgePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 
 /* Balões mais compactos e anexos sem bordas grossas. */
-.b{padding:7px 11px 5px;border-radius:14px}
+.b{padding:5px 9px 4px;border-radius:12px;font-size:14px;line-height:1.35}
 .b.them{border-radius:4px 14px 14px 14px}
 .b.me{border-radius:14px 4px 14px 14px}
 .att-media{display:block;position:relative;padding:0;max-width:100%;margin:2px 0;border-radius:10px;overflow:hidden;background:#000;line-height:0}
@@ -1326,7 +1326,7 @@ mark{background:color-mix(in srgb,var(--accent) 30%,transparent);color:inherit;b
   .chat-app.open .send-btn,.chat-app.open .mic-btn{width:42px;height:42px;min-height:42px}
   .clist .top{padding:10px 8px}
   .ci{padding:10px 8px}
-  .msg-shell .b{max-width:min(86%,460px)}
+  .msg-shell .b{max-width:min(74%,400px)}
 
   /* Painéis de emoji/figurinha sobem como aba do teclado. */
   .emoji-picker,.sticker-picker{position:fixed;left:0;right:0;bottom:0;width:100%;max-width:100%;border-radius:18px 18px 0 0;z-index:76;padding-bottom:env(safe-area-inset-bottom,0px);max-height:56dvh;display:flex;flex-direction:column;box-shadow:0 -18px 60px rgba(0,0,0,.5)}
@@ -1560,9 +1560,9 @@ html.video-open,body.video-open{overflow:hidden!important}
 }
 
 /* Baloes do chat: borda bem fina, quase so um contorno. */
-.b{padding:6px 10px 5px;border-radius:13px}
-.b.them{border:1px solid color-mix(in srgb,var(--fg) 9%,transparent);border-radius:3px 13px 13px 13px}
-.b.me{padding:6px 10px 5px;border-radius:13px 3px 13px 13px}
+.b{padding:4px 8px 3px;border-radius:11px;font-size:14px;line-height:1.35}
+.b.them{border:1px solid color-mix(in srgb,var(--fg) 9%,transparent);border-radius:3px 11px 11px 11px}
+.b.me{padding:4px 8px 3px;border-radius:11px 3px 11px 11px}
 
 /* Encaminhar ao lado de fotos e videos. */
 .att-media-row{display:flex;align-items:flex-end;gap:6px;max-width:100%}

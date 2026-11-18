@@ -284,8 +284,8 @@ function AudioMessage({ src }) {
   );
 }
 
-// Só permite editar mensagens próprias nos primeiros 20 segundos após o envio.
-const EDIT_WINDOW_MS = 20_000;
+// Só permite editar mensagens próprias nos primeiros 10 segundos após o envio.
+const EDIT_WINDOW_MS = 10_000;
 const canEditMessage = (message) => {
   if (!message?.me || !String(message.text || '').trim()) return false;
   const ts = Number(message.ts) || 0;
