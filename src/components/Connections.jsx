@@ -8,7 +8,9 @@ import { isLiveKitEnabled } from '../lib/livekit';
 import { userOf } from '../lib/selectors';
 import { useApp } from '../store/AppContext';
 import { Avatar, LiveAvatar } from './Avatar';
-import { TagText, Verified } from './Brand';
+import AnimatedEmoji from './AnimatedEmoji';
+import { Verified } from './Brand';
+import EmojiText from './EmojiText';
 import Empty from './Empty';
 import { Icon } from './Icon';
 
@@ -16,9 +18,11 @@ const LiveStage = lazy(() => import('./LiveStage'));
 const Arena = lazy(() => import('../games/arena/Arena'));
 const QuizBoom = lazy(() => import('../games/quiz/QuizBoom'));
 
-const visibleChannels = (data) =>
+const QUICK_EMOTES = ['❤️', '🔥', '👏', '😂', '🎉', '👍', '💜', '🚀'];
+const liveDirectory = (data) => data.chans.filter((c) => c.live);
+const followedChannels = (data) =>
   data.chans.filter(
-    (c) => c.live || c.joined || c.owner === 'me' || data.follows.includes(c.owner)
+    (c) => !c.live && (c.joined || c.owner === 'me' || data.follows.includes(c.owner))
   );
 
 function LiveCard({ channel }) {
@@ -35,6 +39,9 @@ function LiveCard({ channel }) {
         <span className="tr vpill">
           <Icon name="eye" /> {fmt(channel.viewers)}
         </span>
+        {channel.desc && channel.desc !== 'Transmissão ao vivo.' ? (
+          <span className="tl lcat">{channel.desc}</span>
+        ) : null}
       </div>
       <div className="lbody">
         <Avatar user={owner} size={36} />
@@ -447,13 +454,7 @@ function Room({ channel }) {
     ':' +
     String(elapsed % 60).padStart(2, '0');
 
-  const roomPeople = [
-    channel.owner,
-    ...Object.keys(data.users)
-      .filter((id) => id !== channel.owner)
-      .slice(0, 5),
-    'me',
-  ];
+  const subscribedCount = (data.chans.find((c) => c.id === channel.id)?.followers) || 0;
 
   return (
     <>
@@ -682,7 +683,7 @@ function Room({ channel }) {
                         </div>
                       </div>
                       <p>
-                        <TagText text={message.text} />
+                        <EmojiText text={message.text} size={18} />
                       </p>
                       <div className="reacts">
                         {Object.keys(message.reacts || {}).map((emoji) => (
@@ -710,7 +711,7 @@ function Room({ channel }) {
                         <time>{hm(message.ts)}</time>
                       </div>
                       <p>
-                        <TagText text={message.text} />
+                        <EmojiText text={message.text} size={18} />
                       </p>
                     </div>
                   </div>
@@ -718,6 +719,24 @@ function Room({ channel }) {
               })}
             </div>
 
+            {canPost ? (
+              <div className="chat-emotes" aria-label="Emojis rápidos do chat">
+                {QUICK_EMOTES.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    title={`Enviar ${emoji}`}
+                    aria-label={`Inserir ${emoji}`}
+                    onClick={() => {
+                      setText((value) => value + emoji);
+                      document.getElementById('roomIn')?.focus();
+                    }}
+                  >
+                    <AnimatedEmoji emoji={emoji} size={22} />
+                  </button>
+                ))}
+              </div>
+            ) : null}
             {canPost ? (
               <form
                 className="cform"
@@ -760,19 +779,33 @@ function Room({ channel }) {
         </div>
 
         <aside className="card pad room-side">
-          <h2 className="h3">Na sala</h2>
-          {roomPeople.map((id) => {
-            const person = userOf(data, id);
-            return (
-              <div className="mrow" key={id}>
-                <Avatar user={person} size={32} />
-                <span className="ell">
-                  {person.name} <Verified user={person} />
-                </span>
-                {id === channel.owner ? <span className="tagc">Criador</span> : null}
-              </div>
-            );
-          })}
+          <h2 className="h3">Sobre {channel.kind === 'palco' ? 'a live' : 'o canal'}</h2>
+          <div className="room-about">
+            <Avatar user={author} size={48} data={data} />
+            <div>
+              <b>
+                {author.name} <Verified user={author} />
+              </b>
+              <div className="muted sm">@{author.handle}</div>
+            </div>
+          </div>
+          <p className="muted sm room-about-desc">
+            {channel.desc || (channel.kind === 'palco' ? 'Transmissão ao vivo.' : 'Canal do Fluxo.')}
+          </p>
+          <div className="room-about-stats">
+            <span>
+              <Icon name="eye" /> {fmt(channel.viewers)} assistindo
+            </span>
+            <span>
+              <Icon name="users" /> {fmt(subscribedCount)} seguidores
+            </span>
+            <span>
+              <Icon name="chat" /> {fmt(channel.msgs.length)} mensagens
+            </span>
+            <span>
+              <Icon name="chart" /> {(channel.polls || []).length} enquetes
+            </span>
+          </div>
         </aside>
       </div>
     </>
@@ -781,7 +814,7 @@ function Room({ channel }) {
 
 export default function Connections() {
   const { data, ui, actions } = useApp();
-  const [section, setSection] = useState('canais');
+  const [section, setSection] = useState('ao-vivo');
   const currentRoom = ui.room ? data.chans.find((c) => c.id === ui.room) : null;
   const missingRoom = Boolean(ui.room && !currentRoom);
   const actionsRef = useRef(actions);
@@ -823,20 +856,17 @@ export default function Connections() {
 
   if (currentRoom) return <Room channel={currentRoom} />;
 
-  const visible = visibleChannels(data);
-  const lives = visible.filter((c) => c.live);
+  const lives = liveDirectory(data);
+  const channels = followedChannels(data);
   const filter = ui.chanFilter;
-  const list = visible.filter(
-    (c) =>
-      filter === 'all' ||
-      (filter === 'live' && c.live) ||
-      c.kind === filter
+  const list = channels.filter(
+    (c) => filter === 'all' || c.kind === filter
   );
   const filters = [
     ['all', 'Todos'],
-    ['live', 'Ao vivo'],
     ['avisos', 'Avisos'],
     ['conversa', 'Conversas'],
+    ['palco', 'Palcos'],
   ];
 
   return (
@@ -844,12 +874,11 @@ export default function Connections() {
       <div className="pagehead">
         <div>
           <h1>Conexões</h1>
-          <p className="muted">Canais, transmissões e jogos de quem você segue.</p>
+          <p className="muted">
+            Assista ao vivo, converse no chat e participe das enquetes da transmissão.
+          </p>
         </div>
         <div className="row" style={{ flexWrap: 'wrap' }}>
-          <button className="btn tonal" onClick={actions.openNewChannel}>
-            <Icon name="plus" /> Criar canal
-          </button>
           <button className="btn hot" onClick={actions.openLive}>
             <Icon name="radio" /> Iniciar live
           </button>
@@ -857,91 +886,106 @@ export default function Connections() {
       </div>
 
       <div className="seg" style={{ margin: '0 0 16px' }}>
-        <button className={section === 'canais' ? 'on' : ''} onClick={() => setSection('canais')}>Canais</button>
-        <button className={section === 'jogos' ? 'on' : ''} onClick={() => setSection('jogos')}>Jogos</button>
+        <button
+          className={section === 'ao-vivo' ? 'on' : ''}
+          onClick={() => setSection('ao-vivo')}
+        >
+          Ao vivo
+        </button>
+        <button
+          className={section === 'canais' ? 'on' : ''}
+          onClick={() => setSection('canais')}
+        >
+          Canais
+        </button>
+        <button
+          className={section === 'jogos' ? 'on' : ''}
+          onClick={() => setSection('jogos')}
+        >
+          Jogos
+        </button>
       </div>
 
       {section === 'jogos' ? (
         <div className="games-entry-grid">
-        <section className="card arena-entry quiz-entry">
-          <div className="arena-entry-copy">
-            <span className="pill acc">
-              <Icon name="game" /> Jogo rápido
-            </span>
-            <h3>QUIZ BOOM!</h3>
-            <p className="muted sm">
-              12 categorias com 100 perguntas cada, 4 alternativas e 15 segundos
-              de pavio. Acerte, acumule pontos e desarme a bomba antes que ela
-              estoure.
-            </p>
-          </div>
-          <button type="button" className="btn primary" onClick={actions.openQuiz}>
-            <Icon name="play" /> Jogar agora
-          </button>
-        </section>
+          <section className="card arena-entry quiz-entry">
+            <div className="arena-entry-copy">
+              <span className="pill acc">
+                <Icon name="game" /> Jogo rápido
+              </span>
+              <h3>QUIZ BOOM!</h3>
+              <p className="muted sm">
+                12 categorias com 100 perguntas cada, 4 alternativas e 15 segundos
+                de pavio. Acerte, acumule pontos e desarme a bomba antes que ela
+                estoure.
+              </p>
+            </div>
+            <button type="button" className="btn primary" onClick={actions.openQuiz}>
+              <Icon name="play" /> Jogar agora
+            </button>
+          </section>
 
-        <section className="card arena-entry">
-          <div className="arena-entry-copy">
-            <span className="pill acc">
-              <Icon name="game" /> Jogos Online
-            </span>
-            <h3>ARENA DO CAOS</h3>
-            <p className="muted sm">
-              Batalha multiplayer real para 2–8 jogadores. Último sobrevivente,
-              salas públicas e privadas, ranking e resultados no Feed.
-            </p>
-          </div>
-          <button type="button" className="btn primary" onClick={() => actions.openArena('')}>
-            <Icon name="play" /> Jogar agora
-          </button>
-        </section>
+          <section className="card arena-entry">
+            <div className="arena-entry-copy">
+              <span className="pill acc">
+                <Icon name="game" /> Jogos Online
+              </span>
+              <h3>ARENA DO CAOS</h3>
+              <p className="muted sm">
+                Batalha multiplayer real para 2–8 jogadores. Último sobrevivente,
+                salas públicas e privadas, ranking e resultados no Feed.
+              </p>
+            </div>
+            <button type="button" className="btn primary" onClick={() => actions.openArena('')}>
+              <Icon name="play" /> Jogar agora
+            </button>
+          </section>
         </div>
-      ) : (
-      <>
-      <section style={{ marginBottom: 22 }}>
-        <h2 className="h2" style={{ marginBottom: 10 }}>
-          Ao vivo agora
-        </h2>
-        {lives.length ? (
-          <div className="hscroll">
-            {lives.map((channel) => (
-              <LiveCard key={channel.id} channel={channel} />
-            ))}
+      ) : section === 'ao-vivo' ? (
+        <section>
+          <div className="sechead">
+            <h2 className="h2">Ao vivo agora</h2>
+            <span className="muted sm">{lives.length} transmissões</span>
           </div>
-        ) : (
-          <Empty
-            title="Ninguém ao vivo agora"
-            text="Quando alguém que você segue abrir um palco, ele aparece aqui."
-          />
-        )}
-      </section>
-
-      <section>
-        <div className="sechead">
-          <h2 className="h2">Canais</h2>
-          <div className="seg">
-            {filters.map(([value, label]) => (
-              <button
-                key={value}
-                className={filter === value ? 'on' : ''}
-                onClick={() => actions.setChanFilter(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="card chans">
-          {list.length ? (
-            list.map((channel) => <ChannelRow key={channel.id} channel={channel} />)
+          {lives.length ? (
+            <div className="live-grid">
+              {lives.map((channel) => (
+                <LiveCard key={channel.id} channel={channel} />
+              ))}
+            </div>
           ) : (
-            <p className="muted" style={{ padding: 20 }}>
-              Nenhum canal neste filtro.
-            </p>
+            <Empty
+              title="Ninguém ao vivo agora"
+              text="Entre no ar para abrir o chat e criar enquetes para quem estiver assistindo."
+            />
           )}
-        </div>
-      </section>
-      </>
+        </section>
+      ) : (
+        <section>
+          <div className="sechead">
+            <h2 className="h2">Canais que você segue</h2>
+            <div className="seg">
+              {filters.map(([value, label]) => (
+                <button
+                  key={value}
+                  className={filter === value ? 'on' : ''}
+                  onClick={() => actions.setChanFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="card chans">
+            {list.length ? (
+              list.map((channel) => <ChannelRow key={channel.id} channel={channel} />)
+            ) : (
+              <p className="muted" style={{ padding: 20 }}>
+                Nenhum canal neste filtro.
+              </p>
+            )}
+          </div>
+        </section>
       )}
     </>
   );

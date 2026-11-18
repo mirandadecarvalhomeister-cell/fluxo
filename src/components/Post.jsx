@@ -8,9 +8,10 @@ import { useCompact } from '../lib/useCompact';
 import { ago, fmt, fmtDur } from '../lib/utils';
 import { fxFor, REACTIONS as REACTIONS_PADRAO } from '../lib/reactionFx';
 import AnimatedEmoji from './AnimatedEmoji';
+import EmojiText from './EmojiText';
 import { useApp } from '../store/AppContext';
 import { LiveAvatar } from './Avatar';
-import { TagText, Verified } from './Brand';
+import { Verified } from './Brand';
 import CommentSheet, { Comments } from './Comments';
 import ReactionFx from './ReactionFx';
 import { Icon } from './Icon';
@@ -429,7 +430,7 @@ export default function Post({ post, detail = false }) {
       {post.text ? (
         <div className="txt-wrap">
           <p className={`txt${longText && !expanded ? ' clamped' : ''}`}>
-            <TagText text={post.text} />
+            <EmojiText text={post.text} size={20} />
           </p>
           {longText ? (
             <button
@@ -471,6 +472,7 @@ export default function Post({ post, detail = false }) {
           className={`reaction-wrap${pickerOpen ? ' picker-open' : ''}`}
           onMouseEnter={() => setPickerOpen(true)}
           onMouseLeave={() => setPickerOpen(false)}
+          onFocus={() => setPickerOpen(true)}
         >
           <button
             type="button"
@@ -481,7 +483,9 @@ export default function Post({ post, detail = false }) {
             title="Reagir"
           >
             {post.myReaction ? (
-              <span className="act-ic act-my-reaction">{post.myReaction}</span>
+              <span className="act-ic act-my-reaction">
+                <AnimatedEmoji emoji={post.myReaction} size={20} />
+              </span>
             ) : (
               <Icon name="heart" className="act-ic" />
             )}
@@ -496,7 +500,12 @@ export default function Post({ post, detail = false }) {
                 onClick={() => handleReact(emoji)}
                 aria-label={`Reagir com ${emoji}`}
               >
-                <AnimatedEmoji emoji={emoji} size={24} />
+                {/* Remonta ao abrir o picker para a animação rodar de verdade no feed. */}
+                <AnimatedEmoji
+                  key={`${emoji}-${pickerOpen ? 'open' : 'idle'}`}
+                  emoji={emoji}
+                  size={24}
+                />
               </button>
             ))}
             <button

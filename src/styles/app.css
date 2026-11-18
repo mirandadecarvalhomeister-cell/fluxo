@@ -447,6 +447,10 @@ body.lock{overflow:hidden}
 .lthumb{aspect-ratio:16/10;background-size:cover;background-position:center;position:relative}
 .lthumb .glowb{position:absolute;inset:0;background:radial-gradient(circle at 50% 60%,rgba(255,255,255,.28),transparent 60%);animation:pulse 3s ease-in-out infinite}
 .lthumb .tl{position:absolute;left:10px;top:10px}.lthumb .tr{position:absolute;right:10px;top:10px}
+.live-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.live-grid .lcard{flex:none;width:100%}
+.live-grid .lthumb{aspect-ratio:16/9}
+.lcat{top:auto!important;bottom:10px;background:rgba(0,0,0,.62);color:#fff;border-radius:6px;padding:3px 8px;font:700 11px var(--f-body);max-width:calc(100% - 20px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lbody{padding:12px;display:flex;gap:10px;align-items:center}
 .livepill{background:var(--hot);color:#fff;border-radius:6px;padding:2px 8px;font:700 11px var(--f-body);letter-spacing:.08em;display:inline-flex;gap:6px;align-items:center}
 .livepill::before{content:"";width:6px;height:6px;border-radius:50%;background:#fff;animation:blink 1.2s infinite}
@@ -501,6 +505,15 @@ body.lock{overflow:hidden}
 .reacts button{padding:4px 12px;border-radius:999px;border:1px solid var(--line);font-size:14px}
 .reacts button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 .noteline{font-size:13px;color:var(--muted);padding:12px 14px;border-top:1px solid var(--line);text-align:center}
+.chat-emotes{display:flex;gap:5px;padding:8px 12px 0;flex-wrap:wrap}
+.chat-emotes button{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;border:1px solid transparent;background:transparent;transition:background .15s,transform .15s}
+.chat-emotes button:hover{background:var(--surface2);border-color:var(--line);transform:translateY(-2px)}
+.room-about{display:flex;align-items:center;gap:10px}
+.room-about b{font-size:14px}
+.room-about-desc{margin:0;line-height:1.5}
+.room-about-stats{display:grid;gap:8px;padding-top:10px;border-top:1px solid var(--line)}
+.room-about-stats span{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--muted)}
+.room-about-stats .ic{width:14px;height:14px;color:var(--accent)}
 
 /* brand images */
 .fluxo-icon{width:44px;height:44px;object-fit:contain}

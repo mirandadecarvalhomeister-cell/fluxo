@@ -931,42 +931,22 @@ function NewChannelModal() {
 }
 
 function LiveModal() {
-  const { data, actions } = useApp();
-  const mine = data.chans.filter((c) => c.owner === 'me' && c.kind === 'palco');
-  const [chanId, setChanId] = useState(mine[0]?.id || 'new');
+  const { actions } = useApp();
   const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('');
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
         if (!title.trim()) return;
-        actions.startLive({ chanId, title: title.trim() });
+        actions.startLive({ title: title.trim(), category: category.trim() });
       }}
     >
       <h2>Iniciar live</h2>
-      {mine.length ? (
-        <div className="field">
-          <label htmlFor="lvChan">Palco</label>
-          <select
-            className="in"
-            id="lvChan"
-            value={chanId}
-            onChange={(event) => setChanId(event.target.value)}
-          >
-            {mine.map((channel) => (
-              <option key={channel.id} value={channel.id}>
-                {channel.name}
-              </option>
-            ))}
-            <option value="new">Criar um novo palco</option>
-          </select>
-        </div>
-      ) : (
-        <p className="muted sm" style={{ marginBottom: 12 }}>
-          Vamos criar o seu primeiro palco automaticamente.
-        </p>
-      )}
+      <p className="muted sm" style={{ marginBottom: 12 }}>
+        Entre no ar direto — não é preciso criar um canal antes.
+      </p>
       <div className="field">
         <label htmlFor="lvTitle">Título da transmissão</label>
         <input
@@ -981,10 +961,22 @@ function LiveModal() {
           required
         />
       </div>
+      <div className="field">
+        <label htmlFor="lvCat">Categoria (opcional)</label>
+        <input
+          className="in"
+          id="lvCat"
+          type="text"
+          maxLength={40}
+          placeholder="Ex.: Conversas, Música, Games…"
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
+        />
+      </div>
       <p className="muted sm" style={{ marginBottom: 12 }}>
         {isLiveKitEnabled
           ? 'Ao entrar no ar, o navegador vai pedir permissão para câmera e microfone. Você poderá desligar cada um durante a transmissão.'
-          : 'Sem o servidor de vídeo configurado, a live fica registrada no canal apenas com o chat de texto.'}
+          : 'Sem o servidor de vídeo configurado, a live fica registrada apenas com o chat de texto.'}
       </p>
       <button className="btn hot block" type="submit">
         Entrar no ar

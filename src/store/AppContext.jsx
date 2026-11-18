@@ -4216,7 +4216,7 @@ export function AppProvider({ children }) {
     toast('Canal excluído');
   }
 
-  async function startLive({ chanId, title }) {
+  async function startLive({ chanId, title, category }) {
     const cur = dataRef.current;
     if (!cur) return;
     if (uiRef.current.myLive) {
@@ -4225,13 +4225,18 @@ export function AppProvider({ children }) {
     }
     const realLive = isLiveKitEnabled && !!sessionRef.current?.id;
     const start = Date.now();
-    let channel = chanId && chanId !== 'new' ? cur.chans.find((c) => c.id === chanId) : null;
+    // Sem canal escolhido, reaproveita um palco próprio ou cria um automaticamente.
+    // Nenhuma mensagem fictícia é inserida no chat da transmissão.
+    let channel =
+      chanId && chanId !== 'new'
+        ? cur.chans.find((c) => c.id === chanId)
+        : cur.chans.find((c) => c.owner === 'me' && c.kind === 'palco');
     if (!channel) {
       channel = {
         id: uid(),
         owner: 'me',
-        name: 'Palco de ' + cur.me.name.split(' ')[0],
-        desc: 'Transmissões ao vivo.',
+        name: title,
+        desc: String(category || '').trim() || 'Transmissão ao vivo.',
         kind: 'palco',
         followers: 1,
         live: true,
@@ -4244,15 +4249,15 @@ export function AppProvider({ children }) {
         seed: cur.me.name + '-palco',
       };
     } else {
-      channel = { ...channel, live: true, livekit: realLive, title, viewers: 1 };
+      channel = {
+        ...channel,
+        live: true,
+        livekit: realLive,
+        title,
+        desc: String(category || '').trim() || channel.desc,
+        viewers: 1,
+      };
     }
-    const welcome = {
-      id: uid(),
-      by: 'marina',
-      text: 'Entrei! Boa live!',
-      ts: Date.now(),
-    };
-    channel = { ...channel, msgs: [...channel.msgs, welcome] };
     if (sessionRef.current?.id) {
       await remote.saveChannel(channel, sessionRef.current.id);
       await remote.setChannelMembership(channel.id, sessionRef.current.id, true);
@@ -5035,15 +5040,9 @@ export function AppProvider({ children }) {
     openEditProfile: () => setUi((u) => ({ ...u, modal: { type: 'profile' } })),
     openNewComm: () => setUi((u) => ({ ...u, modal: { type: 'newcomm' } })),
     openNewChannel: () => setUi((u) => ({ ...u, modal: { type: 'newchan' } })),
-    openLive: () => {
-      const hasChannel = (dataRef.current?.chans || []).some((c) => c.owner === 'me');
-      if (!hasChannel) {
-        toast('Crie um canal antes de iniciar uma live.');
-        setUi((u) => ({ ...u, modal: { type: 'newchan' } }));
-        return;
-      }
-      setUi((u) => ({ ...u, modal: { type: 'live' } }));
-    },
+    // Live direta: qualquer pessoa autenticada entra no ar sem precisar criar canal.
+    // O canal de transmissão é criado automaticamente em startLive, se necessário.
+    openLive: () => setUi((u) => ({ ...u, modal: { type: 'live' } })),
   };
 
   const value = {
