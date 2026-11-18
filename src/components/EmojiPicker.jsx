@@ -70,7 +70,7 @@ const readRecents = () => {
   }
 };
 
-export default function EmojiPicker({ onPick, onClose, embedded = false }) {
+export default function EmojiPicker({ onPick, onClose, onStickers, embedded = false }) {
   const { data, actions } = useApp();
   const [recents, setRecents] = useState(readRecents);
   const [active, setActive] = useState(recents.length ? 'recent' : EMOJI_GROUPS[0].key);
@@ -148,6 +148,18 @@ export default function EmojiPicker({ onPick, onClose, embedded = false }) {
             <CatIcon groupKey={item.key} />
           </button>
         ))}
+        {onStickers ? (
+          <button
+            type="button"
+            className="emoji-cat-stickers"
+            title="Figurinhas"
+            aria-label="Figurinhas"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={onStickers}
+          >
+            <Icon name="sticker" />
+          </button>
+        ) : null}
       </div>
 
       <div className="emoji-search">

@@ -2063,6 +2063,25 @@ export default function Messages() {
                     >
                       <Icon name="paperclip" />
                     </button>
+                    <button
+                      className={`icon-btn msg-composer-btn ${pickerOpen ? 'on' : ''}`}
+                      type="button"
+                      onClick={(event) => {
+                        // Toque curto abre/fecha; toque longo alterna entre
+                        // emojis e figurinhas sem abrir outro painel.
+                        if (event.detail === 2) return;
+                        openPicker(pickerTab);
+                      }}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        openPicker(pickerTab === 'emoji' ? 'sticker' : 'emoji');
+                      }}
+                      aria-label="Emojis e figurinhas"
+                      aria-pressed={pickerOpen}
+                      title={pickerTab === 'emoji' ? 'Emojis e figurinhas' : 'Figurinhas e emojis'}
+                    >
+                      <Icon name={pickerTab === 'emoji' ? 'smile' : 'sticker'} />
+                    </button>
                     <textarea
                       className="msg-composer-in"
                       id="msgIn"
@@ -2092,25 +2111,6 @@ export default function Messages() {
                       onSelect={saveCaret}
                       onBlur={saveCaret}
                     />
-                    <button
-                      className={`icon-btn msg-composer-btn ${pickerOpen ? 'on' : ''}`}
-                      type="button"
-                      onClick={(event) => {
-                        // Toque curto abre/fecha; toque longo alterna entre
-                        // emojis e figurinhas sem abrir outro painel.
-                        if (event.detail === 2) return;
-                        openPicker(pickerTab);
-                      }}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        openPicker(pickerTab === 'emoji' ? 'sticker' : 'emoji');
-                      }}
-                      aria-label="Emojis e figurinhas"
-                      aria-pressed={pickerOpen}
-                      title={pickerTab === 'emoji' ? 'Emojis e figurinhas' : 'Figurinhas e emojis'}
-                    >
-                      <Icon name={pickerTab === 'emoji' ? 'smile' : 'sticker'} />
-                    </button>
                   </div>
                 )}
 
