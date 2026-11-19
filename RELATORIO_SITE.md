@@ -93,7 +93,7 @@
 
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `6b49f469`.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy `7c419b72`.
 
 ## Fase 8 — Picker de emojis estilo mensageiro (concluído)
 
@@ -125,8 +125,9 @@
 - Emojis da tabela ampliados (30 px, 8 colunas no desktop e 7 no celular); ao escolher, o foco volta ao campo de texto para **Enter enviar**.
 - Navegação do feed no celular: cabeçalho e modos de visualização agora ficam **fixos no topo** com fundo translúcido, acompanhando a barra inferior fixa.
 - Comunidade: **botão de áudio** na barra de digitação (visível só quando o campo está vazio; ao digitar, some e aparece Enviar). Gravação com MediaRecorder, envio persistido e players de áudio nas mensagens.
+- Unificadas as abas "Visão geral" e "Publicações": agora existe só **Publicações**, com o chat da comunidade; o bloco de estatísticas/últimas publicações foi removido.
 - Migrations aplicadas no Supabase de produção: `migrate_channel_subscriptions.sql`, `migrate_communities_v2.sql`, `migrate_emoji_favorites.sql`.
 
 ## Commits desta rodada
 
-`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`, `d9191ec`, `6d49d70`, `1a4c197`, `595e4cf`, `bb09666`, `b5ebfc8`, `be70951`, `545d4bf`, `5147f08`, `9d855ef`, `c893d37`, `be383a8`.
+`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`, `d9191ec`, `6d49d70`, `1a4c197`, `595e4cf`, `bb09666`, `b5ebfc8`, `be70951`, `545d4bf`, `5147f08`, `9d855ef`, `c893d37`, `be383a8`, `09ee486`.
