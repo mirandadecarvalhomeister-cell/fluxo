@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar } from '../../components/Avatar';
+import Game3DBackground from '../../components/Game3DBackground';
 import { Icon } from '../../components/Icon';
 import { useApp } from '../../store/AppContext';
 import { fmt, shareLink } from '../../lib/utils';
@@ -204,6 +205,11 @@ export default function QuizBoom() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [chosenFriends, setChosenFriends] = useState([]);
   const [sharing, setSharing] = useState(false);
+
+  const urgency =
+    screen === 'playing' && totalTime
+      ? Math.min(1, Math.max(0, 1 - timeLeft / totalTime))
+      : 0;
 
   const advanceRef = useRef(null);
   const shakeRef = useRef(null);
@@ -621,6 +627,7 @@ export default function QuizBoom() {
 
     return (
       <div className="quiz quiz-home">
+        <Game3DBackground variant="quiz" />
         <header className="quiz-top">
           <button
             type="button"
@@ -889,6 +896,7 @@ export default function QuizBoom() {
   if (screen === 'limit') {
     return (
       <div className="quiz quiz-limit">
+        <Game3DBackground variant="quiz" />
         <div className="quiz-limit-icon" aria-hidden="true">
           ⏳
         </div>
@@ -936,6 +944,7 @@ export default function QuizBoom() {
   if (screen === 'boom') {
     return (
       <div className="quiz quiz-boom">
+        <Game3DBackground variant="quiz" intensity={1} />
         <div className="quiz-boom-flash" aria-hidden="true" />
         <div className="quiz-boom-burst" aria-hidden="true">
           💥
@@ -993,6 +1002,7 @@ export default function QuizBoom() {
     const missed = finalResult.total - finalResult.correct;
     return (
       <div className="quiz quiz-results">
+        <Game3DBackground variant="quiz" />
         <div
           className={`quiz-results-icon${reason === 'timeout' ? ' timeout' : ''}`}
           aria-hidden="true"
@@ -1161,6 +1171,7 @@ export default function QuizBoom() {
 
   return (
     <div className={`quiz quiz-play${shake ? ' quiz-shake' : ''}`}>
+      <Game3DBackground variant="quiz" intensity={urgency} />
       <header className="quiz-top quiz-top-play">
         <button
           type="button"

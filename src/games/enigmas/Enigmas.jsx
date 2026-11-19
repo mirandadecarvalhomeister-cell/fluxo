@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../store/AppContext';
 import { Icon } from '../../components/Icon';
+import Game3DBackground from '../../components/Game3DBackground';
 import {
   TOTAL_LEVELS,
   clearSave,
@@ -215,6 +216,7 @@ export default function Enigmas() {
 
   return (
     <div className="enigmas-game">
+      <Game3DBackground variant="enigmas" intensity={status === 'correct' ? 0.6 : 0} />
       <header className="enigmas-top">
         <button
           className="icon-btn enigmas-back"
