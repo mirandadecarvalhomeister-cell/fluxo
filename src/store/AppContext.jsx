@@ -1158,6 +1158,8 @@ export function AppProvider({ children }) {
         return;
       }
       if (!row.sender_id) return;
+      // Ignora mensagens de quem não se segue mutuamente (defesa no cliente).
+      if (!canMessage(row.sender_id)) return;
       const settings = uiRef.current.settings || DEFAULT_SETTINGS;
       const viewing =
         uiRef.current.route === 'mensagens' && uiRef.current.chat === row.sender_id;
@@ -3022,17 +3024,32 @@ export function AppProvider({ children }) {
     setUi((u) => ({ ...u, modal: { type: 'newchat' } }));
   }
 
+  // Só é possível conversar com quem você segue e que também segue você.
+  function canMessage(otherId) {
+    const cur = dataRef.current;
+    if (!cur || !otherId || otherId === 'me') return false;
+    return (
+      (cur.follows || []).includes(otherId) &&
+      (cur.followers || []).includes(otherId)
+    );
+  }
+
   function ensureChat(otherId) {
     const cur = dataRef.current;
     if (!cur || !otherId) return null;
     const existing = cur.chats.find((chat) => chat.with === otherId);
     if (existing) return existing;
+    if (!canMessage(otherId)) return null;
     const chat = { id: otherId, with: otherId, unread: 0, msgs: [] };
     setData((state) => ({ ...state, chats: [chat, ...state.chats] }));
     return chat;
   }
 
   function startChat(otherId) {
+    if (!canMessage(otherId)) {
+      toast('Vocês precisam se seguir para trocar mensagens.');
+      return;
+    }
     ensureChat(otherId);
     setUi((u) => ({
       ...u,
@@ -3046,7 +3063,7 @@ export function AppProvider({ children }) {
 
   function sharePostTo(postId, userIds) {
     const post = dataRef.current?.posts.find((p) => p.id === postId);
-    const targets = (userIds || []).filter(Boolean);
+    const targets = (userIds || []).filter((id) => canMessage(id));
     if (!post || !targets.length) return;
     const preview = mediaOf(post)[0];
     const attachment = {
@@ -3105,7 +3122,7 @@ export function AppProvider({ children }) {
 
   function shareQuizChallenge(result = {}, userIds = []) {
     const current = dataRef.current;
-    const targets = (userIds || []).filter(Boolean);
+    const targets = (userIds || []).filter((id) => canMessage(id));
     if (!current) return null;
     const me = current.me || {};
     const challenge = {
@@ -3936,6 +3953,10 @@ export function AppProvider({ children }) {
     const chat = dataRef.current?.chats.find((c) => c.id === chatId);
     const trimmed = (text || '').trim();
     if (!chat || (!trimmed && !attachment)) return null;
+    if (chat.with && !canMessage(chat.with)) {
+      toast('Vocês precisam se seguir para trocar mensagens.');
+      return null;
+    }
     const message = {
       id: uid(),
       me: true,
@@ -5042,6 +5063,7 @@ export function AppProvider({ children }) {
     installApp,
     clearCache: clearLocalCache,
     openNewChat,
+    canMessage,
     startChat,
     follow,
     setProfTab: (profTab) => setUi((u) => ({ ...u, profTab })),

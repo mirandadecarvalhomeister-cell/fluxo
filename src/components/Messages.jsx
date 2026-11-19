@@ -1331,6 +1331,7 @@ export default function Messages() {
   const typingChat = chat ? !!typingPeople[chat.with] : false;
 
   const list = data.chats
+    .filter((c) => actions.canMessage?.(c.with))
     .filter((c) => userOf(data, c.with).name.toLowerCase().includes(query))
     .sort(
       (a, b) => (b.msgs[b.msgs.length - 1]?.ts || 0) - (a.msgs[a.msgs.length - 1]?.ts || 0)

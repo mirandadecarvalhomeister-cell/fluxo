@@ -1089,13 +1089,19 @@ function UserModal({ modal }) {
         {person.bio ? <p className="user-bio">{person.bio}</p> : null}
 
         <div className="row user-actions">
-          <button
-            type="button"
-            className="btn primary"
-            onClick={() => actions.startChat(modal.id)}
-          >
-            <Icon name="chat" /> Mensagem
-          </button>
+          {actions.canMessage?.(modal.id) ? (
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => actions.startChat(modal.id)}
+            >
+              <Icon name="chat" /> Mensagem
+            </button>
+          ) : (
+            <span className="muted sm" title="Vocês precisam se seguir para conversar">
+              <Icon name="lock" /> Mensagens liberadas com seguidores mútuos
+            </span>
+          )}
           <button
             type="button"
             className={`btn ${following ? 'ghost' : 'tonal'}`}
@@ -1303,6 +1309,7 @@ function SharePostModal({ modal }) {
   const [selected, setSelected] = useState([]);
   const [query, setQuery] = useState('');
   const people = Object.values(data.users)
+    .filter((person) => actions.canMessage?.(person.id))
     .filter(
       (person) =>
         person.name.toLowerCase().includes(query.toLowerCase()) ||
@@ -1388,6 +1395,7 @@ function NewChatModal() {
   const { data, actions } = useApp();
   const [query, setQuery] = useState('');
   const people = Object.values(data.users)
+    .filter((person) => actions.canMessage?.(person.id))
     .filter(
       (person) =>
         person.name.toLowerCase().includes(query.toLowerCase()) ||
@@ -1398,6 +1406,9 @@ function NewChatModal() {
   return (
     <div>
       <h2>Nova conversa</h2>
+      <p className="muted sm" style={{ marginBottom: 10 }}>
+        Você só pode conversar com pessoas que seguem você e que você segue.
+      </p>
       <div className="field">
         <input
           className="in"
@@ -1430,8 +1441,8 @@ function NewChatModal() {
           ))
         ) : (
           <p className="muted sm">
-            Nenhuma outra conta por aqui ainda. Quando alguém entrar no Fluxo, aparece nesta
-            lista.
+            Ninguém aqui se segue mutuamente ainda. Siga alguém e peça para essa pessoa
+            seguir você de volta.
           </p>
         )}
       </div>
