@@ -93,7 +93,8 @@
 
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `dfc27556`.
+- Quiz BOOM: cronômetro passou a usar timestamp real (`Date.now()`), com atualização ao voltar para a aba, então não congela mais quando o navegador coloca a página em segundo plano. Nome NÍVEL ZERO exibido em todas as telas do outro jogo.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy `a5aa6fd2`.
 - Migration aplicada em produção: `migrate_enigmas_ranking.sql`.
 
 ## Fase 13 — Mensagens entre seguidores mútuos (concluído)
