@@ -1326,6 +1326,15 @@ mark{background:color-mix(in srgb,var(--accent) 30%,transparent);color:inherit;b
 .comm-chat-thumb button{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.65);color:#fff}
 .comm-chat-thumb button .ic{width:12px;height:12px}
 .comm-chat-picker{position:absolute;left:0;bottom:calc(100% + 8px);z-index:40}
+.comm-post-formats{display:flex;gap:4px;flex-wrap:wrap}
+.comm-post-formats button{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;color:var(--muted);background:var(--surface2)}
+.comm-post-formats button .ic{width:14px;height:14px}
+.comm-post-formats button.on{background:var(--accent-soft);color:var(--accent)}
+.comm-post-options{display:grid;gap:6px;padding:8px;border-radius:12px;background:var(--surface2)}
+.comm-post-option{display:flex;align-items:center;gap:6px}
+.comm-post-option .in{flex:1;min-width:0;padding:8px 10px}
+.comm-post-option .opt-num{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:800}
+.comm-chat-bubble .interactive{width:100%;min-width:min(260px,60vw)}
 
 /* Áudio em publicações. */
 .media-audio{display:flex;align-items:center;gap:12px;padding:16px;border-radius:14px;background:var(--surface2);border:1px solid var(--line)}

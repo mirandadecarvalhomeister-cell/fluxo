@@ -1,0 +1,85 @@
+/* Enigmas — tema escuro, roxo neon e ciano. */
+.enigmas-game{
+  --en-bg:#05040b; --en-panel:#0d0a1c; --en-line:#241a48;
+  --en-purple:#9a5cff; --en-cyan:#22e6ff; --en-fg:#f2efff; --en-muted:#9a92bd;
+  min-height:calc(100dvh - 24px);display:flex;flex-direction:column;gap:18px;
+  padding:16px;border-radius:18px;color:var(--en-fg);
+  background:
+    radial-gradient(900px 380px at 50% -10%,rgba(154,92,255,.18),transparent 70%),
+    radial-gradient(700px 420px at 100% 100%,rgba(34,230,255,.12),transparent 70%),
+    var(--en-bg);
+  border:1px solid var(--en-line);
+  box-shadow:0 0 40px -18px rgba(154,92,255,.55),inset 0 0 60px -40px rgba(34,230,255,.5);
+  font-family:var(--f-body);overflow:hidden;
+}
+.enigmas-game *{box-sizing:border-box}
+.enigmas-entry{border-color:rgba(154,92,255,.45)!important;box-shadow:0 0 30px -18px rgba(154,92,255,.9)!important}
+.enigmas-entry h3{background:linear-gradient(95deg,var(--en-cyan),var(--en-purple));-webkit-background-clip:text;background-clip:text;color:transparent}
+.enigmas-top{display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--en-line)}
+.enigmas-back{color:var(--en-cyan);width:36px;height:36px}
+.enigmas-back:hover{background:rgba(34,230,255,.12)}
+.enigmas-brand{display:flex;align-items:center;gap:8px;font:800 15px var(--f-display);letter-spacing:.22em;color:var(--en-fg)}
+.enigmas-mark{color:var(--en-cyan);font-size:20px;text-shadow:0 0 14px var(--en-cyan)}
+.enigmas-top-progress{margin-left:auto;font:700 12px var(--f-body);color:var(--en-muted);letter-spacing:.08em}
+.enigmas-home{margin:auto;text-align:center;display:grid;justify-items:center;gap:14px;max-width:520px;padding:24px 8px}
+.enigmas-logo{width:112px;height:112px;border-radius:28px;display:grid;place-items:center;font-size:58px;color:var(--en-cyan);
+  border:1px solid rgba(34,230,255,.45);background:radial-gradient(circle,rgba(154,92,255,.28),rgba(5,4,11,.9));
+  box-shadow:0 0 34px -6px rgba(34,230,255,.5),inset 0 0 26px -10px rgba(154,92,255,.8)}
+.enigmas-logo span{text-shadow:0 0 22px var(--en-cyan);animation:enigmas-pulse 2.6s ease-in-out infinite}
+.enigmas-logo-win{color:var(--en-purple);border-color:rgba(154,92,255,.6)}
+.enigmas-home h1{margin:0;font:800 clamp(2.2rem,8vw,3.6rem) var(--f-display);letter-spacing:.12em;
+  background:linear-gradient(95deg,var(--en-cyan),var(--en-purple));-webkit-background-clip:text;background-clip:text;color:transparent}
+.enigmas-tagline{margin:0;color:var(--en-muted);font-size:15px;line-height:1.5}
+.enigmas-home-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.enigmas-btn{min-width:150px;letter-spacing:.08em;font-weight:800;border-radius:12px;transition:transform .12s,box-shadow .18s,background .18s}
+.enigmas-btn.primary{background:linear-gradient(100deg,var(--en-purple),#6f3bff);color:#fff;border:1px solid rgba(255,255,255,.18);box-shadow:0 10px 28px -12px var(--en-purple)}
+.enigmas-btn.ghost{color:var(--en-cyan);border:1px solid rgba(34,230,255,.45);background:rgba(34,230,255,.06)}
+.enigmas-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 30px -10px rgba(154,92,255,.8)}
+.enigmas-btn:active:not(:disabled){transform:scale(.97)}
+.enigmas-btn:disabled{opacity:.4;cursor:not-allowed}
+.enigmas-progress{width:100%;max-width:380px;display:grid;gap:8px;color:var(--en-muted);font-size:12px}
+.enigmas-progress-bar{height:6px;border-radius:999px;background:rgba(154,92,255,.16);overflow:hidden}
+.enigmas-progress-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--en-purple),var(--en-cyan));box-shadow:0 0 14px var(--en-cyan)}
+.enigmas-hint-text,.enigmas-rule{color:var(--en-muted);font-size:12px;margin:0}
+.enigmas-rule{opacity:.65}
+.enigmas-play{margin:0 auto;width:min(680px,100%);display:grid;gap:14px;padding:18px 4px 24px}
+.enigmas-level-badge{justify-self:start;font:800 12px var(--f-body);letter-spacing:.16em;color:var(--en-cyan);padding:6px 12px;border-radius:999px;border:1px solid rgba(34,230,255,.35);background:rgba(34,230,255,.07)}
+.enigmas-level-badge span{color:var(--en-muted)}
+.enigmas-title{margin:0;font:800 clamp(1.4rem,4vw,2rem) var(--f-display);line-height:1.15}
+.enigmas-statement{margin:0;font-size:16px;line-height:1.65;color:#ded9ff;white-space:pre-wrap}
+.enigmas-hints{display:grid;gap:8px;padding:12px;border-radius:14px;border:1px solid var(--en-line);background:rgba(13,10,28,.8)}
+.enigmas-hint-btn{justify-self:start;font-size:12px;font-weight:800;letter-spacing:.08em;color:var(--en-purple);border:1px solid rgba(154,92,255,.4);border-radius:10px;padding:8px 12px;background:rgba(154,92,255,.08)}
+.enigmas-hint-btn:disabled{opacity:.45;cursor:not-allowed}
+.enigmas-hint{margin:0;font-size:13.5px;line-height:1.5;color:var(--en-fg);animation:enigmas-fade .3s ease both}
+.enigmas-hint b{color:var(--en-cyan)}
+.enigmas-answer-form{display:flex;gap:10px;flex-wrap:wrap}
+.enigmas-input{flex:1;min-width:180px;padding:14px 16px;border-radius:12px;border:1px solid var(--en-line);background:rgba(5,4,11,.9);color:var(--en-fg);font:600 16px var(--f-body);outline:none}
+.enigmas-input:focus{border-color:var(--en-cyan);box-shadow:0 0 0 3px rgba(34,230,255,.12)}
+.enigmas-input.wrong{border-color:#ff5470;animation:enigmas-shake .45s ease}
+.enigmas-input.correct{border-color:#46d194;box-shadow:0 0 0 3px rgba(70,209,148,.16)}
+.enigmas-feedback{margin:0;font-weight:700;font-size:14px;color:var(--en-cyan);animation:enigmas-fade .25s ease both}
+.enigmas-feedback.wrong{color:#ff7890}
+.enigmas-feedback.correct{color:#7cf0b4}
+.enigmas-success{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;z-index:5}
+.enigmas-success span{font-size:clamp(90px,22vw,200px);color:#7cf0b4;text-shadow:0 0 40px rgba(124,240,180,.7);animation:enigmas-pop 1.3s ease forwards}
+.enigmas-fade{animation:enigmas-fade .35s ease both}
+@keyframes enigmas-fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes enigmas-pulse{50%{filter:brightness(1.35);transform:scale(1.04)}}
+@keyframes enigmas-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+@keyframes enigmas-pop{0%{transform:scale(.4);opacity:0}35%{transform:scale(1.15);opacity:1}70%{transform:scale(1);opacity:1}100%{transform:scale(1.35);opacity:0}}
+@media (max-width:980px){.enigmas-game{min-height:calc(100dvh - 16px);padding:12px}}
+@media (max-width:760px){
+  .enigmas-game{gap:12px;border-radius:14px}
+  .enigmas-home{padding:16px 6px}
+  .enigmas-play{padding:10px 0 18px;gap:12px}
+  .enigmas-statement{font-size:15px}
+  .enigmas-input{font-size:15px}
+  .enigmas-btn{min-width:140px}
+  .enigmas-answer-form .enigmas-btn{width:100%}
+}
+@media (max-width:560px){
+  .enigmas-brand{font-size:12px;letter-spacing:.14em}
+  .enigmas-logo{width:88px;height:88px;font-size:44px;border-radius:22px}
+  .enigmas-home h1{font-size:2rem}
+}
+@media (prefers-reduced-motion:reduce){.enigmas-fade,.enigmas-logo span,.enigmas-success span{animation:none}}

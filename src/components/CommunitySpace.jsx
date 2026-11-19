@@ -3,6 +3,7 @@ import { useApp } from '../store/AppContext';
 import { fmt, hm } from '../lib/utils';
 import { art } from '../lib/art';
 import { mediaOf } from '../lib/media';
+import { MAX_OPTIONS } from '../lib/interactive';
 import { Avatar, LiveAvatar } from './Avatar';
 import EmojiPicker from './EmojiPicker';
 import EmojiText from './EmojiText';
@@ -10,6 +11,7 @@ import Empty from './Empty';
 import { Icon } from './Icon';
 import { Verified } from './Brand';
 import Post from './Post';
+import Interactive from './Interactive';
 
 const NAV = [
   ['publicacoes', 'Publicações', 'chat'],
@@ -37,10 +39,18 @@ function CommunityChatComposer({ community, canPost }) {
   const inputRef = useRef(null);
   const recRef = useRef(null);
   const media = ui.draft?.media || [];
+  const format = ui.draft?.format || 'classic';
+  const options = ui.draft?.options || [];
+  const isPoll = format === 'poll';
 
   function submit(event) {
     event.preventDefault();
-    if (!text.trim() && !media.length) return;
+    const filled = options.filter((option) => String(option || '').trim()).length;
+    if (isPoll && filled < 2) {
+      actions.notify?.('Escreva pelo menos duas alternativas.');
+      return;
+    }
+    if (!text.trim() && !media.length && !isPoll) return;
     actions.publish(text, community.id);
     setText('');
     actions.resetDraft();
@@ -110,6 +120,69 @@ function CommunityChatComposer({ community, canPost }) {
           </div>
         </>
       ) : null}
+      <div className="comm-post-formats" role="tablist" aria-label="Tipo de publicação">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={format === 'classic'}
+          className={format === 'classic' ? 'on' : ''}
+          onClick={() => actions.setDraftFormat('classic')}
+        >
+          <Icon name="chat" /> Mensagem
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={isPoll}
+          className={isPoll ? 'on' : ''}
+          onClick={() => actions.setDraftFormat('poll')}
+        >
+          <Icon name="chart" /> Enquete
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={format === 'question'}
+          className={format === 'question' ? 'on' : ''}
+          onClick={() => actions.setDraftFormat('question')}
+        >
+          <Icon name="spark" /> Pergunta
+        </button>
+      </div>
+      {isPoll ? (
+        <div className="comm-post-options">
+          {options.map((option, index) => (
+            <div className="comm-post-option" key={index}>
+              <span className="opt-num">{index + 1}</span>
+              <input
+                className="in"
+                maxLength={90}
+                placeholder={`Alternativa ${index + 1}`}
+                value={option || ''}
+                onChange={(event) => actions.setDraftOption(index, event.target.value)}
+              />
+              <button
+                type="button"
+                className="icon-btn sm"
+                aria-label={`Remover alternativa ${index + 1}`}
+                disabled={options.length <= 2}
+                onClick={() => actions.removeDraftOption(index)}
+              >
+                <Icon name="x" />
+              </button>
+            </div>
+          ))}
+          {options.length < MAX_OPTIONS ? (
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => actions.addDraftOption()}
+            >
+              <Icon name="plus" /> Alternativa
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <input
         ref={fileRef}
         type="file"
@@ -176,7 +249,7 @@ function CommunityChatComposer({ community, canPost }) {
             }
           }}
         />
-        {text.trim() || media.length ? (
+        {text.trim() || media.length || isPoll ? (
           <button className="icon-btn send" type="submit" aria-label="Enviar" title="Enviar">
             <Icon name="send" />
           </button>
@@ -224,7 +297,11 @@ function CommunityChat({ posts, canPost, community }) {
           const person = personOf(data, post.by);
           const mine = post.by === 'me';
           const allMedia = mediaOf(post).filter((item) => item.src);
-          const items = allMedia.filter((item) => ['photo', 'video'].includes(item.kind));
+          const interactive = post.interactive;
+          const imageVote = interactive?.format === 'imageVote';
+          const items = imageVote
+            ? []
+            : allMedia.filter((item) => ['photo', 'video'].includes(item.kind));
           const audios = allMedia.filter((item) => item.kind === 'audio');
           return (
             <div className={`comm-chat-msg${mine ? ' me' : ''}`} key={post.id}>
@@ -245,6 +322,7 @@ function CommunityChat({ posts, canPost, community }) {
                   {audios.map((item, index) => (
                     <audio key={`a${index}`} src={item.src} controls preload="metadata" />
                   ))}
+                  {interactive ? <Interactive post={post} /> : null}
                 </div>
               </div>
             </div>
@@ -510,7 +588,7 @@ export default function CommunitySpace({ community, onAdmin }) {
 
           {tab === 'enquetes' ? (
             <div className="comm-section">
-              <h2 className="h2">Enquetes</h2>
+              <h2 className="h2">Enquetes e perguntas</h2>
               {posts.filter(
                 (p) =>
                   p.interactive?.format === 'poll' ||

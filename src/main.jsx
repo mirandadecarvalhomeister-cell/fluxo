@@ -6,6 +6,7 @@ import { AppProvider } from './store/AppContext';
 import './styles/app.css';
 import './styles/arena.css';
 import './styles/quiz.css';
+import './styles/enigmas.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

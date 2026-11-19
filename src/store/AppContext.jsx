@@ -718,6 +718,7 @@ const readHash = () => {
   let quizOpen = false;
   let quizChallenge = null;
   let quizInvite = null;
+  let enigmasOpen = false;
   let commId = null;
   if (valid === 'comunidade' && param) {
     try { commId = decodeURIComponent(param); } catch { commId = param; }
@@ -737,6 +738,8 @@ const readHash = () => {
       quizOpen = true;
       quizChallenge = params.get('desafio') || params.get('challenge') || null;
       quizInvite = params.get('convite') || params.get('invite') || null;
+    } else if (param === 'enigmas') {
+      enigmasOpen = true;
     } else {
       try {
         room = decodeURIComponent(param);
@@ -745,7 +748,7 @@ const readHash = () => {
       }
     }
   }
-  return { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, commId };
+  return { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, enigmasOpen, commId };
 };
 
 // Convites/compartilhamentos chegam com parâmetros na URL (ex.:
@@ -796,7 +799,7 @@ const clearInviteParams = () => {
 };
 
 const initialUi = () => {
-  const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, commId } = readHash();
+  const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, enigmasOpen, commId } = readHash();
   return {
     route,
     draft: {
@@ -821,6 +824,7 @@ const initialUi = () => {
     quizOpen,
     quizChallenge,
     quizInvite,
+    enigmasOpen,
     commId,
     chanFilter: 'all',
     myLive: null,
@@ -928,16 +932,17 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     const onHash = () => {
-      const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, commId } = readHash();
+      const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, enigmasOpen, commId } = readHash();
       setUi((u) =>
         u.route === route &&
         u.room === room &&
         u.arenaCode === arenaCode &&
         u.quizOpen === quizOpen &&
+        u.enigmasOpen === enigmasOpen &&
         u.commId === commId &&
         (u.quizChallenge || null) === (quizChallenge || null)
           ? u
-          : { ...u, route, room, arenaCode, quizOpen, quizChallenge, quizInvite, commId }
+          : { ...u, route, room, arenaCode, quizOpen, quizChallenge, quizInvite, enigmasOpen, commId }
       );
       window.scrollTo(0, 0);
     };
@@ -3214,6 +3219,7 @@ export function AppProvider({ children }) {
       route: 'conexoes',
       room: null,
       quizOpen: false,
+      enigmasOpen: false,
       arenaCode: clean,
     }));
     if (location.hash !== hash) location.hash = hash;
@@ -3236,6 +3242,7 @@ export function AppProvider({ children }) {
       arenaCode: null,
       quizOpen: true,
       quizChallenge: null,
+      enigmasOpen: false,
     }));
     if (location.hash !== '#conexoes/quiz') location.hash = '#conexoes/quiz';
   }
@@ -3255,6 +3262,23 @@ export function AppProvider({ children }) {
 
   function closeQuiz() {
     setUi((u) => ({ ...u, quizOpen: false, quizChallenge: null, quizInvite: null }));
+    if (location.hash !== '#conexoes') location.hash = '#conexoes';
+  }
+
+  function openEnigmas() {
+    setUi((u) => ({
+      ...u,
+      route: 'conexoes',
+      room: null,
+      arenaCode: null,
+      quizOpen: false,
+      enigmasOpen: true,
+    }));
+    if (location.hash !== '#conexoes/enigmas') location.hash = '#conexoes/enigmas';
+  }
+
+  function closeEnigmas() {
+    setUi((u) => ({ ...u, enigmasOpen: false }));
     if (location.hash !== '#conexoes') location.hash = '#conexoes';
   }
 
@@ -5071,6 +5095,8 @@ export function AppProvider({ children }) {
     openQuiz,
     openQuizChallenge,
     closeQuiz,
+    openEnigmas,
+    closeEnigmas,
     inviteToArena,
     shareArenaResult,
     shareQuizResult,

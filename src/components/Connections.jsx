@@ -17,6 +17,7 @@ import { Icon } from './Icon';
 const LiveStage = lazy(() => import('./LiveStage'));
 const Arena = lazy(() => import('../games/arena/Arena'));
 const QuizBoom = lazy(() => import('../games/quiz/QuizBoom'));
+const Enigmas = lazy(() => import('../games/enigmas/Enigmas'));
 
 const QUICK_EMOTES = ['❤️', '🔥', '👏', '😂', '🎉', '👍', '💜', '🚀'];
 // A conta do usuário é o canal: o diretório mostra quem está ao vivo.
@@ -777,6 +778,20 @@ export default function Connections() {
     actionsRef.current.clearRoom();
   }, [missingRoom]);
 
+  if (ui.enigmasOpen) {
+    return (
+      <Suspense
+        fallback={
+          <div className="card" style={{ padding: 24 }}>
+            Carregando os Enigmas…
+          </div>
+        }
+      >
+        <Enigmas />
+      </Suspense>
+    );
+  }
+
   if (ui.quizOpen) {
     return (
       <Suspense
@@ -871,6 +886,22 @@ export default function Connections() {
               </p>
             </div>
             <button type="button" className="btn primary" onClick={() => actions.openArena('')}>
+              <Icon name="play" /> Jogar agora
+            </button>
+          </section>
+
+          <section className="card arena-entry enigmas-entry">
+            <div className="arena-entry-copy">
+              <span className="pill acc">
+                <Icon name="spark" /> Raciocínio
+              </span>
+              <h3>ENIGMAS</h3>
+              <p className="muted sm">
+                100 enigmas de lógica, padrões, códigos e dedução. Avance apenas
+                acertando, com dicas progressivas e progresso salvo.
+              </p>
+            </div>
+            <button type="button" className="btn primary" onClick={actions.openEnigmas}>
               <Icon name="play" /> Jogar agora
             </button>
           </section>
