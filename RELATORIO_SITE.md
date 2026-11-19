@@ -93,7 +93,7 @@
 
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `d14fe1c3`.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy `dfc27556`.
 - Migration aplicada em produção: `migrate_enigmas_ranking.sql`.
 
 ## Fase 13 — Mensagens entre seguidores mútuos (concluído)
@@ -107,6 +107,8 @@
 - Instalado `three` e criado `Game3DBackground.jsx`: cena WebGL com partículas, grade neon, peça central (bomba no Quiz / diamante no Nível Zero), anéis orbitais e luzes reativas.
 - Aplicado a todas as telas do **Quiz BOOM** e ao **NÍVEL ZERO** sem alterar nenhuma regra: no Quiz, a intensidade acompanha o tempo restante; no Nível Zero, reage ao acerto.
 - Respeita `prefers-reduced-motion`, limpa geometria/renderer ao desmontar e degrada sem erro se WebGL não estiver disponível.
+- Correção: flash da explosão do Quiz BOOM voltou a aparecer (a regra de z-index da camada 3D forçava `position: relative` no flash).
+- NÍVEL ZERO passou a usar **100 charadas de lógica** no estilo do arquivo de referência (enunciado curto, uma dica e respostas alternativas), com validação ignorando pontuação/espaços.
 
 ## Fase 8 — Picker de emojis estilo mensageiro (concluído)
 
