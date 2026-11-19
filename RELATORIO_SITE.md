@@ -93,7 +93,7 @@
 
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `41a3f761`.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy `d14fe1c3`.
 - Migration aplicada em produção: `migrate_enigmas_ranking.sql`.
 
 ## Fase 13 — Mensagens entre seguidores mútuos (concluído)
