@@ -6,9 +6,12 @@ import {
   clearSave,
   isCorrect,
   levelAt,
+  medalFor,
   newSave,
   pointsForLevel,
+  readRank,
   readSave,
+  recordScore,
   writeSave,
 } from './enigmasData';
 
@@ -21,9 +24,10 @@ const INCENTIVES = [
 ];
 
 export default function Enigmas() {
-  const { actions } = useApp();
+  const { data, actions } = useApp();
   const [screen, setScreen] = useState('home');
   const [save, setSave] = useState(readSave);
+  const [rank, setRank] = useState(readRank);
   const [level, setLevel] = useState(1);
   const [input, setInput] = useState('');
   const [status, setStatus] = useState(null);
@@ -100,6 +104,15 @@ export default function Enigmas() {
       finished: level >= TOTAL_LEVELS,
     };
     persist(next);
+    setRank(
+      recordScore({
+        runId: save?.runId,
+        name: data.me?.name || 'Você',
+        level: Math.min(level + 1, TOTAL_LEVELS),
+        score: next.score,
+        hints: next.hints,
+      })
+    );
     setMessage(INCENTIVES[(level - 1) % INCENTIVES.length]);
     setBusy(true);
     timers.current.push(
@@ -115,6 +128,36 @@ export default function Enigmas() {
     if (hintsShown >= (puzzle?.hints.length || 0)) return;
     setHintsShown((count) => count + 1);
     persist({ ...save, hints: (save?.hints || 0) + 1 });
+  }
+
+  function shareToFeed() {
+    const reached = screen === 'complete' ? TOTAL_LEVELS : level;
+    actions.publish(
+      `🧩 Cheguei ao nível ${reached} de ${TOTAL_LEVELS} nos Enigmas do Fluxo! "Consegue chegar mais longe?"`
+    );
+    actions.notify?.('Desafio compartilhado no feed!');
+  }
+
+  async function copyInvite() {
+    const url = `${location.origin}${location.pathname}#conexoes/enigmas`;
+    try {
+      await navigator.clipboard.writeText(url);
+      actions.notify?.('Link copiado!');
+    } catch {
+      actions.notify?.('Não foi possível copiar o link.');
+    }
+  }
+
+  function rankList(limit = 8) {
+    return rank.slice(0, limit).map((entry, index) => (
+      <div className="enigmas-rank-row" key={`${entry.runId}-${index}`}>
+        <span className="enigmas-rank-medal">{medalFor(index) || `#${index + 1}`}</span>
+        <span className="grow">
+          <b>{entry.name}</b>
+          <small> nível {entry.level} · {entry.score} pts</small>
+        </span>
+      </div>
+    ));
   }
 
   return (
@@ -135,6 +178,17 @@ export default function Enigmas() {
         <span className="enigmas-top-progress">
           {screen === 'playing' ? `${level} / ${TOTAL_LEVELS}` : `${save?.score || 0} pts`}
         </span>
+        {save ? (
+          <button
+            className="icon-btn enigmas-share"
+            type="button"
+            onClick={shareToFeed}
+            aria-label="Compartilhar progresso"
+            title="Compartilhar no feed"
+          >
+            <Icon name="share" />
+          </button>
+        ) : null}
       </header>
 
       {screen === 'home' ? (
@@ -169,6 +223,22 @@ export default function Enigmas() {
           ) : (
             <p className="enigmas-hint-text">Nenhuma partida salva. Comece um novo jogo.</p>
           )}
+          {save ? (
+            <div className="enigmas-home-actions">
+              <button className="btn enigmas-btn ghost" type="button" onClick={shareToFeed}>
+                <Icon name="share" /> COMPARTILHAR
+              </button>
+              <button className="btn enigmas-btn ghost" type="button" onClick={copyInvite}>
+                <Icon name="link" /> COPIAR LINK
+              </button>
+            </div>
+          ) : null}
+          {rank.length ? (
+            <div className="enigmas-rank">
+              <b>RANKING · ATÉ ONDE VOCÊ CHEGOU</b>
+              {rankList()}
+            </div>
+          ) : null}
           <p className="enigmas-rule">100 níveis · progressão obrigatória e sequencial</p>
         </section>
       ) : null}
@@ -240,13 +310,20 @@ export default function Enigmas() {
           <p className="enigmas-tagline">
             Resolveu todos os {TOTAL_LEVELS} enigmas e terminou com {save?.score || 0} pontos.
           </p>
-          <button
-            className="btn enigmas-btn primary"
-            type="button"
-            onClick={() => setScreen('home')}
-          >
-            VOLTAR AO INÍCIO
-          </button>
+          <div className="enigmas-home-actions">
+            <button className="btn enigmas-btn primary" type="button" onClick={shareToFeed}>
+              <Icon name="share" /> COMPARTILHAR
+            </button>
+            <button className="btn enigmas-btn ghost" type="button" onClick={() => setScreen('home')}>
+              VOLTAR AO INÍCIO
+            </button>
+          </div>
+          {rank.length ? (
+            <div className="enigmas-rank">
+              <b>RANKING · ATÉ ONDE VOCÊ CHEGOU</b>
+              {rankList()}
+            </div>
+          ) : null}
         </section>
       ) : null}
     </div>

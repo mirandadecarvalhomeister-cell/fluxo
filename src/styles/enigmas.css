@@ -42,6 +42,14 @@
 .enigmas-progress-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--en-purple),var(--en-cyan));box-shadow:0 0 14px var(--en-cyan)}
 .enigmas-hint-text,.enigmas-rule{color:var(--en-muted);font-size:12px;margin:0}
 .enigmas-rule{opacity:.65}
+.enigmas-share{color:var(--en-cyan);width:36px;height:36px}
+.enigmas-share:hover{background:rgba(34,230,255,.12)}
+.enigmas-rank{width:100%;max-width:420px;display:grid;gap:6px;padding:12px;border-radius:14px;border:1px solid var(--en-line);background:rgba(13,10,28,.8);text-align:left}
+.enigmas-rank>b{font-size:11px;letter-spacing:.14em;color:var(--en-purple);margin-bottom:4px}
+.enigmas-rank-row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:10px;background:rgba(154,92,255,.07)}
+.enigmas-rank-medal{flex:none;width:30px;text-align:center;font-size:16px;color:var(--en-cyan);font-weight:800}
+.enigmas-rank-row b{display:block;font-size:13px}
+.enigmas-rank-row small{display:block;font-size:11px;color:var(--en-muted)}
 .enigmas-play{margin:0 auto;width:min(680px,100%);display:grid;gap:14px;padding:18px 4px 24px}
 .enigmas-level-badge{justify-self:start;font:800 12px var(--f-body);letter-spacing:.16em;color:var(--en-cyan);padding:6px 12px;border-radius:999px;border:1px solid rgba(34,230,255,.35);background:rgba(34,230,255,.07)}
 .enigmas-level-badge span{color:var(--en-muted)}

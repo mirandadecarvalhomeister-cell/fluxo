@@ -93,7 +93,7 @@
 
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `a6db41b8`.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy `210f5ed0`.
 
 ## Fase 8 — Picker de emojis estilo mensageiro (concluído)
 
@@ -128,6 +128,15 @@
 - Unificadas as abas "Visão geral" e "Publicações": agora existe só **Publicações**, com o chat da comunidade; o bloco de estatísticas/últimas publicações foi removido.
 - Chat da comunidade em ordem cronológica (mais antigo acima, mais recente abaixo) e rolagem feita pela página inteira — sem caixa interna que mantinha o cabeçalho "fixo".
 - Emojis grandes também ao digitar no chat: mensagens só com emojis usam fonte ampliada no campo; texto misto ganha prévia com emojis animados.
+- Comunidades: enquetes e perguntas passam a ser criadas na própria aba Comunidades (seletor Mensagem/Enquete/Pergunta, editor de alternativas) e aparecem vinculadas dentro das publicações do chat, com votação/respostas reais.
+
+## Fase 12 — Jogo Enigmas (concluído)
+
+- Jogo completo de **100 enigmas originais** (lógica, sequências, códigos, dedução e desafios finais), com progressão **estritamente sequencial** e sem botão de voltar.
+- Tela inicial com CONTINUAR (desabilitado sem partida salva), NOVO JOGO com confirmação e indicador de progresso; salvamento automático em `fluxo.enigmas.save.v1` (nível, pontos, dicas, tentativas).
+- Validação que ignora caixa/acentos/espaços e aceita alternativas; 3 dicas progressivas com desconto de pontos; feedback de erro com animação e sucesso com transição suave.
+- Tema escuro com roxo neon/ciano, animações e layout responsivo (`src/styles/enigmas.css`); integrado em Conexões → Jogos com rota `#conexoes/enigmas`.
+- Testes próprios em `tests/enigmas-levels.test.js` registrados no `npm test` (21 testes passando).
 - Migrations aplicadas no Supabase de produção: `migrate_channel_subscriptions.sql`, `migrate_communities_v2.sql`, `migrate_emoji_favorites.sql`.
 
 ## Commits desta rodada

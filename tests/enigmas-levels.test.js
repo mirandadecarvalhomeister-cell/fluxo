@@ -4,6 +4,7 @@ import { PUZZLES } from '../src/games/enigmas/puzzles.js';
 import {
   TOTAL_LEVELS,
   isCorrect,
+  medalFor,
   normalizeAnswer,
   pointsForLevel,
 } from '../src/games/enigmas/enigmasData.js';
@@ -35,6 +36,13 @@ test('a validação ignora caixa, acento e espaços', () => {
   assert.equal(isCorrect('dezembro', { answer: 'Dezembro' }), true);
   assert.equal(isCorrect('17', { answer: 'dezessete', alt: ['17'] }), true);
   assert.equal(isCorrect('16', { answer: '17' }), false);
+});
+
+test('medalhas de ranking por posição', () => {
+  assert.equal(medalFor(0), '🥇');
+  assert.equal(medalFor(1), '🥈');
+  assert.equal(medalFor(2), '🥉');
+  assert.equal(medalFor(3), '');
 });
 
 test('dicas reduzem a pontuação do nível', () => {
