@@ -94,7 +94,9 @@
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
 - Quiz BOOM: cronômetro passou a usar timestamp real (`Date.now()`), com atualização ao voltar para a aba, então não congela mais quando o navegador coloca a página em segundo plano. Nome NÍVEL ZERO exibido em todas as telas do outro jogo.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `a5aa6fd2`.
+- **Defesa Estelar** (novo): jogo 3D procedural low-poly "Comandante Cibernético" com 3 ondas de drones, combate por clique/toque, partículas, HUD e recorde local; integrado em Conexões → Jogos com rota `#conexoes/defesa`.
+- Correções: nome NÍVEL ZERO visível no card (gradiente com fallback), texto "VOCÊ PERDEU" na explosão do Quiz e explosão em qualquer modo.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy `e1cb5636`.
 - Migration aplicada em produção: `migrate_enigmas_ranking.sql`.
 
 ## Fase 13 — Mensagens entre seguidores mútuos (concluído)
