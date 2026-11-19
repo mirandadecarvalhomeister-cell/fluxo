@@ -205,16 +205,22 @@ function CommunityChatComposer({ community, canPost }) {
 function CommunityChat({ posts, canPost, community }) {
   const { data } = useApp();
   const boxRef = useRef(null);
+  const prevCount = useRef(posts.length);
+  // data.posts vem do mais novo para o mais antigo; no chat vai do mais antigo
+  // para o mais novo, como nas conversas.
+  const messages = useMemo(() => [...posts].reverse(), [posts]);
 
   useEffect(() => {
-    const box = boxRef.current;
-    if (box) box.scrollTop = box.scrollHeight;
+    if (posts.length > prevCount.current) {
+      boxRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+    }
+    prevCount.current = posts.length;
   }, [posts.length]);
 
   return (
     <div className="comm-chat">
       <div className="comm-chat-list" ref={boxRef}>
-        {posts.map((post) => {
+        {messages.map((post) => {
           const person = personOf(data, post.by);
           const mine = post.by === 'me';
           const allMedia = mediaOf(post).filter((item) => item.src);

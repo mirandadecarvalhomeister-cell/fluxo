@@ -10,7 +10,11 @@ import ChatPicker from './ChatPicker';
 import { Icon } from './Icon';
 import { VideoViewer } from './VideoPlayer';
 import AnimatedEmoji from './AnimatedEmoji';
+import EmojiText from './EmojiText';
 import { hasAnimatedEmoji } from '../lib/animatedEmoji';
+
+// Mensagens formadas só por emojis aparecem grandes já no campo de digitação.
+const ONLY_EMOJI_RE = /^[\p{Extended_Pictographic}\p{Emoji_Modifier}\uFE0F\u200D\s]+$/u;
 
 const ATTACH_LABEL = {
   photo: 'Foto',
@@ -2084,8 +2088,13 @@ export default function Messages() {
                     >
                       <Icon name={pickerTab === 'emoji' ? 'smile' : 'sticker'} />
                     </button>
+                    {text && /\p{Extended_Pictographic}/u.test(text) ? (
+                      <div className="msg-composer-preview" aria-hidden="true">
+                        <EmojiText text={text} size={22} />
+                      </div>
+                    ) : null}
                     <textarea
-                      className="msg-composer-in"
+                      className={`msg-composer-in${text && ONLY_EMOJI_RE.test(text.trim()) ? ' emoji-only' : ''}`}
                       id="msgIn"
                       ref={inputRef}
                       rows={1}
