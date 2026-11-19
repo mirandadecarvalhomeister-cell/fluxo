@@ -719,6 +719,7 @@ const readHash = () => {
   let quizChallenge = null;
   let quizInvite = null;
   let enigmasOpen = false;
+  let defesaOpen = false;
   let commId = null;
   if (valid === 'comunidade' && param) {
     try { commId = decodeURIComponent(param); } catch { commId = param; }
@@ -740,6 +741,8 @@ const readHash = () => {
       quizInvite = params.get('convite') || params.get('invite') || null;
     } else if (param === 'enigmas') {
       enigmasOpen = true;
+    } else if (param === 'defesa') {
+      defesaOpen = true;
     } else {
       try {
         room = decodeURIComponent(param);
@@ -748,7 +751,7 @@ const readHash = () => {
       }
     }
   }
-  return { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, enigmasOpen, commId };
+  return { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, enigmasOpen, defesaOpen, commId };
 };
 
 // Convites/compartilhamentos chegam com parâmetros na URL (ex.:
@@ -799,7 +802,7 @@ const clearInviteParams = () => {
 };
 
 const initialUi = () => {
-  const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, enigmasOpen, commId } = readHash();
+  const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, enigmasOpen, defesaOpen, commId } = readHash();
   return {
     route,
     draft: {
@@ -825,6 +828,7 @@ const initialUi = () => {
     quizChallenge,
     quizInvite,
     enigmasOpen,
+    defesaOpen,
     commId,
     chanFilter: 'all',
     myLive: null,
@@ -932,17 +936,18 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     const onHash = () => {
-      const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, enigmasOpen, commId } = readHash();
+      const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, enigmasOpen, defesaOpen, commId } = readHash();
       setUi((u) =>
         u.route === route &&
         u.room === room &&
         u.arenaCode === arenaCode &&
         u.quizOpen === quizOpen &&
         u.enigmasOpen === enigmasOpen &&
+        u.defesaOpen === defesaOpen &&
         u.commId === commId &&
         (u.quizChallenge || null) === (quizChallenge || null)
           ? u
-          : { ...u, route, room, arenaCode, quizOpen, quizChallenge, quizInvite, enigmasOpen, commId }
+          : { ...u, route, room, arenaCode, quizOpen, quizChallenge, quizInvite, enigmasOpen, defesaOpen, commId }
       );
       window.scrollTo(0, 0);
     };
@@ -3237,6 +3242,7 @@ export function AppProvider({ children }) {
       room: null,
       quizOpen: false,
       enigmasOpen: false,
+      defesaOpen: false,
       arenaCode: clean,
     }));
     if (location.hash !== hash) location.hash = hash;
@@ -3260,6 +3266,7 @@ export function AppProvider({ children }) {
       quizOpen: true,
       quizChallenge: null,
       enigmasOpen: false,
+      defesaOpen: false,
     }));
     if (location.hash !== '#conexoes/quiz') location.hash = '#conexoes/quiz';
   }
@@ -3290,12 +3297,31 @@ export function AppProvider({ children }) {
       arenaCode: null,
       quizOpen: false,
       enigmasOpen: true,
+      defesaOpen: false,
     }));
     if (location.hash !== '#conexoes/enigmas') location.hash = '#conexoes/enigmas';
   }
 
   function closeEnigmas() {
     setUi((u) => ({ ...u, enigmasOpen: false }));
+    if (location.hash !== '#conexoes') location.hash = '#conexoes';
+  }
+
+  function openDefesa() {
+    setUi((u) => ({
+      ...u,
+      route: 'conexoes',
+      room: null,
+      arenaCode: null,
+      quizOpen: false,
+      enigmasOpen: false,
+      defesaOpen: true,
+    }));
+    if (location.hash !== '#conexoes/defesa') location.hash = '#conexoes/defesa';
+  }
+
+  function closeDefesa() {
+    setUi((u) => ({ ...u, defesaOpen: false }));
     if (location.hash !== '#conexoes') location.hash = '#conexoes';
   }
 
@@ -5131,6 +5157,8 @@ export function AppProvider({ children }) {
     closeQuiz,
     openEnigmas,
     closeEnigmas,
+    openDefesa,
+    closeDefesa,
     requestConfirm,
     loadEnigmaRanking: () => remote.loadEnigmaRanking(),
     recordEnigmaScore,

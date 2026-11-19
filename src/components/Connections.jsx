@@ -18,6 +18,7 @@ const LiveStage = lazy(() => import('./LiveStage'));
 const Arena = lazy(() => import('../games/arena/Arena'));
 const QuizBoom = lazy(() => import('../games/quiz/QuizBoom'));
 const Enigmas = lazy(() => import('../games/enigmas/Enigmas'));
+const DefesaEstelar = lazy(() => import('../games/defesa/DefesaEstelar'));
 
 const QUICK_EMOTES = ['❤️', '🔥', '👏', '😂', '🎉', '👍', '💜', '🚀'];
 // A conta do usuário é o canal: o diretório mostra quem está ao vivo.
@@ -778,6 +779,20 @@ export default function Connections() {
     actionsRef.current.clearRoom();
   }, [missingRoom]);
 
+  if (ui.defesaOpen) {
+    return (
+      <Suspense
+        fallback={
+          <div className="card" style={{ padding: 24 }}>
+            Carregando a Defesa Estelar…
+          </div>
+        }
+      >
+        <DefesaEstelar />
+      </Suspense>
+    );
+  }
+
   if (ui.enigmasOpen) {
     return (
       <Suspense
@@ -897,11 +912,27 @@ export default function Connections() {
               </span>
               <h3>NÍVEL ZERO</h3>
               <p className="muted sm">
-                100 enigmas de lógica, padrões, códigos e dedução. Avance apenas
-                acertando, com dicas progressivas e progresso salvo.
+                100 charadas de lógica e raciocínio. Avance apenas acertando,
+                com dicas, ranking global e progresso salvo.
               </p>
             </div>
             <button type="button" className="btn primary" onClick={actions.openEnigmas}>
+              <Icon name="play" /> Jogar agora
+            </button>
+          </section>
+
+          <section className="card arena-entry defesa-entry">
+            <div className="arena-entry-copy">
+              <span className="pill acc">
+                <Icon name="shield" /> Defesa 3D
+              </span>
+              <h3>DEFESA ESTELAR</h3>
+              <p className="muted sm">
+                Comandante Cibernético: 3 ondas de drones, combate 3D com
+                efeitos e ranking de pontuação.
+              </p>
+            </div>
+            <button type="button" className="btn primary" onClick={actions.openDefesa}>
               <Icon name="play" /> Jogar agora
             </button>
           </section>

@@ -965,7 +965,7 @@ export default function QuizBoom() {
           💥
         </div>
         <h1>BOOM!</h1>
-        <p className="quiz-boom-sub">O PAVIO QUEIMOU</p>
+        <p className="quiz-boom-sub">VOCÊ PERDEU</p>
         <p className="quiz-boom-note">
           Você parou na pergunta {index + 1} de {total}.{' '}
           {mode === 'classic'

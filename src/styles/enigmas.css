@@ -17,7 +17,10 @@
 }
 .enigmas-game *{box-sizing:border-box}
 .enigmas-entry{border-color:rgba(154,92,255,.45)!important;box-shadow:0 0 30px -18px rgba(154,92,255,.9)!important}
-.enigmas-entry h3{background:linear-gradient(95deg,var(--en-cyan),var(--en-purple));-webkit-background-clip:text;background-clip:text;color:transparent}
+.enigmas-entry h3{color:#eafcff;text-shadow:0 0 16px rgba(34,230,255,.55);letter-spacing:.06em}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  .enigmas-entry h3{background:linear-gradient(95deg,var(--en-cyan),var(--en-purple));-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none}
+}
 .enigmas-top{display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--en-line)}
 .enigmas-back{color:var(--en-cyan);width:36px;height:36px}
 .enigmas-back:hover{background:rgba(34,230,255,.12)}
@@ -106,3 +109,29 @@
 .game-3d-bg{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:.55}
 .game-3d-bg canvas{display:block;width:100%!important;height:100%!important}
 .quiz,.enigmas-game{position:relative;isolation:isolate}
+
+/* Comandante Cibernético — Defesa Estelar (3D procedural). */
+.defesa-game{--d-cyan:#22e6ff;--d-purple:#9a5cff;display:flex;flex-direction:column;gap:12px;min-height:calc(100dvh - 24px);padding:14px;border-radius:18px;overflow:hidden;position:relative;
+  background:radial-gradient(900px 400px at 50% -10%,rgba(34,230,255,.16),transparent 70%),radial-gradient(700px 500px at 100% 100%,rgba(154,92,255,.18),transparent 70%),#04050d;
+  border:1px solid #23305a;box-shadow:0 0 40px -18px rgba(34,230,255,.6);font-family:var(--f-body)}
+.defesa-top{display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid #23305a}
+.defesa-brand{display:flex;align-items:center;gap:9px}
+.defesa-brand>span{font-size:24px;color:var(--d-cyan);text-shadow:0 0 16px var(--d-cyan)}
+.defesa-brand b{display:block;font:800 13px var(--f-display);letter-spacing:.12em}
+.defesa-brand small{display:block;font:700 10px var(--f-body);letter-spacing:.2em;color:var(--d-purple)}
+.defesa-top-score{margin-left:auto;font:800 14px var(--f-body);color:var(--d-cyan)}
+.defesa-home{margin:auto;display:grid;justify-items:center;gap:14px;text-align:center;max-width:520px;padding:26px 8px}
+.defesa-emblem{width:96px;height:96px;border-radius:26px;display:grid;place-items:center;font-size:46px;color:var(--d-cyan);border:1px solid rgba(34,230,255,.5);background:radial-gradient(circle,rgba(154,92,255,.3),rgba(4,5,13,.9));box-shadow:0 0 34px -8px rgba(34,230,255,.6)}
+.defesa-home h1{margin:0;font:800 clamp(1.9rem,6vw,3rem) var(--f-display);letter-spacing:.08em;color:#eafcff;text-shadow:0 0 24px rgba(34,230,255,.5)}
+.defesa-home p{margin:0;color:#a9b6d9;font-size:14px;line-height:1.55}
+.defesa-home-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.defesa-best{font-weight:700;color:var(--d-purple)!important}
+.defesa-tip{font-size:12px!important;color:#7482a8!important}
+.defesa-hud{display:flex;gap:12px;flex-wrap:wrap;font:800 12px var(--f-body);letter-spacing:.1em;color:var(--d-cyan)}
+.defesa-hp{display:flex;align-items:center;gap:10px;font:700 11px var(--f-body);letter-spacing:.1em;color:#a9b6d9}
+.defesa-hp>div{flex:1;height:8px;border-radius:999px;background:#1a2140;overflow:hidden}
+.defesa-hp i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--d-purple),var(--d-cyan));transition:width .2s}
+.defesa-stage{position:relative;flex:1;min-height:420px;border-radius:14px;overflow:hidden;border:1px solid #23305a;background:#03040d;touch-action:manipulation}
+.defesa-stage canvas{display:block;width:100%;height:100%}
+.defesa-entry h3{color:#eafcff;text-shadow:0 0 16px rgba(34,230,255,.5)}
+@media (max-width:760px){.defesa-game{min-height:calc(100dvh - 16px);padding:10px}.defesa-stage{min-height:56dvh}.defesa-home{padding:18px 6px}}
