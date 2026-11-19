@@ -300,6 +300,9 @@ export default function Enigmas() {
 
       {screen === 'playing' && puzzle ? (
         <section className="enigmas-play enigmas-fade" key={level}>
+          <div className="enigmas-play-brand">
+            <EnigmaMark /> <span>NÍVEL ZERO</span>
+          </div>
           <div className="enigmas-level-badge">
             NÍVEL {String(level).padStart(2, '0')} <span>· {TOTAL_LEVELS}</span>
           </div>
@@ -362,6 +365,9 @@ export default function Enigmas() {
         <section className="enigmas-home enigmas-fade">
           <div className="enigmas-logo enigmas-logo-win">
             <EnigmaMark />
+          </div>
+          <div className="enigmas-play-brand enigmas-play-brand-center">
+            <EnigmaMark /> <span>NÍVEL ZERO</span>
           </div>
           <h1>VOCÊ CONSEGUIU!</h1>
           <p className="enigmas-tagline">

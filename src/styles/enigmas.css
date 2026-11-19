@@ -24,14 +24,21 @@
 .enigmas-brand{display:flex;align-items:center;gap:8px;font:800 15px var(--f-display);letter-spacing:.22em;color:var(--en-fg)}
 .enigmas-mark{width:24px;height:24px;filter:drop-shadow(0 0 8px rgba(34,230,255,.75))}
 .enigmas-top-progress{margin-left:auto;font:700 12px var(--f-body);color:var(--en-muted);letter-spacing:.08em}
+.enigmas-play-brand{display:flex;align-items:center;gap:8px;font:800 13px var(--f-display);letter-spacing:.2em;color:var(--en-cyan)}
+.enigmas-play-brand .enigmas-mark-svg{width:24px;height:24px}
+.enigmas-play-brand span{background:linear-gradient(95deg,var(--en-cyan),var(--en-purple));-webkit-background-clip:text;background-clip:text;color:transparent}
+.enigmas-play-brand-center{justify-content:center;font-size:15px}
 .enigmas-home{margin:auto;text-align:center;display:grid;justify-items:center;gap:14px;max-width:520px;padding:24px 8px}
 .enigmas-logo{width:112px;height:112px;border-radius:28px;display:grid;place-items:center;font-size:58px;color:var(--en-cyan);
   border:1px solid rgba(34,230,255,.45);background:radial-gradient(circle,rgba(154,92,255,.28),rgba(5,4,11,.9));
   box-shadow:0 0 34px -6px rgba(34,230,255,.5),inset 0 0 26px -10px rgba(154,92,255,.8)}
 .enigmas-mark-svg{width:72%;height:72%;filter:drop-shadow(0 0 12px rgba(34,230,255,.6));animation:enigmas-pulse 2.6s ease-in-out infinite}
 .enigmas-logo-win{color:var(--en-purple);border-color:rgba(154,92,255,.6)}
-.enigmas-home h1{margin:0;font:800 clamp(2.2rem,8vw,3.6rem) var(--f-display);letter-spacing:.12em;
-  background:linear-gradient(95deg,var(--en-cyan),var(--en-purple));-webkit-background-clip:text;background-clip:text;color:transparent}
+.enigmas-home h1{margin:0;font:800 clamp(2.2rem,8vw,3.6rem) var(--f-display);letter-spacing:.12em;color:var(--en-fg);
+  text-shadow:0 0 26px rgba(34,230,255,.35)}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  .enigmas-home h1{background:linear-gradient(95deg,var(--en-cyan),var(--en-purple));-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none}
+}
 .enigmas-tagline{margin:0;color:var(--en-muted);font-size:15px;line-height:1.5}
 .enigmas-home-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
 .enigmas-btn{min-width:150px;letter-spacing:.08em;font-weight:800;border-radius:12px;transition:transform .12s,box-shadow .18s,background .18s}
