@@ -5109,6 +5109,7 @@ export function AppProvider({ children }) {
     closeQuiz,
     openEnigmas,
     closeEnigmas,
+    requestConfirm,
     loadEnigmaRanking: () => remote.loadEnigmaRanking(),
     recordEnigmaScore,
     inviteToArena,

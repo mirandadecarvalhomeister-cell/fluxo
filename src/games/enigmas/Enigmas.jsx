@@ -15,6 +15,33 @@ import {
   writeSave,
 } from './enigmasData';
 
+function EnigmaMark({ className = '' }) {
+  return (
+    <svg
+      className={`enigmas-mark-svg ${className}`}
+      viewBox="0 0 100 100"
+      fill="none"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="nz-edge" x1="12" y1="10" x2="88" y2="92" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#22e6ff" />
+          <stop offset="1" stopColor="#9a5cff" />
+        </linearGradient>
+        <radialGradient id="nz-core">
+          <stop stopColor="#22e6ff" />
+          <stop offset="1" stopColor="#5b2bd9" />
+        </radialGradient>
+      </defs>
+      <path d="M50 5 92 50 50 95 8 50Z" stroke="url(#nz-edge)" strokeWidth="2.4" />
+      <path d="M50 20 76 50 50 80 24 50Z" stroke="url(#nz-edge)" strokeWidth="1.6" opacity=".8" />
+      <path d="M50 34 64 50 50 66 36 50Z" fill="url(#nz-core)" opacity=".9" />
+      <circle cx="50" cy="50" r="5" fill="#eafcff" />
+      <path d="M8 50h16M76 50h16M50 5v15M50 80v15" stroke="#22e6ff" strokeWidth="1.4" opacity=".65" />
+    </svg>
+  );
+}
+
 const INCENTIVES = [
   'Mente afiada. Continue assim!',
   'Excelente raciocínio!',
@@ -159,7 +186,7 @@ export default function Enigmas() {
   function shareToFeed() {
     const reached = screen === 'complete' ? TOTAL_LEVELS : level;
     actions.publish(
-      `🧩 Cheguei ao nível ${reached} de ${TOTAL_LEVELS} nos Enigmas do Fluxo! "Consegue chegar mais longe?"`
+      `🧩 Cheguei ao nível ${reached} de ${TOTAL_LEVELS} no NÍVEL ZERO do Fluxo! "Consegue chegar mais longe?"`
     );
     actions.notify?.('Desafio compartilhado no feed!');
   }
@@ -198,8 +225,8 @@ export default function Enigmas() {
           <Icon name="back" />
         </button>
         <div className="enigmas-brand">
-          <span className="enigmas-mark">◇</span>
-          <span>ENIGMAS</span>
+          <EnigmaMark className="enigmas-mark" />
+          <span>NÍVEL ZERO</span>
         </div>
         <span className="enigmas-top-progress">
           {screen === 'playing' ? `${level} / ${TOTAL_LEVELS}` : `${save?.score || 0} pts`}
@@ -220,9 +247,9 @@ export default function Enigmas() {
       {screen === 'home' ? (
         <section className="enigmas-home enigmas-fade">
           <div className="enigmas-logo" aria-hidden="true">
-            <span>◇</span>
+            <EnigmaMark />
           </div>
-          <h1>ENIGMAS</h1>
+          <h1>NÍVEL ZERO</h1>
           <p className="enigmas-tagline">Você consegue resolver todos os enigmas?</p>
           <div className="enigmas-home-actions">
             <button
@@ -331,7 +358,9 @@ export default function Enigmas() {
 
       {screen === 'complete' ? (
         <section className="enigmas-home enigmas-fade">
-          <div className="enigmas-logo enigmas-logo-win">◇</div>
+          <div className="enigmas-logo enigmas-logo-win">
+            <EnigmaMark />
+          </div>
           <h1>VOCÊ CONSEGUIU!</h1>
           <p className="enigmas-tagline">
             Resolveu todos os {TOTAL_LEVELS} enigmas e terminou com {save?.score || 0} pontos.

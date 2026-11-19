@@ -5,9 +5,12 @@
   min-height:calc(100dvh - 24px);display:flex;flex-direction:column;gap:18px;
   padding:16px;border-radius:18px;color:var(--en-fg);
   background:
+    linear-gradient(rgba(154,92,255,.055) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(34,230,255,.05) 1px,transparent 1px),
     radial-gradient(900px 380px at 50% -10%,rgba(154,92,255,.18),transparent 70%),
     radial-gradient(700px 420px at 100% 100%,rgba(34,230,255,.12),transparent 70%),
     var(--en-bg);
+  background-size:48px 48px,48px 48px,auto,auto,auto;
   border:1px solid var(--en-line);
   box-shadow:0 0 40px -18px rgba(154,92,255,.55),inset 0 0 60px -40px rgba(34,230,255,.5);
   font-family:var(--f-body);overflow:hidden;
@@ -19,13 +22,13 @@
 .enigmas-back{color:var(--en-cyan);width:36px;height:36px}
 .enigmas-back:hover{background:rgba(34,230,255,.12)}
 .enigmas-brand{display:flex;align-items:center;gap:8px;font:800 15px var(--f-display);letter-spacing:.22em;color:var(--en-fg)}
-.enigmas-mark{color:var(--en-cyan);font-size:20px;text-shadow:0 0 14px var(--en-cyan)}
+.enigmas-mark{width:24px;height:24px;filter:drop-shadow(0 0 8px rgba(34,230,255,.75))}
 .enigmas-top-progress{margin-left:auto;font:700 12px var(--f-body);color:var(--en-muted);letter-spacing:.08em}
 .enigmas-home{margin:auto;text-align:center;display:grid;justify-items:center;gap:14px;max-width:520px;padding:24px 8px}
 .enigmas-logo{width:112px;height:112px;border-radius:28px;display:grid;place-items:center;font-size:58px;color:var(--en-cyan);
   border:1px solid rgba(34,230,255,.45);background:radial-gradient(circle,rgba(154,92,255,.28),rgba(5,4,11,.9));
   box-shadow:0 0 34px -6px rgba(34,230,255,.5),inset 0 0 26px -10px rgba(154,92,255,.8)}
-.enigmas-logo span{text-shadow:0 0 22px var(--en-cyan);animation:enigmas-pulse 2.6s ease-in-out infinite}
+.enigmas-mark-svg{width:72%;height:72%;filter:drop-shadow(0 0 12px rgba(34,230,255,.6));animation:enigmas-pulse 2.6s ease-in-out infinite}
 .enigmas-logo-win{color:var(--en-purple);border-color:rgba(154,92,255,.6)}
 .enigmas-home h1{margin:0;font:800 clamp(2.2rem,8vw,3.6rem) var(--f-display);letter-spacing:.12em;
   background:linear-gradient(95deg,var(--en-cyan),var(--en-purple));-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -90,4 +93,4 @@
   .enigmas-logo{width:88px;height:88px;font-size:44px;border-radius:22px}
   .enigmas-home h1{font-size:2rem}
 }
-@media (prefers-reduced-motion:reduce){.enigmas-fade,.enigmas-logo span,.enigmas-success span{animation:none}}
+@media (prefers-reduced-motion:reduce){.enigmas-fade,.enigmas-mark-svg,.enigmas-success span{animation:none}}

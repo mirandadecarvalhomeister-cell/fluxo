@@ -93,7 +93,7 @@
 
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `a163039b`.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy pendente.
 - Migration aplicada em produção: `migrate_enigmas_ranking.sql`.
 
 ## Fase 8 — Picker de emojis estilo mensageiro (concluído)
@@ -131,13 +131,14 @@
 - Emojis grandes também ao digitar no chat: mensagens só com emojis usam fonte ampliada no campo; texto misto ganha prévia com emojis animados.
 - Comunidades: enquetes e perguntas passam a ser criadas na própria aba Comunidades (seletor Mensagem/Enquete/Pergunta, editor de alternativas) e aparecem vinculadas dentro das publicações do chat, com votação/respostas reais.
 
-## Fase 12 — Jogo Enigmas (concluído)
+## Fase 12 — Jogo NÍVEL ZERO (concluído)
 
 - Jogo completo de **100 enigmas originais** (lógica, sequências, códigos, dedução e desafios finais), com progressão **estritamente sequencial** e sem botão de voltar.
 - Tela inicial com CONTINUAR (desabilitado sem partida salva), NOVO JOGO com confirmação e indicador de progresso; salvamento automático em `fluxo.enigmas.save.v1` (nível, pontos, dicas, tentativas).
 - Validação que ignora caixa/acentos/espaços e aceita alternativas; 3 dicas progressivas com desconto de pontos; feedback de erro com animação e sucesso com transição suave.
 - Tema escuro com roxo neon/ciano, animações e layout responsivo (`src/styles/enigmas.css`); integrado em Conexões → Jogos com rota `#conexoes/enigmas`.
-- Compartilhamento: botão no jogo publica no feed "🧩 Cheguei ao nível X de 100 nos Enigmas do Fluxo! Consegue chegar mais longe?"; também há "Copiar link".
+- Compartilhamento: botão no jogo publica no feed "🧩 Cheguei ao nível X de 100 no NÍVEL ZERO do Fluxo! Consegue chegar mais longe?"; também há "Copiar link".
+- Correção: `requestConfirm` passou a ser exposto nas actions (o botão NOVO JOGO quebrava silenciosamente). Identidade visual do jogo renomeada para **NÍVEL ZERO**, com emblema SVG neon e grade de fundo (geração de imagens indisponível por falta de créditos na plataforma).
 - Ranking **global** no Supabase (`migrate_enigmas_ranking.sql` aplicada): tabela `enigma_scores` com a melhor marca por usuário, RLS de leitura para autenticados e escrita apenas do próprio usuário; medalhas 🥇🥈🥉 para os três primeiros. Fallback local caso o usuário não esteja autenticado.
 - Testes próprios em `tests/enigmas-levels.test.js` registrados no `npm test` (22 testes passando).
 - Migrations aplicadas no Supabase de produção: `migrate_channel_subscriptions.sql`, `migrate_communities_v2.sql`, `migrate_emoji_favorites.sql`.

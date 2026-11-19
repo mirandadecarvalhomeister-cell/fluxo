@@ -783,7 +783,7 @@ export default function Connections() {
       <Suspense
         fallback={
           <div className="card" style={{ padding: 24 }}>
-            Carregando os Enigmas…
+            Carregando o NÍVEL ZERO…
           </div>
         }
       >
@@ -895,7 +895,7 @@ export default function Connections() {
               <span className="pill acc">
                 <Icon name="spark" /> Raciocínio
               </span>
-              <h3>ENIGMAS</h3>
+              <h3>NÍVEL ZERO</h3>
               <p className="muted sm">
                 100 enigmas de lógica, padrões, códigos e dedução. Avance apenas
                 acertando, com dicas progressivas e progresso salvo.
