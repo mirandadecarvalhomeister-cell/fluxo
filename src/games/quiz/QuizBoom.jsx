@@ -205,6 +205,12 @@ export default function QuizBoom() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [chosenFriends, setChosenFriends] = useState([]);
   const [sharing, setSharing] = useState(false);
+  const deadlineRef = useRef(null);
+
+  const startClock = useCallback((seconds) => {
+    deadlineRef.current = Date.now() + Math.max(0, seconds) * 1000;
+    setTimeLeft(seconds);
+  }, []);
 
   const urgency =
     screen === 'playing' && totalTime
@@ -460,7 +466,7 @@ export default function QuizBoom() {
         const perQuestion =
           nextMode === 'classic' ? CLASSIC_FUSE_SECONDS : runSeconds(nextMode, questions.length);
         setTotalTime(perQuestion);
-        setTimeLeft(perQuestion);
+        startClock(perQuestion);
         setFinalResult(null);
         setReason('finished');
         setScreen('playing');
@@ -468,17 +474,28 @@ export default function QuizBoom() {
         setStarting(false);
       }
     },
-    [categoryId, size, mode, starting, clearPending, refreshStatus, actions]
+    [categoryId, size, mode, starting, clearPending, refreshStatus, actions, startClock]
   );
 
-  // Cronômetro: no Clássico pausa durante a revelação; no Insano corre até o fim.
+  // Cronômetro baseado em timestamp: continua correndo mesmo com a aba em fundo,
+  // já que o navegador congestiona setInterval quando a página não está visível.
+  // No Clássico ele pausa durante a revelação da resposta.
   useEffect(() => {
     if (screen !== 'playing') return undefined;
     if (mode === 'classic' && picked !== null) return undefined;
-    const timer = window.setInterval(() => {
-      setTimeLeft((current) => Math.max(0, current - 0.1));
-    }, 100);
-    return () => window.clearInterval(timer);
+    if (deadlineRef.current == null) deadlineRef.current = Date.now() + timeLeft * 1000;
+    const tick = () => {
+      const left = Math.max(0, (deadlineRef.current - Date.now()) / 1000);
+      setTimeLeft(left);
+    };
+    tick();
+    const timer = window.setInterval(tick, 100);
+    const onVisible = () => { if (!document.hidden) tick(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [screen, mode, picked, index]);
 
   useEffect(() => {
@@ -501,8 +518,8 @@ export default function QuizBoom() {
     setIndex((current) => current + 1);
     setPicked(null);
     setComboFlash(null);
-    if (modeRef.current === 'classic') setTimeLeft(CLASSIC_FUSE_SECONDS);
-  }, [index, finishRound]);
+    if (modeRef.current === 'classic') startClock(CLASSIC_FUSE_SECONDS);
+  }, [index, finishRound, startClock]);
 
   const answer = (optionIndex) => {
     if (screen !== 'playing' || picked !== null || !question) return;
