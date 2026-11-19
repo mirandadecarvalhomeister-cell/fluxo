@@ -96,7 +96,6 @@
 @media (prefers-reduced-motion:reduce){.enigmas-fade,.enigmas-mark-svg,.enigmas-success span{animation:none}}
 
 /* Camada 3D dos jogos (Three.js), atrás da interface. */
-.game-3d-bg{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;opacity:.55}
+.game-3d-bg{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:.55}
 .game-3d-bg canvas{display:block;width:100%!important;height:100%!important}
 .quiz,.enigmas-game{position:relative;isolation:isolate}
-.quiz>*:not(.game-3d-bg),.enigmas-game>*:not(.game-3d-bg){position:relative;z-index:1}
