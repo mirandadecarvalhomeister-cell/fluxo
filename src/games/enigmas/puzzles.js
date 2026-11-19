@@ -1,110 +1,1006 @@
-// 100 enigmas originais de lógica, padrões, códigos, dedução e alto raciocínio.
-// Cada item: título, enunciado, 3 dicas progressivas, resposta e alternativas.
+// 100 charadas de lógica no estilo do desafio de referência.
+// Cada item: enunciado, dica e respostas aceitas.
 export const PUZZLES = [
-  { n: 1, title: 'Os três consecutivos', text: 'A soma de três números inteiros consecutivos é 48. Qual é o maior deles?', hints: ['Chame o menor de x.', 'A soma é x + (x+1) + (x+2).', '3x + 3 = 48.'], answer: '17' },
-  { n: 2, title: 'A metade e o todo', text: 'A metade de um número, somada a 9, resulta no próprio número. Qual é esse número?', hints: ['Escreva x/2 + 9 = x.', 'Multiplique tudo por 2.', 'x + 18 = 2x.'], answer: '18' },
-  { n: 3, title: 'Ritmo constante', text: '5 máquinas produzem 5 peças em 5 minutos. Mantendo o ritmo, quantas máquinas produzem 100 peças em 100 minutos?', hints: ['Uma máquina faz uma peça a cada 5 minutos.', 'Em 100 minutos, cada máquina faz 20 peças.', 'Divida 100 por 20.'], answer: '5' },
-  { n: 4, title: 'O triplo e o dobro', text: 'O triplo de um número é 14 maior que o seu dobro. Qual é o número?', hints: ['3x = 2x + 14.', 'Subtraia 2x dos dois lados.', 'x = 14.'], answer: '14' },
-  { n: 5, title: 'Idades somadas', text: 'Hoje, a idade de Ana somada à idade de Bruno é 42. Ana tem 6 anos a mais que Bruno. Quantos anos tem Bruno?', hints: ['Seja b a idade de Bruno.', 'Ana tem b + 6.', '2b + 6 = 42.'], answer: '18' },
-  { n: 6, title: 'O quociente escondido', text: 'Um número dividido por 7 deixa resto 3. Esse mesmo número dividido por 3 deixa resto 1. Qual é o menor número maior que 10 que satisfaz as duas condições?', hints: ['Teste números da forma 7k + 3.', 'Entre eles, procure o que dá resto 1 ao dividir por 3.', '17 funciona.'], answer: '17', alt: ['dezessete'] },
-  { n: 7, title: 'A média ponderada', text: 'Um aluno tem média 6 em provas que valem 70% e quer média final 7. Notas de exercícios valem 30%. Que nota precisa nos exercícios?', hints: ['0,7 × 6 + 0,3 × x = 7.', '4,2 + 0,3x = 7.', '0,3x = 2,8.'], answer: '9,33', alt: ['9,3', '28/3'] },
-  { n: 8, title: 'Portas e escolhas', text: 'Num corredor há três portas. A primeira está sempre aberta, a segunda fecha se a primeira for aberta, e a Terceira só abre se a segunda estiver fechada. Se a primeira foi aberta, quantas portas estão abertas?', hints: ['Abrir a primeira fecha a segunda.', 'A terceira abre porque a segunda fechou.', 'Conte as abertas.'], answer: '2', alt: ['duas'] },
-  { n: 9, title: 'A sequência das velas', text: 'Um bolo tem velas em quantidade igual ao número de letras da palavra "LOGICA" sem acento. Quantas velas há?', hints: ['Escreva a palavra sem acento.', 'Conte as letras uma a uma.', 'L-O-G-I-C-A.'], answer: '6', alt: ['seis'] },
-  { n: 10, title: 'O relógio atrasado', text: 'Um relógio atrasa 3 minutos por hora. Se às 12h ele marcava 12h, que horas ele marca quando o tempo real é 16h?', hints: ['Passaram 4 horas.', 'O atraso total é 12 minutos.', '16h menos 12 minutos.'], answer: '15:48', alt: ['15h48', '15:48'] },
-  { n: 11, title: 'Bolas no saco', text: 'Um saco contém 3 bolas vermelhas e 2 azuis. Sem olhar, quantas bolas você precisa retirar para ter certeza de ter pelo menos uma de cada cor?', hints: ['Pense no pior caso.', 'Você pode tirar as 3 vermelhas primeiro.', 'A próxima será azul.'], answer: '4', alt: ['quatro'] },
-  { n: 12, title: 'A ordem da fila', text: 'Ana está à frente de Bruno, Carla está atrás de Bruno e Diego está entre Ana e Carla. Quem está em último lugar?', hints: ['Ana < Diego < Bruno? Releia com cuidado.', 'Diego está entre Ana e Carla, e Carla atrás de Bruno.', 'A ordem é Ana, Diego, Bruno, Carla.'], answer: 'Carla' },
-  { n: 13, title: 'Moedas na mesa', text: 'Você tem 3 moedas que somam 0,30 reais. Uma delas não é de 10 centavos. Quais são as moedas?', hints: ['Uma não é de 10, mas as outras podem ser.', 'Pense em 10 + 10 + 10.', 'A que "não é de 10" é a primeira de 10.'], answer: 'três moedas de 10 centavos', alt: ['3 de 10 centavos', 'três de 10', '3x10 centavos'] },
-  { n: 14, title: 'O dobro da diferença', text: 'A diferença entre dois números é 9 e a soma é 31. Qual é o maior?', hints: ['x + y = 31 e x - y = 9.', 'Some as equações: 2x = 40.', 'x = 20.'], answer: '20', alt: ['vinte'] },
-  { n: 15, title: 'A palavra da escrita', text: 'Qual palavra de cinco letras termina em A e significa um objeto usado para escrever?', hints: ['Tem cinco letras.', 'Termina com a letra A.', 'Começa com C.'], answer: 'caneta', alt: ['caneta'] },
-  { n: 16, title: 'Água e vinho', text: 'Você tem 2 litros de uma mistura com 10% de vinho. Quantos litros de água pura devem ser adicionados para chegar a 5% de vinho?', hints: ['Há 0,2 litro de vinho.', 'No final, 0,2 litro deve ser 5% do total.', 'O total final será 4 litros.'], answer: '2', alt: ['dois litros', '2 litros'] },
-  { n: 17, title: 'A lâmpada e os interruptores', text: 'Três interruptores controlam três lâmpadas em outra sala. Você pode entrar uma vez. Como descobre qual interruptor controla qual lâmpada usando apenas o toque?', hints: ['Ligue um interruptor por alguns minutos.', 'Desligue-o e ligue outro.', 'A lâmpada acesa é a do segundo; a quente é a do primeiro.'], answer: 'ligue um, espere, desligue e ligue outro', alt: ['técnica do calor', 'usar calor'] },
-  { n: 18, title: 'O peso das caixas', text: 'Uma caixa A pesa o dobro da caixa B. Juntas pesam 18 kg. Quanto pesa a caixa B?', hints: ['B = x e A = 2x.', '3x = 18.', 'x = 6.'], answer: '6', alt: ['6 kg', 'seis'] },
-  { n: 19, title: 'Dias de chuva', text: 'Choveu 3 dias seguidos e depois 2 dias de sol. Se hoje é o último dia de sol, quantos dias se passaram desde o primeiro dia de chuva?', hints: ['Conte o primeiro dia de chuva como 1.', 'Chuva: dias 1, 2 e 3.', 'Sol: dias 4 e 5.'], answer: '5', alt: ['cinco'] },
-  { n: 20, title: 'A palavra ausente', text: 'Qual palavra completa a sequência: "cão, gato, cavalo, ..." de modo que cada termo tenha uma sílaba a mais que o anterior?', hints: ['cão tem 1 sílaba, gato 2, cavalo 3.', 'Precisamos de 4 sílabas.', 'Por exemplo: "formigão"?'], answer: 'escorpião', alt: ['4 sílabas', 'qualquer palavra de 4 sílabas'] },
-
-  { n: 21, title: 'Padrão numérico I', text: 'Qual é o próximo número da sequência: 2, 6, 12, 20, 30, ...?', hints: ['As diferenças são 4, 6, 8, 10.', 'A próxima diferença é 12.', '30 + 12.'], answer: '42' },
-  { n: 22, title: 'Padrão numérico II', text: 'Qual é o próximo número: 1, 1, 2, 3, 5, 8, ...?', hints: ['Cada termo é a soma dos dois anteriores.', '5 + 8.', '13.'], answer: '13' },
-  { n: 23, title: 'Quadrados', text: 'Qual é o próximo número: 1, 4, 9, 16, 25, ...?', hints: ['São quadrados perfeitos.', '1², 2², 3², 4², 5².', '6² = 36.'], answer: '36' },
-  { n: 24, title: 'Dobro e mais um', text: 'Qual é o próximo número: 3, 7, 15, 31, 63, ...?', hints: ['Cada termo é o dobro do anterior mais 1.', '63 × 2 + 1.', '127.'], answer: '127' },
-  { n: 25, title: 'Soma acumulada', text: 'Qual é o próximo número: 1, 3, 6, 10, 15, ...?', hints: ['As diferenças crescem: 2, 3, 4, 5.', 'A próxima diferença é 6.', '15 + 6.'], answer: '21' },
-  { n: 26, title: 'Alternância', text: 'Qual é o próximo número: 2, 4, 8, 16, 32, ...?', hints: ['Cada termo dobra.', '32 × 2.', '64.'], answer: '64' },
-  { n: 27, title: 'Subtração crescente', text: 'Qual é o próximo número: 100, 91, 83, 76, 70, ...?', hints: ['Subtraindo 9, 8, 7, 6.', 'Agora subtraia 5.', '65.'], answer: '65' },
-  { n: 28, title: 'Produto de dígitos', text: 'Qual número de dois dígitos tem produto dos algarismos igual a 18 e é o maior possível?', hints: ['Fatore 18 em dois dígitos.', '9 × 2 = 18 e 6 × 3 = 18.', '96 é maior que 63.'], answer: '96' },
-  { n: 29, title: 'Média móvel', text: 'A média de 5 números é 10. Se um deles for removido, a média dos 4 restantes passa a ser 11. Qual era o número removido?', hints: ['Soma dos 5 = 50.', 'Soma dos 4 = 44.', '50 - 44.'], answer: '6' },
-  { n: 30, title: 'Porcentagem reversa', text: 'Um número aumentado de 20% resulta em 60. Qual era o número original?', hints: ['x × 1,2 = 60.', 'x = 60 / 1,2.', '50.'], answer: '50' },
-  { n: 31, title: 'Divisão com resto', text: 'Qual é o maior número de dois dígitos que deixa resto 4 quando dividido por 9?', hints: ['Números da forma 9k + 4.', 'O maior abaixo de 100.', '9 × 10 + 4 = 94.'], answer: '94' },
-  { n: 32, title: 'Soma de algarismos', text: 'Qual é o menor número inteiro cuja soma dos algarismos é 17?', hints: ['Use o menor número de dígitos possível.', 'Com 2 dígitos, o máximo é 18.', '89 tem soma 17.'], answer: '89' },
-  { n: 33, title: 'Progressão dupla', text: 'Qual é o próximo número: 1, 4, 5, 8, 9, 12, ...?', hints: ['Alterne +3 e +1.', 'Depois de 12 vem +1.', '13.'], answer: '13' },
-  { n: 34, title: 'Fator comum', text: 'Qual é o maior divisor comum de 36, 60 e 84?', hints: ['Fatore cada um.', '36 = 2²×3², 60 = 2²×3×5, 84 = 2²×3×7.', '2² × 3 = 12.'], answer: '12' },
-  { n: 35, title: 'Tempo de trabalho', text: 'Um funcionário faz uma tarefa em 4 horas; outro, em 6 horas. Trabalhando juntos, em quantas horas terminam?', hints: ['Somas as taxas: 1/4 + 1/6.', 'Isso é 5/12 da tarefa por hora.', '12/5 = 2,4 horas.'], answer: '2,4', alt: ['2,4 horas', '12/5'] },
-  { n: 36, title: 'Sequência de letras', text: 'Qual letra vem a seguir: A, C, F, J, O, ...?', hints: ['As posições são 1, 3, 6, 10, 15.', 'As diferenças são 2, 3, 4, 5.', 'Próxima posição 21 = U.'], answer: 'U', alt: ['u'] },
-  { n: 37, title: 'Cubo e raiz', text: 'Qual é o menor número inteiro cujo cubo é maior que 100?', hints: ['4³ = 64.', '5³ = 125.', '125 > 100.'], answer: '5' },
-  { n: 38, title: 'Percentual de percentual', text: 'Um produto custa 100 reais e recebe um desconto de 10% e depois um aumento de 10%. Qual é o preço final?', hints: ['100 × 0,9 = 90.', '90 × 1,1 = 99.', 'Não volta a 100.'], answer: '99', alt: ['99 reais'] },
-  { n: 39, title: 'Soma de pares', text: 'Qual é a soma de todos os números pares entre 1 e 21?', hints: ['São 2, 4, ..., 20.', 'São 10 termos.', 'Média 11 × 10 = 110.'], answer: '110' },
-  { n: 40, title: 'Troco exato', text: 'Você paga uma conta de 37 reais com uma nota de 50. Quantas moedas de 1 real são necessárias no troco mínimo?', hints: ['O troco é 13.', 'Use uma nota de 10 e moedas.', 'Restam 3 moedas de 1.'], answer: '3' },
-
-  { n: 41, title: 'Código César', text: 'Decifre: "KHOOR" (deslocamento de 3 para trás).', hints: ['Cada letra volta 3 posições.', 'K → H.', 'A palavra é HELLO.'], answer: 'HELLO', alt: ['hello', 'olá'] },
-  { n: 42, title: 'Código invertido', text: 'Decifre a palavra escrita de trás para frente: "AMORREP".', hints: ['Inverta a ordem das letras.', 'Comece pela última.', 'PERROMA? Releia: P-E-R-O-R-M-A.'], answer: 'PERORMA', alt: ['perorma'] },
-  { n: 43, title: 'Símbolos repetidos', text: 'No código, cada letra vale sua posição no alfabeto. Quanto vale a palavra "CUSA"?', hints: ['C = 3, U = 21, S = 19, A = 1.', 'Some.', '3 + 21 + 19 + 1.'], answer: '44' },
-  { n: 44, title: 'Código binário', text: 'Converta o binário 101101 para decimal.', hints: ['32 + 8 + 4 + 1.', 'As posições são 32, 16, 8, 4, 2, 1.', 'Some os bits ligados.'], answer: '45' },
-  { n: 45, title: 'Código de pares', text: 'Uma mensagem usa o primeiro número para indicar a posição da letra no alfabeto. Decifre: 20-8-5.', hints: ['20 = T.', '8 = H, 5 = E.', 'THE.'], answer: 'THE', alt: ['the'] },
-  { n: 46, title: 'Código espelho', text: 'Se "ABC" vira "CBA" por espelhamento, o que "FLUXO" vira?', hints: ['Inverta a ordem.', 'Comece pela última letra.', 'OXULF.'], answer: 'OXULF', alt: ['oxulf'] },
-  { n: 47, title: 'Código com salto', text: 'Pegue uma letra sim, uma não de "FLUXO". Qual palavra resulta?', hints: ['F, (L), U, (X), O.', 'Pegue as posições ímpares.', 'FUO.'], answer: 'FUO', alt: ['fuo'] },
-  { n: 48, title: 'Código numérico', text: 'Em um teclado de telefone, o número 2 corresponde a ABC. Qual número corresponde a "FLUXO"?', hints: ['F=3, L=5, U=8, X=9, O=6.', 'Concatene.', '35896.'], answer: '35896' },
-  { n: 49, title: 'Código de deslocamento', text: 'Aplicando +2 em cada letra, "FLUXO" vira "HNWZQ". Aplicando -1, o que vira "FLUXO"?', hints: ['Cada letra recua uma posição.', 'F → E.', 'EKTUN.'], answer: 'EKTUN', alt: ['ektun'] },
-  { n: 50, title: 'Código de vogais', text: 'Retire todas as vogais de "ENIGMA". O que sobra?', hints: ['Vogais: E, I, A.', 'Sobram as consoantes.', 'NGM.'], answer: 'NGM', alt: ['ngm'] },
-  { n: 51, title: 'Código Morse simples', text: 'Em um código em que "." vale 1 e "-" vale 3, quanto vale ".-.."?', hints: ['Some os valores.', '1 + 3 + 1 + 1.', '6.'], answer: '6' },
-  { n: 52, title: 'Código de posição', text: 'A letra na posição 26 do alfabeto é Z. Qual letra está 5 posições antes de Z?', hints: ['26 - 5 = 21.', 'Posição 21 = U.', 'U.'], answer: 'U', alt: ['u'] },
-  { n: 53, title: 'Código misto', text: 'Se A=1, B=2, ..., qual é a soma das letras de "FLUXO"?', hints: ['F=6, L=12, U=21, X=24, O=15.', 'Some.', '78.'], answer: '78' },
-  { n: 54, title: 'Código de repetição', text: 'A sequência "AB AB AB" tem quantas letras "A"?', hints: ['Três blocos.', 'Cada bloco tem um A.', '3.'], answer: '3' },
-  { n: 55, title: 'Código de teclado', text: 'No alfabeto, qual letra está exatamente entre H e J?', hints: ['H = 8, J = 10.', 'A média é 9.', 'I.'], answer: 'I', alt: ['i'] },
-  { n: 56, title: 'Código de horas', text: 'Em um relógio de 24 horas, que hora corresponde a "meia-noite"?', hints: ['É o início do dia.', 'Em 24h, é 00:00.', '00:00.'], answer: '00:00', alt: ['0h', '00h', 'meia-noite'] },
-  { n: 57, title: 'Código de sílabas', text: 'Quantas sílabas tem a palavra "raciocínio"?', hints: ['Separe: ra-ci-o-cí-nio.', 'São cinco partes.', '5.'], answer: '5', alt: ['cinco'] },
-  { n: 58, title: 'Código de antena', text: 'Uma antena envia sinais 0 e 1. Se o sinal 1 aparece a cada 3 posições a partir da primeira, qual é a 10ª posição?', hints: ['Posições 1, 4, 7, 10.', '10 está na sequência.', '1.'], answer: '1' },
-  { n: 59, title: 'Código de meses', text: 'Qual é o 12º mês do ano?', hints: ['Janeiro é o 1º.', 'Conte até 12.', 'Dezembro.'], answer: 'Dezembro', alt: ['dezembro'] },
-  { n: 60, title: 'Código final', text: 'Decifre: "1 2 3" onde 1=A, 2=B, 3=C. Qual é a palavra?', hints: ['A=1, B=2, C=3.', 'Junte as letras.', 'ABC.'], answer: 'ABC', alt: ['abc'] },
-
-  { n: 61, title: 'Dedução das cores', text: 'Três amigos: Ana, Bruno e Carla usam camisas verde, azul e vermelha. Ana não usa verde. Bruno não usa verde nem azul. Quem usa vermelha?', hints: ['Bruno só pode usar vermelha.', 'Ana não é verde.', 'Ana usa azul e Carla, verde.'], answer: 'Bruno', alt: ['bruno'] },
-  { n: 62, title: 'Dedução das idades', text: 'Ana é mais velha que Bruno. Carla é mais nova que Bruno. Quem é a mais velha?', hints: ['Ana > Bruno > Carla.', 'Compare os três.', 'Ana.'], answer: 'Ana', alt: ['ana'] },
-  { n: 63, title: 'Associação de pares', text: 'Cachorro é a filhote de cadela assim como gatinho é filhote de quê?', hints: ['Cachorro ← cadela.', 'Gatinho ← gata.', 'Gata.'], answer: 'gata', alt: ['gata'] },
-  { n: 64, title: 'Dedução do emprego', text: 'Entre médico, engenheiro e professor: o médico não é Ana; o engenheiro é Bruno; Carla não é professora. Qual é a profissão de Ana?', hints: ['Bruno é engenheiro.', 'Carla não é professora, então é médica.', 'Ana é professora.'], answer: 'professora', alt: ['professora'] },
-  { n: 65, title: 'Dedução da moeda', text: 'Uma moeda tem cabeça de um lado. Se ela caiu 5 vezes seguidas e sempre deu cara, qual é a probabilidade de dar cara na próxima?', hints: ['Cada lançamento é independente.', 'A moeda não "lembra".', '50%.'], answer: '50%', alt: ['1/2', '0,5', 'metade'] },
-  { n: 66, title: 'Associação de inversos', text: 'Quente é afrio assim como claro é a ...?', hints: ['Relação de oposição.', 'Oposto de claro.', 'Escuro.'], answer: 'escuro', alt: ['escuro'] },
-  { n: 67, title: 'Dedução da lâmpada', text: 'Se uma lâmpada está acesa, então o interruptor está ligado. O interruptor está desligado. O que se conclui?', hints: ['Use a contrapositiva.', 'Se desligado, então não acesa.', 'A lâmpada está apagada.'], answer: 'a lâmpada está apagada', alt: ['apagada'] },
-  { n: 68, title: 'Dedução do animal', text: 'Todo corvo é preto. Todo preto é escuro. Todo corvo é escuro?', hints: ['Encadeie as afirmações.', 'Corvo → preto → escuro.', 'Sim.'], answer: 'sim', alt: ['sim'] },
-  { n: 69, title: 'Associação de funções', text: 'Caneta escreve, régua mede, tesoura corta. Qual objeto serve para medir o tempo?', hints: ['Pense em instrumentos de tempo.', 'Não é régua.', 'Relógio.'], answer: 'relógio', alt: ['relogio'] },
-  { n: 70, title: 'Dedução da sequência de nomes', text: 'Ana, Bia, Carla, Duda... Qual seria o próximo nome se a ordem alfabética for respeitada?', hints: ['A, B, C, D.', 'Próxima letra: E.', 'Elena.'], answer: 'Elena', alt: ['elena', 'qualquer nome com E'] },
-  { n: 71, title: 'Dedução da caixa vazia', text: 'Se toda caixa azul contém um livro e nenhuma caixa vermelha contém livro, uma caixa que contém um livro pode ser vermelha?', hints: ['Vermelha → sem livro.', 'Contrapositiva: com livro → não vermelha.', 'Não.'], answer: 'não', alt: ['nao'] },
-  { n: 72, title: 'Associação de inversos II', text: 'Dentro é afora assim como cedo é a ...?', hints: ['Oposição.', 'Oposto de cedo.', 'Tarde.'], answer: 'tarde', alt: ['tarde'] },
-  { n: 73, title: 'Dedução da corrida', text: 'Ana corre mais rápido que Bruno, e Bruno corre mais rápido que Carla. Quem chega primeiro?', hints: ['Ana > Bruno > Carla.', 'Compare velocidades.', 'Ana.'], answer: 'Ana', alt: ['ana'] },
-  { n: 74, title: 'Dedução da chave', text: 'Se a chave abre a porta e a porta está trancada, o que é necessário para abrir?', hints: ['A chave abre a porta.', 'A porta está trancada.', 'A chave.'], answer: 'a chave', alt: ['chave'] },
-  { n: 75, title: 'Associação de categoria', text: 'Maçã, banana e pera pertencem a qual categoria?', hints: ['São comestíveis.', 'São doces.', 'Frutas.'], answer: 'frutas', alt: ['fruta'] },
-  { n: 76, title: 'Dedução da lógica condicional', text: 'Se chove, a rua fica molhada. A rua está molhada. Podemos afirmar que choveu?', hints: ['A implicação é simples, não bidirecional.', 'A rua pode estar molhada por outro motivo.', 'Não necessariamente.'], answer: 'não necessariamente', alt: ['nao', 'não', 'talvez'] },
-  { n: 77, title: 'Dedução da ordem', text: 'Em uma fila, Ana está na frente de Bruno, e Carla atrás de Bruno. Quem está no meio?', hints: ['Ana, Bruno, Carla.', 'Bruno está entre os dois.', 'Bruno.'], answer: 'Bruno', alt: ['bruno'] },
-  { n: 78, title: 'Associação de instrumentos', text: 'Pincel pinta, martelo prende, serra corta. Qual instrumento mede comprimento?', hints: ['Mesma lógica de função.', 'Instrumento de medida.', 'Régua.'], answer: 'régua', alt: ['regua'] },
-  { n: 79, title: 'Dedução da negação', text: 'Não é verdade que todos os gatos são pretos. O que se conclui?', hints: ['Negação de "todos".', 'Existe pelo menos um que não é preto.', 'Algum gato não é preto.'], answer: 'algum gato não é preto', alt: ['existe um gato nao preto', 'nem todos os gatos são pretos'] },
-  { n: 80, title: 'Dedução do tempo', text: 'Se hoje é quinta-feira, que dia será daqui a três dias?', hints: ['Sexta (1), sábado (2), domingo (3).', 'Conte três dias.', 'Domingo.'], answer: 'Domingo', alt: ['domingo'] },
-
-  { n: 81, title: 'O enigma dos três interruptores', text: 'Você está fora de uma sala com três interruptores e só pode entrar uma vez. Como determine qual controla qual lâmpada?', hints: ['Use calor.', 'Ligue um, espere, desligue, ligue outro.', 'Acesa = segundo, quente = primeiro, fria = terceiro.'], answer: 'usar calor', alt: ['ligue um, espere, desligue e ligue outro', 'técnica do calor'] },
-  { n: 82, title: 'O enigma da ponte', text: 'Quatro pessoas precisam atravessar uma ponte à noite com uma lanterna. A ponte suporta no máximo duas. Os tempos são 1, 2, 5 e 10 minutos. Qual é o tempo mínimo?', hints: ['A estratégia clássica gira em torno dos mais rápidos.', '1 e 2 cruzam, 1 volta; 5 e 10 cruzam, 2 volta; 1 e 2 cruzam.', 'Some os tempos.'], answer: '17', alt: ['17 minutos'] },
-  { n: 83, title: 'O enigma do barril', text: 'Um barril tem 100 litros. Você retira 10 litros e adiciona 10 litros de água. Depois retira mais 10 litros da mistura. Quantos litros do líquido original restam?', hints: ['Após a primeira troca, há 90 litros originais.', 'A mistura é 90% original.', 'Na segunda retirada, sai 9 litros originais.'], answer: '81', alt: ['81 litros'] },
-  { n: 84, title: 'O enigma da idade invertida', text: 'A idade de um pai é o inverso da idade do filho (27 e 72). Daqui a 5 anos, o pai terá o dobro da idade do filho. Qual é a idade atual do pai?', hints: ['Seja o filho = 10a + b e o pai = 10b + a.', 'Daqui a 5 anos: 10b + a + 5 = 2(10a + b + 5).', 'Resolva para a < b.'], answer: '72', alt: ['72 anos'] },
-  { n: 85, title: 'O enigma dos dados', text: 'Dois dados são lançados. Qual é a probabilidade de a soma ser 7?', hints: ['Há 36 resultados possíveis.', 'Casos favoráveis: (1,6),(2,5),(3,4),(4,3),(5,2),(6,1).', '6/36 = 1/6.'], answer: '1/6', alt: ['16,67%', '6/36'] },
-  { n: 86, title: 'O enigma da moeda falsa', text: 'Entre 9 moedas idênticas, uma é mais leve. Usando uma balança de dois pratos, qual é o número mínimo de pesagens para encontrá-la?', hints: ['Divida em três grupos de três.', 'Pese dois grupos.', 'Depois pese duas moedas do grupo suspeito.'], answer: '2', alt: ['duas'] },
-  { n: 87, title: 'O enigma do quadrado', text: 'Um quadrado tem perímetro 40. Qual é a área de um círculo inscrito nele? Use π = 3.', hints: ['Lado = 10.', 'Raio = 5.', 'Área = 3 × 25 = 75.'], answer: '75' },
-  { n: 88, title: 'O enigma da sequência truncada', text: 'Qual é o próximo número: 1, 2, 4, 8, 16, 32, 64, 128, 256, ...?', hints: ['Dobra a cada passo.', 'Próxima potência de 2.', '512.'], answer: '512' },
-  { n: 89, title: 'O enigma do relógio', text: 'Às 3 horas, o ângulo entre os ponteiros é 90°. Às 3h30, qual é o ângulo menor entre eles?', hints: ['O ponteiro dos minutos está em 6 (180°).', 'O das horas andou 15° e está em 97,5°.', '180 - 97,5 = 82,5°.'], answer: '82,5', alt: ['82,5 graus', '82.5'] },
-  { n: 90, title: 'O enigma da média impossível', text: 'Um aluno tira 10 em duas provas. Quantas provas nota 0 ele precisa para que a média seja 5?', hints: ['Soma atual = 20.', 'Seja x o número de notas 0.', '20 / (2 + x) = 5 → x = 2.'], answer: '2', alt: ['duas'] },
-  { n: 91, title: 'O enigma das moedas viradas', text: 'Você tem 10 moedas e todas estão com a cara voltada para cima. Se virar exatamente 3 moedas, quantas ficarão com a cara para cima?', hints: ['Ao virar, cara vira coroa.', '3 viram coroa.', '7 continuam com cara.'], answer: '7', alt: ['sete'] },
-  { n: 92, title: 'O enigma da soma alternada', text: 'Qual é o valor de 1 - 2 + 3 - 4 + 5 - 6 + ... + 99 - 100?', hints: ['Agrupe em pares: (1-2) + (3-4) + ...', 'Cada par vale -1.', 'Há 50 pares.'], answer: '-50' },
-  { n: 93, title: 'O enigma do fatorial', text: 'Qual é o valor de 5! (fatorial de 5)?', hints: ['5 × 4 × 3 × 2 × 1.', '5 × 4 = 20.', '20 × 6 = 120.'], answer: '120' },
-  { n: 94, title: 'O enigma da base', text: 'O número 10 em base 2 vale quanto em base 10?', hints: ['1 × 2¹ + 0 × 2⁰.', '2 + 0.', '2.'], answer: '2' },
-  { n: 95, title: 'O enigma da probabilidade complementar', text: 'A chance de chover amanhã é 30%. Qual é a chance de NÃO chover?', hints: ['As probabilidades somam 100%.', '100% - 30%.', '70%.'], answer: '70%', alt: ['0,7', '70'] },
-  { n: 96, title: 'O enigma da sequência dupla', text: 'Qual número vem depois: 1, 4, 9, 16, 25, 36, 49, 64, 81, ...?', hints: ['Quadrados perfeitos.', '10².', '100.'], answer: '100' },
-  { n: 97, title: 'O enigma da divisão de herança', text: 'Um fazendeiro deixa 17 cavalos: metade para o filho mais velho, um terço para o do meio e um nono para o caçula. Como dividir sem matar nenhum cavalo?', hints: ['Some as frações: 1/2 + 1/3 + 1/9 = 17/18.', 'Empreste um cavalo: 18.', '9 + 6 + 2 = 17 e devolve o emprestado.'], answer: 'emprestar um cavalo', alt: ['adicionar um cavalo', '18 cavalos'] },
-  { n: 98, title: 'O enigma da lógica temporal', text: 'Se anteontem era segunda-feira, que dia será depois de amanhã?', hints: ['Anteontem = segunda.', 'Ontem = terça, hoje = quarta.', 'Amanhã = quinta, depois = sexta.'], answer: 'Sexta-feira', alt: ['sexta'] },
-  { n: 99, title: 'O enigma da soma de cubos', text: '1³ + 2³ + 3³ + 4³ = ?', hints: ['1³ = 1, 2³ = 8.', '3³ = 27, 4³ = 64.', '1 + 8 + 27 + 64 = 100.'], answer: '100' },
-  { n: 100, title: 'O enigma final', text: 'Um número é igual à soma do seu quadrado com 6. Qual é esse número?', hints: ['x = x² + 6.', 'x² - x + 6 = 0.', 'Não há solução real: responda "nenhum".'], answer: 'nenhum', alt: ['nenhum número real', 'não existe', 'sem solução'] },
+  {
+    "n": 1,
+    "title": "Enigma 01",
+    "text": "Tenho dentes, mas não mastigo. Posso abrir portas sem usar as mãos.",
+    "hints": [
+      "Sou pequeno e costumo ficar em um chaveiro."
+    ],
+    "answer": "chave",
+    "alt": []
+  },
+  {
+    "n": 2,
+    "title": "Enigma 02",
+    "text": "Quanto mais tiro de mim, maior fico.",
+    "hints": [
+      "Pense em algo que pode ser cavado no chão."
+    ],
+    "answer": "buraco",
+    "alt": []
+  },
+  {
+    "n": 3,
+    "title": "Enigma 03",
+    "text": "Tenho cidades sem casas, rios sem água e florestas sem árvores.",
+    "hints": [
+      "Sou usado para encontrar caminhos."
+    ],
+    "answer": "mapa",
+    "alt": []
+  },
+  {
+    "n": 4,
+    "title": "Enigma 04",
+    "text": "Falo sem boca e respondo sem pensar. Repito o que chega até mim.",
+    "hints": [
+      "Aconteço quando o som encontra uma superfície distante."
+    ],
+    "answer": "eco",
+    "alt": []
+  },
+  {
+    "n": 5,
+    "title": "Enigma 05",
+    "text": "Tenho folhas, mas não sou árvore. Tenho capa, mas não sou herói.",
+    "hints": [
+      "Você pode me ler do começo ao fim."
+    ],
+    "answer": "livro",
+    "alt": []
+  },
+  {
+    "n": 6,
+    "title": "Enigma 06",
+    "text": "Posso dar a volta ao mundo sem sair do meu canto.",
+    "hints": [
+      "Fico colado no envelope."
+    ],
+    "answer": "selo",
+    "alt": []
+  },
+  {
+    "n": 7,
+    "title": "Enigma 07",
+    "text": "Quanto mais seco, mais molhado fico.",
+    "hints": [
+      "Sou usado depois do banho."
+    ],
+    "answer": "toalha",
+    "alt": []
+  },
+  {
+    "n": 8,
+    "title": "Enigma 08",
+    "text": "Tenho um olho, mas não enxergo. Posso unir tecidos.",
+    "hints": [
+      "Sou usada com linha."
+    ],
+    "answer": "agulha",
+    "alt": []
+  },
+  {
+    "n": 9,
+    "title": "Enigma 09",
+    "text": "Tenho ponteiros, mas não aponto caminhos. Marco algo que não volta.",
+    "hints": [
+      "Você consulta para saber as horas."
+    ],
+    "answer": "relógio",
+    "alt": []
+  },
+  {
+    "n": 10,
+    "title": "Enigma 10",
+    "text": "Sou cheio de furos e ainda consigo segurar água.",
+    "hints": [
+      "Costumo ficar na pia da cozinha."
+    ],
+    "answer": "esponja",
+    "alt": []
+  },
+  {
+    "n": 11,
+    "title": "Enigma 11",
+    "text": "Tenho pescoço, mas não cabeça. Posso guardar água ou outra bebida.",
+    "hints": [
+      "Sou feita de vidro, plástico ou metal."
+    ],
+    "answer": "garrafa",
+    "alt": []
+  },
+  {
+    "n": 12,
+    "title": "Enigma 12",
+    "text": "Subo quando a chuva desce e desço quando o sol aparece.",
+    "hints": [
+      "Posso ser vista em um dia chuvoso com sol."
+    ],
+    "answer": "guarda-chuva",
+    "alt": []
+  },
+  {
+    "n": 13,
+    "title": "Enigma 13",
+    "text": "Tenho teclas, mas não abro fechaduras. Posso produzir música.",
+    "hints": [
+      "Há versões com teclas brancas e pretas."
+    ],
+    "answer": "piano",
+    "alt": []
+  },
+  {
+    "n": 14,
+    "title": "Enigma 14",
+    "text": "Tenho cidades, mas não pessoas; tenho estradas, mas não carros.",
+    "hints": [
+      "Sou uma representação de lugares."
+    ],
+    "answer": "mapa",
+    "alt": []
+  },
+  {
+    "n": 15,
+    "title": "Enigma 15",
+    "text": "Quanto mais você me alimenta, maior fico. Se me der água, desapareço.",
+    "hints": [
+      "Sou quente e posso iluminar."
+    ],
+    "answer": "fogo",
+    "alt": []
+  },
+  {
+    "n": 16,
+    "title": "Enigma 16",
+    "text": "Estou sempre à sua frente, mas você nunca consegue me alcançar.",
+    "hints": [
+      "Sou o que ainda vai acontecer."
+    ],
+    "answer": "futuro",
+    "alt": []
+  },
+  {
+    "n": 17,
+    "title": "Enigma 17",
+    "text": "Tenho braços, mas não abraço. Tenho rosto, mas não sorrio.",
+    "hints": [
+      "Posso ficar pendurado na parede e marcar horas."
+    ],
+    "answer": "relógio",
+    "alt": []
+  },
+  {
+    "n": 18,
+    "title": "Enigma 18",
+    "text": "Posso ser quebrado sem ser tocado e posso ser dado sem ser segurado.",
+    "hints": [
+      "É algo que você deve cumprir."
+    ],
+    "answer": "promessa",
+    "alt": []
+  },
+  {
+    "n": 19,
+    "title": "Enigma 19",
+    "text": "Tenho muitas páginas e posso guardar histórias, mas não tenho memória própria.",
+    "hints": [
+      "Sou encontrado em bibliotecas."
+    ],
+    "answer": "livro",
+    "alt": []
+  },
+  {
+    "n": 20,
+    "title": "Enigma 20",
+    "text": "Nasço grande e morro pequeno, iluminando enquanto desapareço.",
+    "hints": [
+      "Sou acesa em bolos e emergências."
+    ],
+    "answer": "vela",
+    "alt": []
+  },
+  {
+    "n": 21,
+    "title": "Enigma 21",
+    "text": "Sou invisível, mas posso derrubar árvores e empinar pipas.",
+    "hints": [
+      "Você sente meu movimento na pele."
+    ],
+    "answer": "vento",
+    "alt": []
+  },
+  {
+    "n": 22,
+    "title": "Enigma 22",
+    "text": "Tenho coroa, mas não sou rei. Tenho escamas, mas não sou peixe.",
+    "hints": [
+      "Sou uma fruta tropical."
+    ],
+    "answer": "abacaxi",
+    "alt": []
+  },
+  {
+    "n": 23,
+    "title": "Enigma 23",
+    "text": "Tenho cabeça e cauda, mas não tenho corpo.",
+    "hints": [
+      "Posso ser lançada para decidir cara ou coroa."
+    ],
+    "answer": "moeda",
+    "alt": []
+  },
+  {
+    "n": 24,
+    "title": "Enigma 24",
+    "text": "Quanto mais você compartilha comigo, menos me tem.",
+    "hints": [
+      "Se for revelado, deixa de ser segredo."
+    ],
+    "answer": "segredo",
+    "alt": []
+  },
+  {
+    "n": 25,
+    "title": "Enigma 25",
+    "text": "Posso atravessar o vidro sem quebrá-lo e desaparecer quando a luz acaba.",
+    "hints": [
+      "Você me vê durante o dia."
+    ],
+    "answer": "reflexo",
+    "alt": []
+  },
+  {
+    "n": 26,
+    "title": "Enigma 26",
+    "text": "Tenho dentes alinhados e não como. Ajudo a arrumar o cabelo.",
+    "hints": [
+      "Fico no banheiro ou no bolso."
+    ],
+    "answer": "pente",
+    "alt": []
+  },
+  {
+    "n": 27,
+    "title": "Enigma 27",
+    "text": "Tenho língua, mas não falo. Tenho sola, mas não caminho sozinho.",
+    "hints": [
+      "Você me calça nos pés."
+    ],
+    "answer": "sapato",
+    "alt": []
+  },
+  {
+    "n": 28,
+    "title": "Enigma 28",
+    "text": "Sou feito para subir e descer, mas permaneço no mesmo lugar.",
+    "hints": [
+      "Tenho degraus."
+    ],
+    "answer": "escada",
+    "alt": []
+  },
+  {
+    "n": 29,
+    "title": "Enigma 29",
+    "text": "Posso correr sem pernas e murmurar sem boca.",
+    "hints": [
+      "Sou encontrada na natureza e sigo para o mar."
+    ],
+    "answer": "rio",
+    "alt": []
+  },
+  {
+    "n": 30,
+    "title": "Enigma 30",
+    "text": "Tenho anel, mas não dedo. Posso indicar compromisso.",
+    "hints": [
+      "Costumo ser usado na mão."
+    ],
+    "answer": "aliança",
+    "alt": []
+  },
+  {
+    "n": 31,
+    "title": "Enigma 31",
+    "text": "Tenho uma cama, mas não durmo; tenho uma boca, mas não falo.",
+    "hints": [
+      "A água passa por mim."
+    ],
+    "answer": "rio",
+    "alt": []
+  },
+  {
+    "n": 32,
+    "title": "Enigma 32",
+    "text": "Sou visto uma vez em um minuto, duas vezes em um momento e nunca em mil anos.",
+    "hints": [
+      "Observe as letras das palavras."
+    ],
+    "answer": "letra m",
+    "alt": []
+  },
+  {
+    "n": 33,
+    "title": "Enigma 33",
+    "text": "O que fica mais leve quanto mais se enche?",
+    "hints": [
+      "É usado para brincar no ar."
+    ],
+    "answer": "balão",
+    "alt": []
+  },
+  {
+    "n": 34,
+    "title": "Enigma 34",
+    "text": "Tenho quatro pernas, mas não ando. Sustento pratos e conversas.",
+    "hints": [
+      "Você se senta ao meu redor para comer."
+    ],
+    "answer": "mesa",
+    "alt": []
+  },
+  {
+    "n": 35,
+    "title": "Enigma 35",
+    "text": "Posso ser aberto, fechado, lido e enviado. Não sou porta.",
+    "hints": [
+      "Chego pela caixa de entrada."
+    ],
+    "answer": "email",
+    "alt": []
+  },
+  {
+    "n": 36,
+    "title": "Enigma 36",
+    "text": "Tenho muitas chaves, mas nenhuma abre uma porta. Posso escrever palavras.",
+    "hints": [
+      "Fico diante de uma tela."
+    ],
+    "answer": "teclado",
+    "alt": []
+  },
+  {
+    "n": 37,
+    "title": "Enigma 37",
+    "text": "Sou uma casa que viaja nas costas de quem mora nela.",
+    "hints": [
+      "Meu morador é lento e tem casco."
+    ],
+    "answer": "caracol",
+    "alt": []
+  },
+  {
+    "n": 38,
+    "title": "Enigma 38",
+    "text": "Tenho um coração que não bate e páginas que não sangram.",
+    "hints": [
+      "Posso ser consultado para aprender palavras."
+    ],
+    "answer": "dicionário",
+    "alt": []
+  },
+  {
+    "n": 39,
+    "title": "Enigma 39",
+    "text": "Quanto mais você usa, menor eu fico. Posso apagar erros.",
+    "hints": [
+      "Fico perto de lápis e papel."
+    ],
+    "answer": "borracha",
+    "alt": []
+  },
+  {
+    "n": 40,
+    "title": "Enigma 40",
+    "text": "Tenho cabeça de metal e corpo fino. Posso prender folhas.",
+    "hints": [
+      "Sou pequeno e usado em escritórios."
+    ],
+    "answer": "clipe",
+    "alt": []
+  },
+  {
+    "n": 41,
+    "title": "Enigma 41",
+    "text": "Não tenho vida, mas posso morrer. Não tenho pulmões, mas preciso de ar.",
+    "hints": [
+      "Posso iluminar uma sala e apagar com um sopro."
+    ],
+    "answer": "chama",
+    "alt": []
+  },
+  {
+    "n": 42,
+    "title": "Enigma 42",
+    "text": "Tenho um pé, mas não caminho. Posso sustentar uma flor.",
+    "hints": [
+      "Fico em jardins e vasos."
+    ],
+    "answer": "vaso",
+    "alt": []
+  },
+  {
+    "n": 43,
+    "title": "Enigma 43",
+    "text": "Posso ser contado, gasto e economizado, mas não guardado em uma caixa.",
+    "hints": [
+      "Todos recebem a mesma quantidade por dia."
+    ],
+    "answer": "tempo",
+    "alt": []
+  },
+  {
+    "n": 44,
+    "title": "Enigma 44",
+    "text": "Tenho linhas, mas não sou caderno. Tenho pontos, mas não sou prova.",
+    "hints": [
+      "Ajudo a localizar lugares no planeta."
+    ],
+    "answer": "globo",
+    "alt": []
+  },
+  {
+    "n": 45,
+    "title": "Enigma 45",
+    "text": "Sou redondo, posso girar e faço parte de muitos veículos.",
+    "hints": [
+      "Sem mim, um carro não anda direito."
+    ],
+    "answer": "roda",
+    "alt": []
+  },
+  {
+    "n": 46,
+    "title": "Enigma 46",
+    "text": "Tenho uma boca enorme e engulo papéis, mas não tenho estômago.",
+    "hints": [
+      "Posso transformar folhas em tiras."
+    ],
+    "answer": "fragmentadora",
+    "alt": []
+  },
+  {
+    "n": 47,
+    "title": "Enigma 47",
+    "text": "Sou uma janela que não deixa entrar vento e mostra outros lugares.",
+    "hints": [
+      "Você me usa para assistir a filmes e programas."
+    ],
+    "answer": "televisão",
+    "alt": []
+  },
+  {
+    "n": 48,
+    "title": "Enigma 48",
+    "text": "Tenho raiz, mas não sou planta. Posso resolver contas e equações.",
+    "hints": [
+      "Sou estudada na escola."
+    ],
+    "answer": "matemática",
+    "alt": []
+  },
+  {
+    "n": 49,
+    "title": "Enigma 49",
+    "text": "Posso ser lançado, perdido, ganho ou empatado, mas não sou objeto.",
+    "hints": [
+      "Aconteço entre equipes ou jogadores."
+    ],
+    "answer": "jogo",
+    "alt": []
+  },
+  {
+    "n": 50,
+    "title": "Enigma 50",
+    "text": "Tenho asas, mas não sou pássaro. Levo pessoas pelo céu.",
+    "hints": [
+      "Preciso de pista para decolar."
+    ],
+    "answer": "avião",
+    "alt": []
+  },
+  {
+    "n": 51,
+    "title": "Enigma 51",
+    "text": "Sou uma estrela que não fica no céu e apareço à noite nas ruas.",
+    "hints": [
+      "Ilumino postes e casas."
+    ],
+    "answer": "lâmpada",
+    "alt": []
+  },
+  {
+    "n": 52,
+    "title": "Enigma 52",
+    "text": "Tenho escamas e nado, mas não sou dragão.",
+    "hints": [
+      "Respiro na água usando brânquias."
+    ],
+    "answer": "peixe",
+    "alt": []
+  },
+  {
+    "n": 53,
+    "title": "Enigma 53",
+    "text": "Sou uma ponte entre duas margens e posso ser feita de palavras.",
+    "hints": [
+      "Ajudo pessoas a se entenderem."
+    ],
+    "answer": "conversa",
+    "alt": []
+  },
+  {
+    "n": 54,
+    "title": "Enigma 54",
+    "text": "Tenho um tronco, mas não sou árvore; tenho braços, mas não abraço.",
+    "hints": [
+      "Sou parte do corpo humano."
+    ],
+    "answer": "corpo",
+    "alt": []
+  },
+  {
+    "n": 55,
+    "title": "Enigma 55",
+    "text": "Posso ser afinado, tocado e ouvido, mas não sou instrumento.",
+    "hints": [
+      "Tenho notas e melodia."
+    ],
+    "answer": "música",
+    "alt": []
+  },
+  {
+    "n": 56,
+    "title": "Enigma 56",
+    "text": "Sou uma caixa que guarda momentos sem prendê-los.",
+    "hints": [
+      "Você me usa para registrar imagens."
+    ],
+    "answer": "câmera",
+    "alt": []
+  },
+  {
+    "n": 57,
+    "title": "Enigma 57",
+    "text": "Tenho tela, mas não sou cinema. Tenho aplicativos, mas não sou loja.",
+    "hints": [
+      "Você pode me levar no bolso."
+    ],
+    "answer": "celular",
+    "alt": []
+  },
+  {
+    "n": 58,
+    "title": "Enigma 58",
+    "text": "Posso ser plantada, regada e colhida, mas não sou comida.",
+    "hints": [
+      "Começo pequena e posso virar uma árvore."
+    ],
+    "answer": "semente",
+    "alt": []
+  },
+  {
+    "n": 59,
+    "title": "Enigma 59",
+    "text": "Tenho páginas e números, mas não conto uma história.",
+    "hints": [
+      "Ajudo a organizar os dias do ano."
+    ],
+    "answer": "calendário",
+    "alt": []
+  },
+  {
+    "n": 60,
+    "title": "Enigma 60",
+    "text": "Sou um caminho que não leva a lugar algum quando estou em um labirinto.",
+    "hints": [
+      "Você precisa encontrar minha saída."
+    ],
+    "answer": "beco",
+    "alt": []
+  },
+  {
+    "n": 61,
+    "title": "Enigma 61",
+    "text": "Tenho uma cabeça que gira e asas que não voam.",
+    "hints": [
+      "Posso refrescar um ambiente."
+    ],
+    "answer": "ventilador",
+    "alt": []
+  },
+  {
+    "n": 62,
+    "title": "Enigma 62",
+    "text": "Sou transparente quando limpa e invisível quando não há luz refletida.",
+    "hints": [
+      "Você pode olhar através de mim."
+    ],
+    "answer": "vidro",
+    "alt": []
+  },
+  {
+    "n": 63,
+    "title": "Enigma 63",
+    "text": "Tenho um pé e uma boca, mas não sou pessoa. Posso ficar no meio da sala.",
+    "hints": [
+      "Guardo água para beber."
+    ],
+    "answer": "bebedouro",
+    "alt": []
+  },
+  {
+    "n": 64,
+    "title": "Enigma 64",
+    "text": "Posso ser dobrado sem quebrar e guardo palavras que ainda não foram lidas.",
+    "hints": [
+      "Sou enviado pelo correio."
+    ],
+    "answer": "carta",
+    "alt": []
+  },
+  {
+    "n": 65,
+    "title": "Enigma 65",
+    "text": "Tenho um lado claro e um lado escuro, mas não sou dia nem noite.",
+    "hints": [
+      "Giro ao redor da Terra."
+    ],
+    "answer": "lua",
+    "alt": []
+  },
+  {
+    "n": 66,
+    "title": "Enigma 66",
+    "text": "Sou um gigante de gelo que flutua, mas quase todo meu corpo fica escondido.",
+    "hints": [
+      "Navego em mares frios."
+    ],
+    "answer": "iceberg",
+    "alt": []
+  },
+  {
+    "n": 67,
+    "title": "Enigma 67",
+    "text": "Tenho um rosto cheio de números e não tenho olhos.",
+    "hints": [
+      "Mostro a temperatura."
+    ],
+    "answer": "termômetro",
+    "alt": []
+  },
+  {
+    "n": 68,
+    "title": "Enigma 68",
+    "text": "Posso ser longa ou curta, reta ou curva, e ajudo a medir distâncias.",
+    "hints": [
+      "Sou usada em desenhos e construções."
+    ],
+    "answer": "linha",
+    "alt": []
+  },
+  {
+    "n": 69,
+    "title": "Enigma 69",
+    "text": "Tenho uma boca estreita e um corpo que guarda grãos ou líquidos.",
+    "hints": [
+      "Posso ser fechada com uma tampa."
+    ],
+    "answer": "pote",
+    "alt": []
+  },
+  {
+    "n": 70,
+    "title": "Enigma 70",
+    "text": "Sou um animal que carrega a própria casa e deixa um rastro brilhante.",
+    "hints": [
+      "Ando devagar e não tenho patas visíveis."
+    ],
+    "answer": "lesma",
+    "alt": []
+  },
+  {
+    "n": 71,
+    "title": "Enigma 71",
+    "text": "Tenho uma cauda que não abana e posso voar sem ser animal.",
+    "hints": [
+      "Sou feita de papel e linha."
+    ],
+    "answer": "pipa",
+    "alt": []
+  },
+  {
+    "n": 72,
+    "title": "Enigma 72",
+    "text": "Sou uma montanha que pode explodir e lançar cinzas ao céu.",
+    "hints": [
+      "Tenho lava em meu interior."
+    ],
+    "answer": "vulcão",
+    "alt": []
+  },
+  {
+    "n": 73,
+    "title": "Enigma 73",
+    "text": "Tenho olhos, mas não vejo; tenho pele, mas não sinto.",
+    "hints": [
+      "Sou descascada antes de virar alimento."
+    ],
+    "answer": "batata",
+    "alt": []
+  },
+  {
+    "n": 74,
+    "title": "Enigma 74",
+    "text": "Sou uma palavra de cinco letras; se tirar duas, sobra uma. Posso ser o contrário de guerra.",
+    "hints": [
+      "Represento a ausência de conflito."
+    ],
+    "answer": "paz",
+    "alt": []
+  },
+  {
+    "n": 75,
+    "title": "Enigma 75",
+    "text": "Posso encher uma sala sem ocupar espaço e posso desaparecer ao acender a luz.",
+    "hints": [
+      "Sou o contrário da claridade."
+    ],
+    "answer": "escuridão",
+    "alt": []
+  },
+  {
+    "n": 76,
+    "title": "Enigma 76",
+    "text": "Tenho números, mas não sou calculadora. Tenho casas, mas não moro nelas.",
+    "hints": [
+      "Organizo informações em linhas e colunas."
+    ],
+    "answer": "planilha",
+    "alt": []
+  },
+  {
+    "n": 77,
+    "title": "Enigma 77",
+    "text": "Sou uma chave que não abre portas, mas pode abrir acesso a uma conta.",
+    "hints": [
+      "Deve ser mantida em segredo."
+    ],
+    "answer": "senha",
+    "alt": []
+  },
+  {
+    "n": 78,
+    "title": "Enigma 78",
+    "text": "Posso ser alto sem ser grande e baixo sem estar no chão.",
+    "hints": [
+      "Você mede meu volume com os ouvidos."
+    ],
+    "answer": "som",
+    "alt": []
+  },
+  {
+    "n": 79,
+    "title": "Enigma 79",
+    "text": "Tenho uma rede, mas não sou pescador. Conecto pessoas e computadores.",
+    "hints": [
+      "Você acessa sites por mim."
+    ],
+    "answer": "internet",
+    "alt": []
+  },
+  {
+    "n": 80,
+    "title": "Enigma 80",
+    "text": "Tenho um rosto, mas não tenho expressão; posso refletir o seu.",
+    "hints": [
+      "Você se olha em mim."
+    ],
+    "answer": "espelho",
+    "alt": []
+  },
+  {
+    "n": 81,
+    "title": "Enigma 81",
+    "text": "Sou uma viagem parada: levo você a outros lugares sem sair do assento.",
+    "hints": [
+      "Você acompanha minhas páginas ou cenas."
+    ],
+    "answer": "filme",
+    "alt": []
+  },
+  {
+    "n": 82,
+    "title": "Enigma 82",
+    "text": "Tenho um pé de página e um cabeçalho, mas não sou corpo.",
+    "hints": [
+      "Sou um tipo de documento digital."
+    ],
+    "answer": "arquivo",
+    "alt": []
+  },
+  {
+    "n": 83,
+    "title": "Enigma 83",
+    "text": "Sou um círculo que não termina e posso representar algo sem fim.",
+    "hints": [
+      "Deitado, pareço um oito."
+    ],
+    "answer": "infinito",
+    "alt": []
+  },
+  {
+    "n": 84,
+    "title": "Enigma 84",
+    "text": "Tenho um ponto de partida e muitos caminhos, mas não tenho pernas.",
+    "hints": [
+      "Você pode me resolver com lápis e papel."
+    ],
+    "answer": "labirinto",
+    "alt": []
+  },
+  {
+    "n": 85,
+    "title": "Enigma 85",
+    "text": "Sou um número que, multiplicado por qualquer outro, mantém esse outro igual.",
+    "hints": [
+      "Não altero o resultado da multiplicação."
+    ],
+    "answer": "um",
+    "alt": []
+  },
+  {
+    "n": 86,
+    "title": "Enigma 86",
+    "text": "Sou o único número par que também é primo.",
+    "hints": [
+      "Venho logo depois do um."
+    ],
+    "answer": "dois",
+    "alt": []
+  },
+  {
+    "n": 87,
+    "title": "Enigma 87",
+    "text": "Tenho três lados e três ângulos.",
+    "hints": [
+      "Sou uma figura geométrica."
+    ],
+    "answer": "triângulo",
+    "alt": []
+  },
+  {
+    "n": 88,
+    "title": "Enigma 88",
+    "text": "Tenho seis faces quadradas iguais.",
+    "hints": [
+      "Sou um sólido usado em jogos de tabuleiro."
+    ],
+    "answer": "cubo",
+    "alt": []
+  },
+  {
+    "n": 89,
+    "title": "Enigma 89",
+    "text": "Sou metade de um círculo e tenho uma borda curva.",
+    "hints": [
+      "Meu nome começa com semi."
+    ],
+    "answer": "semicírculo",
+    "alt": []
+  },
+  {
+    "n": 90,
+    "title": "Enigma 90",
+    "text": "Posso ser positivo ou negativo e indicar uma posição em relação ao zero.",
+    "hints": [
+      "Apareço em temperaturas abaixo de zero."
+    ],
+    "answer": "número",
+    "alt": []
+  },
+  {
+    "n": 91,
+    "title": "Enigma 91",
+    "text": "Sou uma pergunta que só pode ser respondida depois de pensar com cuidado.",
+    "hints": [
+      "Meu nome também significa enigma."
+    ],
+    "answer": "charada",
+    "alt": []
+  },
+  {
+    "n": 92,
+    "title": "Enigma 92",
+    "text": "Tenho letras embaralhadas que formam uma palavra quando colocadas em ordem.",
+    "hints": [
+      "Você precisa reorganizar meus caracteres."
+    ],
+    "answer": "anagrama",
+    "alt": []
+  },
+  {
+    "n": 93,
+    "title": "Enigma 93",
+    "text": "Sou uma sequência em que cada termo depende dos anteriores.",
+    "hints": [
+      "Posso começar com zero e um."
+    ],
+    "answer": "fibonacci",
+    "alt": []
+  },
+  {
+    "n": 94,
+    "title": "Enigma 94",
+    "text": "Tenho quatro lados iguais e quatro ângulos retos.",
+    "hints": [
+      "Sou uma figura geométrica comum em tabuleiros."
+    ],
+    "answer": "quadrado",
+    "alt": []
+  },
+  {
+    "n": 95,
+    "title": "Enigma 95",
+    "text": "Sou o resultado de somar um número a ele mesmo.",
+    "hints": [
+      "É o dobro desse número."
+    ],
+    "answer": "dobro",
+    "alt": []
+  },
+  {
+    "n": 96,
+    "title": "Enigma 96",
+    "text": "Tenho 360 graus e não tenho começo nem fim.",
+    "hints": [
+      "Sou uma figura redonda."
+    ],
+    "answer": "círculo",
+    "alt": []
+  },
+  {
+    "n": 97,
+    "title": "Enigma 97",
+    "text": "Sou a distância mais curta entre dois pontos em uma superfície plana.",
+    "hints": [
+      "Não faço curvas."
+    ],
+    "answer": "reta",
+    "alt": []
+  },
+  {
+    "n": 98,
+    "title": "Enigma 98",
+    "text": "Posso ser dividido, compartilhado e ainda assim continuar inteiro como ideia.",
+    "hints": [
+      "Sou conhecimento que passa de pessoa para pessoa."
+    ],
+    "answer": "saber",
+    "alt": []
+  },
+  {
+    "n": 99,
+    "title": "Enigma 99",
+    "text": "Sou invisível, mas posso ser percebido quando uma bússola muda de direção.",
+    "hints": [
+      "A Terra possui um campo com meu nome."
+    ],
+    "answer": "magnetismo",
+    "alt": []
+  },
+  {
+    "n": 100,
+    "title": "Enigma 100",
+    "text": "Tenho polos, mas não sou urso. Atraio alguns metais.",
+    "hints": [
+      "Sou propriedade de certos materiais."
+    ],
+    "answer": "ímã",
+    "alt": []
+  }
 ];
 
 export default PUZZLES;

@@ -59,7 +59,8 @@ export function normalizeAnswer(value) {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, ' ');
+    .replace(/\s+/g, ' ')
+    .replace(/[^a-z0-9]/g, '');
 }
 
 export function isCorrect(input, puzzle) {

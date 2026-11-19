@@ -15,12 +15,12 @@ test('o jogo tem exatamente 100 níveis em ordem sequencial', () => {
   PUZZLES.forEach((puzzle, index) => assert.equal(puzzle.n, index + 1));
 });
 
-test('cada enigma tem título, enunciado, resposta e três dicas', () => {
+test('cada charada tem título, enunciado, resposta e dica', () => {
   for (const puzzle of PUZZLES) {
     assert.ok(puzzle.title && puzzle.title.length > 2);
     assert.ok(puzzle.text && puzzle.text.length > 10);
     assert.ok(puzzle.answer && puzzle.answer.length > 0);
-    assert.equal(puzzle.hints.length, 3);
+    assert.ok(puzzle.hints.length >= 1);
     assert.ok(puzzle.hints.every((hint) => hint.length > 1));
   }
 });
@@ -31,7 +31,7 @@ test('não há enunciados repetidos', () => {
 });
 
 test('a validação ignora caixa, acento e espaços', () => {
-  assert.equal(normalizeAnswer('  SÉXTA-FEIRA '), 'sexta-feira');
+  assert.equal(normalizeAnswer('  SÉXTA-FEIRA '), 'sextafeira');
   assert.equal(isCorrect('  RELÓGIO ', { answer: 'relógio' }), true);
   assert.equal(isCorrect('dezembro', { answer: 'Dezembro' }), true);
   assert.equal(isCorrect('17', { answer: 'dezessete', alt: ['17'] }), true);
