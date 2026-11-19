@@ -13,7 +13,6 @@ import Post from './Post';
 
 const NAV = [
   ['publicacoes', 'Publicações', 'chat'],
-  ['visao', 'Visão geral', 'spark'],
   ['comunicados', 'Comunicados', 'mega'],
   ['galeria', 'Galeria', 'camera'],
   ['enquetes', 'Enquetes', 'chart'],
@@ -395,55 +394,6 @@ export default function CommunitySpace({ community, onAdmin }) {
             <div className="comm-section comm-chat-section">
               <h2 className="h2">Publicações</h2>
               <CommunityChat posts={posts} canPost={canPost} community={community} />
-            </div>
-          ) : null}
-
-          {tab === 'visao' ? (
-            <div className="comm-section comm-overview">
-              <h2 className="h2">Visão geral</h2>
-              <div className="comm-cards">
-                <div className="card comm-stat">
-                  <b>{posts.length}</b>
-                  <span className="muted sm">Publicações</span>
-                </div>
-                <div className="card comm-stat">
-                  <b>{gallery.length}</b>
-                  <span className="muted sm">Mídias</span>
-                </div>
-                <div className="card comm-stat">
-                  <b>{events.length}</b>
-                  <span className="muted sm">Eventos</span>
-                </div>
-                <div className="card comm-stat">
-                  <b>{classifieds.length}</b>
-                  <span className="muted sm">Anúncios</span>
-                </div>
-              </div>
-              {topics.filter((t) => t.pinned).length ? (
-                <section className="comm-sub">
-                  <h3>Comunicados fixados</h3>
-                  {topics.filter((t) => t.pinned).map((t) => (
-                    <div key={t.id} className="comm-topic">
-                      <b>{t.title}</b>
-                    </div>
-                  ))}
-                </section>
-              ) : null}
-              {posts.length ? (
-                <section className="comm-sub">
-                  <h3>Últimas publicações</h3>
-                  <div className="comm-posts">
-                    {posts.slice(0, 3).map((p) => (
-                      <Post key={p.id} post={p} />
-                    ))}
-                  </div>
-                </section>
-              ) : (
-                <Empty
-                  title="Tudo pronto para começar"
-                  text="Publique algo ou convide membros para animar a comunidade."
-                />
-              )}
             </div>
           ) : null}
 
