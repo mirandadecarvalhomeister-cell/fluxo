@@ -93,7 +93,8 @@
 
 - `npm test`: **16/16** testes passando em todas as fases.
 - `npm run build`: OK em todas as fases.
-- Deploy Cloudflare Pages: `fluxosocial`, último deploy `2c3f5f78`.
+- Deploy Cloudflare Pages: `fluxosocial`, último deploy `a163039b`.
+- Migration aplicada em produção: `migrate_enigmas_ranking.sql`.
 
 ## Fase 8 — Picker de emojis estilo mensageiro (concluído)
 
@@ -137,10 +138,10 @@
 - Validação que ignora caixa/acentos/espaços e aceita alternativas; 3 dicas progressivas com desconto de pontos; feedback de erro com animação e sucesso com transição suave.
 - Tema escuro com roxo neon/ciano, animações e layout responsivo (`src/styles/enigmas.css`); integrado em Conexões → Jogos com rota `#conexoes/enigmas`.
 - Compartilhamento: botão no jogo publica no feed "🧩 Cheguei ao nível X de 100 nos Enigmas do Fluxo! Consegue chegar mais longe?"; também há "Copiar link".
-- Ranking local com a melhor marca de cada partida (nível, pontos, dicas), exibido na tela inicial e na conclusão, com medalhas 🥇🥈🥉 para os três primeiros.
+- Ranking **global** no Supabase (`migrate_enigmas_ranking.sql` aplicada): tabela `enigma_scores` com a melhor marca por usuário, RLS de leitura para autenticados e escrita apenas do próprio usuário; medalhas 🥇🥈🥉 para os três primeiros. Fallback local caso o usuário não esteja autenticado.
 - Testes próprios em `tests/enigmas-levels.test.js` registrados no `npm test` (22 testes passando).
 - Migrations aplicadas no Supabase de produção: `migrate_channel_subscriptions.sql`, `migrate_communities_v2.sql`, `migrate_emoji_favorites.sql`.
 
 ## Commits desta rodada
 
-`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`, `d9191ec`, `6d49d70`, `1a4c197`, `595e4cf`, `bb09666`, `b5ebfc8`, `be70951`, `545d4bf`, `5147f08`, `9d855ef`, `c893d37`, `be383a8`, `09ee486`, `3de1955`, `a666bbe`, `27e27b8`.
+`856e3cb`, `dc938d8`, `6df3410`, `f4037fa`, `c501bdd`, `17d23a1`, `f1f6758`, `6492642`, `ab3dccb`, `60a462a`, `5a5b47f`, `d9191ec`, `6d49d70`, `1a4c197`, `595e4cf`, `bb09666`, `b5ebfc8`, `be70951`, `545d4bf`, `5147f08`, `9d855ef`, `c893d37`, `be383a8`, `09ee486`, `3de1955`, `a666bbe`, `27e27b8`, `3a1e57f`.
