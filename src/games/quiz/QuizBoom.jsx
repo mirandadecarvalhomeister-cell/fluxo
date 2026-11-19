@@ -371,9 +371,7 @@ export default function QuizBoom() {
       };
       setFinalResult(result);
       setReason(why);
-      setScreen(
-        why === 'timeout' && modeRef.current === 'classic' ? 'boom' : 'results'
-      );
+      setScreen(why === 'timeout' ? 'boom' : 'results');
       finishRun(runIdRef.current, result, runOnlineRef.current).then(saveBest);
       refreshStatus();
 
@@ -969,8 +967,11 @@ export default function QuizBoom() {
         <h1>BOOM!</h1>
         <p className="quiz-boom-sub">O PAVIO QUEIMOU</p>
         <p className="quiz-boom-note">
-          Você parou na pergunta {index + 1} de {total}. No modo Clássico, o
-          tempo de cada pergunta é o seu limite. Respire e tente de novo!
+          Você parou na pergunta {index + 1} de {total}.{' '}
+          {mode === 'classic'
+            ? 'No modo Clássico, o tempo de cada pergunta é o seu limite.'
+            : 'No modo Insano, o pavio corre até o fim da partida.'}{' '}
+          Respire e tente de novo!
         </p>
         <div className="quiz-stat-row">
           <Stat label="Pontos" value={fmt(score)} />

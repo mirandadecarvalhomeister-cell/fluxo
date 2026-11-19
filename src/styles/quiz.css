@@ -521,16 +521,41 @@
 .quiz-boom-flash {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 35%, rgba(255, 176, 32, 0.55), transparent 60%);
+  z-index: 2;
+  background: radial-gradient(circle at 50% 35%, rgba(255, 176, 32, 0.75), rgba(255, 45, 135, 0.25) 45%, transparent 72%);
   pointer-events: none;
-  animation: quiz-flash 0.9s ease-out;
+  animation: quiz-flash 1.2s ease-out both;
 }
 
 .quiz-boom-burst {
+  position: relative;
+  z-index: 3;
   font-size: clamp(4rem, 14vw, 8rem);
   line-height: 1;
   filter: drop-shadow(0 20px 50px rgba(255, 90, 60, 0.7));
-  animation: quiz-burst 0.55s cubic-bezier(0.2, 1.4, 0.4, 1);
+  animation: quiz-burst 0.75s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.quiz-boom-burst::before,
+.quiz-boom-burst::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 140vmax;
+  height: 140vmax;
+  margin: -70vmax 0 0 -70vmax;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 176, 32, 0.28) 0deg 6deg, transparent 6deg 22deg);
+  animation: quiz-boom-rays 1.4s ease-out both;
+  pointer-events: none;
+}
+.quiz-boom-burst::after {
+  animation-delay: 0.08s;
+  background: repeating-conic-gradient(from 12deg, rgba(255, 45, 135, 0.2) 0deg 4deg, transparent 4deg 28deg);
+}
+@keyframes quiz-boom-rays {
+  from { transform: scale(0.05) rotate(0deg); opacity: 1; }
+  to { transform: scale(1) rotate(45deg); opacity: 0; }
 }
 
 .quiz-boom h1 {
