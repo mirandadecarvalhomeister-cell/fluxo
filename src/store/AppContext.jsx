@@ -3282,6 +3282,18 @@ export function AppProvider({ children }) {
     if (location.hash !== '#conexoes') location.hash = '#conexoes';
   }
 
+  function recordEnigmaScore({ level, score, hints }) {
+    const userId = sessionRef.current?.id;
+    if (!userId) return Promise.resolve(false);
+    return remote.saveEnigmaScore({
+      userId,
+      name: dataRef.current?.me?.name || 'Jogador',
+      level,
+      score,
+      hints,
+    });
+  }
+
   function inviteToArena(userId, code) {
     const clean = String(code || '').trim().toUpperCase();
     if (!userId || !clean) return false;
@@ -5097,6 +5109,8 @@ export function AppProvider({ children }) {
     closeQuiz,
     openEnigmas,
     closeEnigmas,
+    loadEnigmaRanking: () => remote.loadEnigmaRanking(),
+    recordEnigmaScore,
     inviteToArena,
     shareArenaResult,
     shareQuizResult,

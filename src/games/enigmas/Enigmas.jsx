@@ -43,6 +43,17 @@ export default function Enigmas() {
     []
   );
 
+  useEffect(() => {
+    let alive = true;
+    actions
+      .loadEnigmaRanking?.()
+      .then((list) => {
+        if (alive && Array.isArray(list) && list.length) setRank(list);
+      })
+      .catch(() => undefined);
+    return () => { alive = false; };
+  }, [actions]);
+
   const puzzle = levelAt(level - 1);
 
   function persist(next) {
@@ -104,15 +115,30 @@ export default function Enigmas() {
       finished: level >= TOTAL_LEVELS,
     };
     persist(next);
+    const reached = Math.min(level + 1, TOTAL_LEVELS);
     setRank(
       recordScore({
         runId: save?.runId,
         name: data.me?.name || 'Você',
-        level: Math.min(level + 1, TOTAL_LEVELS),
+        level: reached,
         score: next.score,
         hints: next.hints,
       })
     );
+    Promise.resolve(
+      actions.recordEnigmaScore?.({
+        level: reached,
+        score: next.score,
+        hints: next.hints,
+      })
+    )
+      .then((saved) => {
+        if (!saved) return undefined;
+        return actions.loadEnigmaRanking?.().then((list) => {
+          if (Array.isArray(list) && list.length) setRank(list);
+        });
+      })
+      .catch(() => undefined);
     setMessage(INCENTIVES[(level - 1) % INCENTIVES.length]);
     setBusy(true);
     timers.current.push(
@@ -235,7 +261,7 @@ export default function Enigmas() {
           ) : null}
           {rank.length ? (
             <div className="enigmas-rank">
-              <b>RANKING · ATÉ ONDE VOCÊ CHEGOU</b>
+              <b>RANKING GLOBAL · ATÉ ONDE VOCÊ CHEGOU</b>
               {rankList()}
             </div>
           ) : null}
@@ -320,7 +346,7 @@ export default function Enigmas() {
           </div>
           {rank.length ? (
             <div className="enigmas-rank">
-              <b>RANKING · ATÉ ONDE VOCÊ CHEGOU</b>
+              <b>RANKING GLOBAL · ATÉ ONDE VOCÊ CHEGOU</b>
               {rankList()}
             </div>
           ) : null}

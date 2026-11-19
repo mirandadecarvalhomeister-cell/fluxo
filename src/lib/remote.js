@@ -1638,6 +1638,53 @@ export async function quizRankings(limit = 50) {
   }
 }
 
+export async function loadEnigmaRanking(limit = 20) {
+  if (!enabled()) return [];
+  try {
+    const { data, error } = await supabase
+      .from('enigma_scores')
+      .select('user_id,name,level,score,hints,updated_at')
+      .order('level', { ascending: false })
+      .order('score', { ascending: false })
+      .order('hints', { ascending: true })
+      .limit(limit);
+    if (error) { warn(error); return []; }
+    return (data || []).map((row) => ({
+      runId: row.user_id,
+      name: row.name || 'Jogador',
+      level: Number(row.level) || 1,
+      score: Number(row.score) || 0,
+      hints: Number(row.hints) || 0,
+      ts: row.updated_at ? new Date(row.updated_at).getTime() : 0,
+    }));
+  } catch (error) {
+    warn(error);
+    return [];
+  }
+}
+
+export async function saveEnigmaScore({ userId, name, level, score, hints }) {
+  if (!enabled() || !userId) return false;
+  try {
+    const { error } = await supabase.from('enigma_scores').upsert(
+      {
+        user_id: userId,
+        name: String(name || 'Jogador').slice(0, 40),
+        level: Math.min(100, Math.max(1, Math.round(level) || 1)),
+        score: Math.max(0, Math.round(score) || 0),
+        hints: Math.max(0, Math.round(hints) || 0),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id' }
+    );
+    if (error) { warn(error); return false; }
+    return true;
+  } catch (error) {
+    warn(error);
+    return false;
+  }
+}
+
 export async function updateDirectMessage(id, text) {
   if (!enabled() || !id) return false;
   const clean = String(text || '').trim();
