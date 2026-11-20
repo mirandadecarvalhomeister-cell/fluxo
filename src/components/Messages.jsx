@@ -425,6 +425,8 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia, onForw
 
   useEffect(() => () => clearTimeout(longRef.current), []);
 
+  const freeEmoji =
+    !message.attachment && ONLY_EMOJI_RE.test(String(message.text || '').trim());
   const offset = drag != null ? drag : revealed ? -SWIPE_LIMIT : 0;
 
   const clearLong = () => {
@@ -553,11 +555,13 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia, onForw
         <div
           className={`b ${message.me ? 'me' : 'them'} ${message.liked ? 'liked' : ''} ${
             message.attachment?.kind === 'sticker' ? 'sticker-bubble' : ''
-          }`}
+          } ${freeEmoji ? 'bubble-free' : ''}`}
           title="Segure para mais opções"
         >
           {message.text ? (
-            <p><MessageText text={message.text} /></p>
+            <p className={freeEmoji ? 'msg-free-emoji' : undefined}>
+              <MessageText text={message.text} />
+            </p>
           ) : null}
           {(() => {
             const match = !message.attachment && typeof message.text === 'string'

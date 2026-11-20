@@ -20,6 +20,8 @@ import PrivateAudio from './PrivateAudio';
 import PrivateMedia from './PrivateMedia';
 import VoiceRecorder from './VoiceRecorder';
 
+const ONLY_EMOJI_RE = /^[\p{Extended_Pictographic}\p{Emoji_Modifier}\uFE0F\u200D\s]+$/u;
+
 const NAV = [
   ['publicacoes', 'Publicações', 'chat'],
   ['comunicados', 'Comunicados', 'mega'],
@@ -353,6 +355,9 @@ function CommunityChat({ posts, canPost, community }) {
             ? []
             : allMedia.filter((item) => ['photo', 'video'].includes(item.kind));
           const audios = allMedia.filter((item) => item.kind === 'audio');
+          const freeEmoji =
+            !items.length && !audios.length && !interactive &&
+            ONLY_EMOJI_RE.test(String(post.text || '').trim());
           return (
             <div className={`comm-chat-msg${mine ? ' me' : ''}`} key={post.id}>
               {!mine ? <Avatar user={person} size={32} /> : null}
@@ -360,8 +365,12 @@ function CommunityChat({ posts, canPost, community }) {
                 <div className="comm-chat-head">
                   <b>{person.name}</b> <time>{hm(post.ts)}</time>
                 </div>
-                <div className="comm-chat-bubble">
-                  {post.text ? <p><EmojiText text={post.text} size={19} /></p> : null}
+                <div className={`comm-chat-bubble${freeEmoji ? ' free' : ''}`}>
+                  {post.text ? (
+                    <p className={freeEmoji ? 'comm-free-emoji' : undefined}>
+                      <EmojiText text={post.text} size={freeEmoji ? 44 : 19} />
+                    </p>
+                  ) : null}
                   {items.map((item, index) =>
                     item.storageBucket === 'community-private' && item.storagePath ? (
                       <PrivateMedia
@@ -427,6 +436,16 @@ function CommunityChat({ posts, canPost, community }) {
                     >
                       <Icon name="comment" />
                     </button>
+                    {mine ? (
+                      <button
+                        type="button"
+                        onClick={() => actions.deletePost(post.id)}
+                        aria-label="Excluir publicação"
+                        title="Excluir publicação"
+                      >
+                        <Icon name="trash" />
+                      </button>
+                    ) : null}
                   </div>
                   {(post.comments || []).length ? (
                     <div className="comm-chat-comments">

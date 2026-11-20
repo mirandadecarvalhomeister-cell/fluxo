@@ -2034,6 +2034,13 @@ html,body{max-width:100%;overflow-x:clip}
 .vr-lock-hint{position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-size:9px;white-space:nowrap;pointer-events:none;transition:color .12s,border-color .12s,transform .12s}
 .vr-lock-hint .ic{width:12px;height:12px}
 .vr-lock-hint.near{color:var(--accent);border-color:var(--accent);transform:translateX(-50%) scale(1.06)}
+.b.bubble-free{background:transparent!important;border:0!important;box-shadow:none!important;padding:0 2px!important}
+.b.bubble-free .meta{justify-content:flex-end;opacity:.6;font-size:9px}
+.msg-free-emoji{line-height:1}
+.msg-free-emoji .animated-emoji,.msg-free-emoji .animated-emoji-fallback{font-size:44px!important;line-height:1!important;vertical-align:middle}
+.comm-chat-bubble.free{background:transparent!important;border:0!important;box-shadow:none!important;padding:0 2px!important}
+.comm-free-emoji{margin:0;line-height:1}
+.comm-free-emoji .animated-emoji,.comm-free-emoji .animated-emoji-fallback,.comm-free-emoji .emoji{font-size:44px!important;line-height:1!important}
 @media (max-width:560px){.vr-lock-hint span{display:none}}
 .vr-waves{display:flex;align-items:center;gap:2px;height:22px;max-width:92px;overflow:hidden}
 .vr-waves i{width:2px;min-width:2px;border-radius:2px;background:var(--accent);transform-origin:center;animation:vr-breathe .65s ease-in-out infinite alternate}
