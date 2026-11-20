@@ -242,6 +242,9 @@ export function PostMenu({ post, onEdit, onShare }) {
         <Icon name="more" />
       </summary>
       <div className="menu-pop">
+        <button type="button" onClick={() => { close(); actions.openPost(post.id); }}>
+          <Icon name="eye" /> Abrir publicação
+        </button>
         {post.by === 'me' ? (
           <>
             <button type="button" onClick={() => { close(); onEdit(); }}>
@@ -407,36 +410,11 @@ export default function Post({ post, detail = false }) {
     actions.toggleComments(post.id);
   }
 
-  function openDetail(event) {
-    if (detail) return;
-    if (
-      event.target.closest(
-        'button, a, input, textarea, select, label, video, .fv, .vid, .acts, .cmts, .interactive, .reaction-wrap, .carousel, .post-menu'
-      )
-    ) {
-      return;
-    }
-    actions.openPost(post.id);
-  }
-
-  function openDetailKey(event) {
-    if (detail || event.target !== event.currentTarget) return;
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      actions.openPost(post.id);
-    }
-  }
-
   return (
     <article
       className={`card post${detail ? ' post-detail' : ''}`}
       data-post={post.id}
       ref={cardRef}
-      onClick={openDetail}
-      onKeyDown={openDetailKey}
-      tabIndex={detail ? undefined : 0}
-      aria-label={detail ? undefined : `Abrir publicação de ${author.name}`}
-      title={detail ? undefined : 'Abrir publicação'}
     >
       {reactBurst ? <ReactionFx emoji={reactBurst} /> : null}
       <header className="post-h">

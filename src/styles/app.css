@@ -1584,6 +1584,17 @@ html.video-open,body.video-open{overflow:hidden!important}
 .fv-vol .ic{width:16px;height:16px}
 .fv-vol input{width:92px;accent-color:#fff}
 @media (max-width:520px){.fv-vol input{display:none}}
+.fv-vol-toggle{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.45);color:#fff;pointer-events:auto}
+.fv-vol-toggle .ic{width:15px;height:15px}
+.fv-vol-panel{position:absolute;right:calc(50% - 128px);top:50%;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:6px;padding:9px 7px;border-radius:16px;background:rgba(6,4,14,.86);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(10px);pointer-events:auto}
+.fv-vol-panel button{width:30px;height:30px;flex:none;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.1);color:#fff}
+.fv-vol-panel button .ic{width:15px;height:15px}
+.fv-vol-panel .fv-vol-mute{border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.18)}
+.fv-vol-vertical{width:8px;height:96px;writing-mode:vertical-lr;direction:rtl;accent-color:#fff;cursor:pointer}
+@media (max-width:520px){
+  .fv-vol-panel{right:12px;top:auto;bottom:74px;transform:none}
+  .fv-vol-vertical{height:80px}
+}
 
 /* Painel único de emojis e figurinhas do chat. */
 .chat-picker{position:absolute;bottom:calc(100% + 10px);left:8px;z-index:40;width:min(360px,calc(100vw - 24px));max-height:min(390px,64dvh);display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:0 20px 52px -16px rgba(0,0,0,.45);overflow:hidden}
@@ -2113,6 +2124,29 @@ html,body{max-width:100%;overflow-x:clip}
 .cl-lightbox-nav .ic{width:18px;height:18px}
 .cl-lightbox-nav.flip .ic{transform:rotate(180deg)}
 .cl-lightbox-count{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.8);font-size:12px;font-variant-numeric:tabular-nums}
+.clips-panel{position:absolute;right:0;top:0;bottom:0;z-index:8;width:min(380px,92vw);display:flex;flex-direction:column;gap:10px;padding:14px;background:var(--surface);border-left:1px solid var(--line);box-shadow:-18px 0 50px rgba(0,0,0,.45);color:var(--fg)}
+.clips-panel-head{display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.clips-panel-author{display:flex;align-items:center;gap:9px;flex:1;min-width:0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.clips-panel-author span{display:grid;gap:1px;min-width:0}
+.clips-panel-author b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clips-panel-author small{font-size:11px;color:var(--muted)}
+.clips-panel-title{display:flex;align-items:center;justify-content:space-between;font-size:13px}
+.clips-panel-title span{color:var(--muted);font-size:11px}
+.clips-panel-scroll{flex:1;min-height:0;overflow-y:auto;display:grid;gap:8px;align-content:start}
+.clips-comment{display:flex;gap:8px;align-items:flex-start;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer;font-size:12.5px;line-height:1.45}
+.clips-comment b{color:var(--accent);margin-right:4px}
+.clips-comment span{overflow-wrap:anywhere}
+.clips-panel-empty{color:var(--muted);font-size:12px;text-align:center;padding:18px 0}
+.clips-comment-form{display:flex;gap:6px;padding-top:8px;border-top:1px solid var(--line)}
+.clips-comment-form input{flex:1;min-width:0;padding:9px 11px;border-radius:999px;border:1px solid var(--line);background:var(--surface2);color:var(--fg);font:13px var(--f-body);outline:none}
+.clips-comment-form input:focus{border-color:var(--accent)}
+.clips-share-actions{display:grid;gap:8px;margin-top:4px}
+.clips-share-actions button{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface2);color:var(--fg);font:600 13px var(--f-body);text-align:left}
+.clips-share-actions button:hover{border-color:var(--accent);color:var(--accent)}
+.clips-share-actions .ic{width:18px;height:18px}
+@media (max-width:700px){
+  .clips-panel{top:auto;left:0;right:0;bottom:0;width:100%;max-height:62dvh;border-left:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0}
+}
 @media (max-width:560px){
   .clips-rail{bottom:104px;gap:12px}
   .clips-info{right:64px;bottom:44px}

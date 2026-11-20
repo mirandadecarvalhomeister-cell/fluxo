@@ -3,6 +3,8 @@ import { fmt } from '../lib/utils';
 import { mediaOf } from '../lib/media';
 import { userOf } from '../lib/selectors';
 import { useApp } from '../store/AppContext';
+import { REACTIONS, fxFor } from '../lib/reactionFx';
+import AnimatedEmoji from './AnimatedEmoji';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
 
@@ -24,6 +26,9 @@ export default function ClipsViewer() {
   const [expanded, setExpanded] = useState(false);
   const [progress, setProgress] = useState({ time: 0, duration: 0 });
   const [muted, setMuted] = useState(false);
+  const [reactionOpen, setReactionOpen] = useState(false);
+  const [panel, setPanel] = useState(null);
+  const [commentText, setCommentText] = useState('');
 
   const items = useMemo(() => {
     if (!data?.posts) return [];
@@ -41,6 +46,12 @@ export default function ClipsViewer() {
 
   const current = items[active];
   const close = useCallback(() => actions.closeClips(), [actions]);
+
+  useEffect(() => {
+    setPanel(null);
+    setReactionOpen(false);
+    setCommentText('');
+  }, [active]);
 
   // Trava a rolagem da página enquanto o visualizador está aberto.
   useEffect(() => {
@@ -202,20 +213,62 @@ export default function ClipsViewer() {
         <button type="button" onClick={() => actions.openUser(post.by)} aria-label={`Perfil de ${author.name}`}>
           <Avatar user={author} size={42} />
         </button>
+        <span className="clips-react-wrap">
+          <button
+            type="button"
+            className={post.myReaction ? 'on' : ''}
+            onClick={() => {
+              if (post.myReaction) actions.reactPost(post.id, post.myReaction);
+              else setReactionOpen((value) => !value);
+            }}
+            onMouseEnter={() => setReactionOpen(true)}
+            onMouseLeave={() => setReactionOpen(false)}
+            aria-label={post.myReaction ? 'Remover reação' : 'Reagir ao vídeo'}
+            aria-expanded={reactionOpen}
+          >
+            {post.myReaction ? (
+              <AnimatedEmoji emoji={post.myReaction} size={26} />
+            ) : (
+              <Icon name="heart" />
+            )}
+            <span>{fmt(post.likes || 0)}</span>
+          </button>
+          {reactionOpen ? (
+            <span className="clips-react-picker" role="menu" aria-label="Escolher reação">
+              {(ui.settings?.reactions?.length ? ui.settings.reactions : REACTIONS).map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  className={`fx-${fxFor(emoji)}${post.myReaction === emoji ? ' on' : ''}`}
+                  onClick={() => {
+                    actions.reactPost(post.id, emoji);
+                    setReactionOpen(false);
+                  }}
+                  aria-label={`Reagir com ${emoji}`}
+                >
+                  <AnimatedEmoji emoji={emoji} size={22} />
+                </button>
+              ))}
+            </span>
+          ) : null}
+        </span>
         <button
           type="button"
-          className={post.myReaction ? 'on' : ''}
-          onClick={() => actions.reactPost(post.id, '❤️')}
-          aria-label="Curtir vídeo"
+          className={panel === 'comments' ? 'on' : ''}
+          onClick={() => setPanel((value) => (value === 'comments' ? null : 'comments'))}
+          aria-label="Comentar vídeo"
+          aria-expanded={panel === 'comments'}
         >
-          <Icon name="heart" className={post.myReaction ? 'fill' : ''} />
-          <span>{fmt(post.likes || 0)}</span>
-        </button>
-        <button type="button" onClick={() => { close(); actions.openPost(post.id); }} aria-label="Comentar vídeo">
           <Icon name="comment" />
           <span>{fmt((post.comments || []).length)}</span>
         </button>
-        <button type="button" onClick={() => actions.openSharePost(post.id)} aria-label="Compartilhar vídeo">
+        <button
+          type="button"
+          className={panel === 'share' ? 'on' : ''}
+          onClick={() => setPanel((value) => (value === 'share' ? null : 'share'))}
+          aria-label="Compartilhar vídeo"
+          aria-expanded={panel === 'share'}
+        >
           <Icon name="share" />
         </button>
       </div>
@@ -237,6 +290,109 @@ export default function ClipsViewer() {
         <span style={{ width: `${Math.min(100, played)}%` }} />
         <small>{clock(progress.time)} / {clock(progress.duration)}</small>
       </div>
+
+      {panel ? (
+        <aside className="clips-panel" role="dialog" aria-label={panel === 'comments' ? 'Comentários' : 'Compartilhar'}>
+          <div className="clips-panel-head">
+            <button
+              type="button"
+              className="clips-panel-author"
+              onClick={() => { close(); actions.openUser(post.by); }}
+              aria-label={`Ver perfil de ${author.name}`}
+            >
+              <Avatar user={author} size={38} />
+              <span>
+                <b>{author.name}</b>
+                <small>{author.handle ? `@${author.handle}` : 'Ver perfil'}</small>
+              </span>
+            </button>
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={() => setPanel(null)}
+              aria-label="Fechar painel"
+            >
+              <Icon name="x" />
+            </button>
+          </div>
+
+          {panel === 'comments' ? (
+            <>
+              <div className="clips-panel-title">
+                <b>Comentários</b>
+                <span>{fmt((post.comments || []).length)}</span>
+              </div>
+              <div className="clips-panel-scroll">
+                {(post.comments || []).length ? (
+                  post.comments.map((comment) => {
+                    const person = userOf(data, comment.by);
+                    return (
+                      <button
+                        type="button"
+                        className="clips-comment"
+                        key={comment.id}
+                        onClick={() => { close(); actions.openUser(comment.by); }}
+                      >
+                        <Avatar user={person} size={30} />
+                        <span>
+                          <b>{person.name}</b> {comment.text}
+                        </span>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <p className="clips-panel-empty">Seja a primeira pessoa a comentar.</p>
+                )}
+              </div>
+              <form
+                className="clips-comment-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const value = commentText.trim();
+                  if (!value) return;
+                  actions.addComment(post.id, value);
+                  setCommentText('');
+                }}
+              >
+                <input
+                  value={commentText}
+                  onChange={(event) => setCommentText(event.target.value)}
+                  placeholder="Escreva um comentário…"
+                  aria-label="Escrever comentário"
+                  maxLength={500}
+                />
+                <button type="submit" className="icon-btn" aria-label="Enviar comentário">
+                  <Icon name="send" />
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="clips-share-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  const url = `${location.href.split('#')[0]}#feed`;
+                  navigator.clipboard?.writeText(url).then(
+                    () => actions.notify?.('Link copiado'),
+                    () => actions.notify?.('Não foi possível copiar')
+                  );
+                }}
+              >
+                <Icon name="link" /> Copiar link do vídeo
+              </button>
+              <button type="button" onClick={() => actions.sharePost(post.id)}>
+                <Icon name="share" /> Compartilhar
+              </button>
+              <button
+                type="button"
+                onClick={() => { close(); actions.openSharePost(post.id); }}
+              >
+                <Icon name="chat" /> Enviar para uma conversa
+              </button>
+            </div>
+          )}
+        </aside>
+      ) : null}
     </div>
   );
 }

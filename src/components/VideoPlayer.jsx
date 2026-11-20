@@ -185,6 +185,7 @@ function usePlayer(videoRef) {
 }
 
 function PlayerControls({ player, onClose, status }) {
+  const [volOpen, setVolOpen] = useState(false);
   const {
     playing,
     muted,
@@ -229,12 +230,50 @@ function PlayerControls({ player, onClose, status }) {
         <button
           className="fv-sound"
           type="button"
-          onClick={toggleMute}
-          aria-label={muted ? 'Ativar som' : 'Silenciar'}
+          onClick={() => setVolOpen((value) => !value)}
+          aria-label="Controles de volume"
+          aria-expanded={volOpen}
         >
           <Icon name={muted ? 'volumeoff' : 'volume'} />
-          <span>{muted ? 'Sem som' : 'Com som'}</span>
+          <span>Volume</span>
         </button>
+        {volOpen ? (
+          <div className="fv-vol-panel" role="group" aria-label="Ajustar volume">
+            <button
+              type="button"
+              onClick={() => setVolumeLevel(Math.min(1, (muted ? 0 : volume) + 0.1))}
+              aria-label="Aumentar volume"
+            >
+              <Icon name="plus" />
+            </button>
+            <input
+              className="fv-vol-vertical"
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={muted ? 0 : volume}
+              onChange={(event) => setVolumeLevel(event.target.value)}
+              aria-label="Volume do vídeo"
+              aria-orientation="vertical"
+            />
+            <button
+              type="button"
+              onClick={() => setVolumeLevel(Math.max(0, (muted ? 0 : volume) - 0.1))}
+              aria-label="Diminuir volume"
+            >
+              <Icon name="minus" />
+            </button>
+            <button
+              className="fv-vol-mute"
+              type="button"
+              onClick={toggleMute}
+              aria-label={muted ? 'Ativar som' : 'Silenciar'}
+            >
+              <Icon name={muted ? 'volumeoff' : 'volume'} />
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <div className="fv-bottom">
@@ -252,18 +291,15 @@ function PlayerControls({ player, onClose, status }) {
           <span>
             {clock(time)} / {clock(duration)}
           </span>
-          <label className="fv-vol">
+          <button
+            className="fv-vol-toggle"
+            type="button"
+            onClick={() => setVolOpen((value) => !value)}
+            aria-label="Abrir controle de volume"
+            aria-expanded={volOpen}
+          >
             <Icon name={muted ? 'volumeoff' : 'volume'} />
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={muted ? 0 : volume}
-              onChange={(event) => setVolumeLevel(event.target.value)}
-              aria-label="Volume do vídeo"
-            />
-          </label>
+          </button>
         </div>
       </div>
     </div>
