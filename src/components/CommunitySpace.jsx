@@ -3,6 +3,7 @@ import { useApp } from '../store/AppContext';
 import { fmt, hm } from '../lib/utils';
 import { art } from '../lib/art';
 import { mediaOf } from '../lib/media';
+import * as remote from '../lib/remote';
 import { MAX_OPTIONS } from '../lib/interactive';
 import { Avatar, LiveAvatar } from './Avatar';
 import EmojiPicker from './EmojiPicker';
@@ -525,6 +526,57 @@ export default function CommunitySpace({ community, onAdmin }) {
   const [clDesc, setClDesc] = useState('');
   const [clPrice, setClPrice] = useState('');
   const [clContact, setClContact] = useState('');
+  const [clImages, setClImages] = useState([]);
+  const [clUploading, setClUploading] = useState(false);
+  const [clLightbox, setClLightbox] = useState(null);
+  const clFileRef = useRef(null);
+
+  const pickClassifiedImages = (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!files.length) return;
+    const items = files
+      .filter((file) => file.type.startsWith('image/') && file.size <= 10 * 1024 * 1024)
+      .slice(0, Math.max(0, 6 - clImages.length))
+      .map((file) => ({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        file,
+        url: URL.createObjectURL(file),
+      }));
+    if (items.length < files.length) {
+      actions.notify?.('Use até 6 imagens de no máximo 10 MB cada.');
+    }
+    setClImages((current) => [...current, ...items].slice(0, 6));
+  };
+
+  const removeClassifiedImage = (id) => {
+    setClImages((current) => {
+      const item = current.find((entry) => entry.id === id);
+      if (item?.url) URL.revokeObjectURL(item.url);
+      return current.filter((entry) => entry.id !== id);
+    });
+  };
+
+  const uploadClassifiedImages = async () => {
+    const uidValue = data.me?.id || uid;
+    const uploaded = [];
+    for (const item of clImages) {
+      if (community.private) {
+        const result = await remote.uploadPrivateMedia(item.file, community.id, uidValue);
+        if (result) {
+          uploaded.push({ storagePath: result.path, storageBucket: result.bucket });
+        }
+      } else {
+        const url = await remote.uploadMedia(item.file, uidValue);
+        if (url) uploaded.push({ src: url });
+      }
+    }
+    clImages.forEach((item) => {
+      if (item.url) URL.revokeObjectURL(item.url);
+    });
+    setClImages([]);
+    return uploaded;
+  };
 
   // Comunidades abertas permitem que qualquer pessoa participe.
   const canPost = !community.private || community.joined || canManage;
@@ -1083,22 +1135,30 @@ export default function CommunitySpace({ community, onAdmin }) {
               {canPost ? (
                 <form
                   className="comm-form"
-                  onSubmit={(e) => {
+                  onSubmit={async (e) => {
                     e.preventDefault();
-                    if (!clTitle.trim()) return;
-                    actions.addCommunityClassifiedEntry({
-                      community_id: community.id,
-                      title: clTitle.trim(),
-                      category: clCat,
-                      description: clDesc.trim(),
-                      price: clPrice.trim(),
-                      contact: clContact.trim(),
-                      images: [],
-                    });
-                    setClTitle('');
-                    setClDesc('');
-                    setClPrice('');
-                    setClContact('');
+                    if (!clTitle.trim() || clUploading) return;
+                    setClUploading(true);
+                    try {
+                      const images = await uploadClassifiedImages();
+                      actions.addCommunityClassifiedEntry({
+                        community_id: community.id,
+                        title: clTitle.trim(),
+                        category: clCat,
+                        description: clDesc.trim(),
+                        price: clPrice.trim(),
+                        contact: clContact.trim(),
+                        images,
+                      });
+                      setClTitle('');
+                      setClDesc('');
+                      setClPrice('');
+                      setClContact('');
+                    } catch {
+                      actions.notify?.('Não foi possível enviar as imagens.');
+                    } finally {
+                      setClUploading(false);
+                    }
                   }}
                 >
                   <input
@@ -1136,8 +1196,31 @@ export default function CommunitySpace({ community, onAdmin }) {
                     value={clContact}
                     onChange={(e) => setClContact(e.target.value)}
                   />
-                  <button className="btn primary" type="submit">
-                    <Icon name="plus" /> Publicar anúncio
+                  <input
+                    ref={clFileRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    hidden
+                    onChange={pickClassifiedImages}
+                  />
+                  {clImages.length ? (
+                    <div className="cl-images">
+                      {clImages.map((item) => (
+                        <span className="cl-image" key={item.id}>
+                          <img src={item.url} alt="Foto do anúncio" />
+                          <button type="button" onClick={() => removeClassifiedImage(item.id)} aria-label="Remover foto">
+                            <Icon name="x" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  <button type="button" className="btn tonal sm" onClick={() => clFileRef.current?.click()}>
+                    <Icon name="camera" /> Adicionar fotos ({clImages.length}/6)
+                  </button>
+                  <button className="btn primary" type="submit" disabled={clUploading}>
+                    <Icon name="plus" /> {clUploading ? 'Enviando fotos…' : 'Publicar anúncio'}
                   </button>
                 </form>
               ) : null}
@@ -1155,6 +1238,39 @@ export default function CommunitySpace({ community, onAdmin }) {
                   .map((c) => (
                   <div key={c.id} className={`comm-classified${c.status === 'sold' ? ' sold' : ''}`}>
                     <div className="grow">
+                      {Array.isArray(c.images) && c.images.length ? (
+                        <div className="cl-card-images">
+                          {c.images.slice(0, 4).map((image, index) => {
+                            const src = typeof image === 'string' ? image : image?.src;
+                            if (image?.storagePath && image?.storageBucket) {
+                              return (
+                                <PrivateMedia
+                                  key={index}
+                                  path={image.storagePath}
+                                  bucket={image.storageBucket}
+                                  kind="photo"
+                                  className="cl-card-image"
+                                  alt={`Foto de ${c.title}`}
+                                />
+                              );
+                            }
+                            return src ? (
+                              <button
+                                key={index}
+                                type="button"
+                                className="cl-card-image-btn"
+                                onClick={() => setClLightbox({ images: c.images, index })}
+                                aria-label={`Ampliar foto ${index + 1}`}
+                              >
+                                <img className="cl-card-image" src={src} alt={`Foto de ${c.title}`} />
+                              </button>
+                            ) : null;
+                          })}
+                          {c.images.length > 4 ? (
+                            <span className="cl-card-more">+{c.images.length - 4}</span>
+                          ) : null}
+                        </div>
+                      ) : null}
                       <span className="pill">{c.category}</span>
                       {c.status === 'sold' ? <span className="pill hot">Vendido</span> : null}
                       <b>{c.title}</b>
@@ -1290,6 +1406,53 @@ export default function CommunitySpace({ community, onAdmin }) {
           ) : null}
         </main>
       </div>
+      {clLightbox ? (
+        <div className="cl-lightbox" role="dialog" aria-modal="true" onClick={() => setClLightbox(null)}>
+          <button type="button" className="icon-btn cl-lightbox-close" onClick={() => setClLightbox(null)} aria-label="Fechar">
+            <Icon name="x" />
+          </button>
+          <button
+            type="button"
+            className="cl-lightbox-nav prev"
+            onClick={(event) => {
+              event.stopPropagation();
+              setClLightbox((cur) => ({
+                ...cur,
+                index: (cur.index - 1 + cur.images.length) % cur.images.length,
+              }));
+            }}
+            aria-label="Foto anterior"
+          >
+            <Icon name="back" />
+          </button>
+          <img
+            src={
+              typeof clLightbox.images[clLightbox.index] === 'string'
+                ? clLightbox.images[clLightbox.index]
+                : clLightbox.images[clLightbox.index]?.src
+            }
+            alt="Foto do anúncio ampliada"
+            onClick={(event) => event.stopPropagation()}
+          />
+          <button
+            type="button"
+            className="cl-lightbox-nav next"
+            onClick={(event) => {
+              event.stopPropagation();
+              setClLightbox((cur) => ({
+                ...cur,
+                index: (cur.index + 1) % cur.images.length,
+              }));
+            }}
+            aria-label="Próxima foto"
+          >
+            <Icon name="back" className="flip" />
+          </button>
+          <span className="cl-lightbox-count">
+            {clLightbox.index + 1} / {clLightbox.images.length}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }
