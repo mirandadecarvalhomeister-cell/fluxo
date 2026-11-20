@@ -2091,14 +2091,23 @@ function ObsModal({ modal }) {
 function NotificationsModal() {
   const { data, ui, actions } = useApp();
   const notifications = data.notifications || [];
+  const communityNotifications = (data.commExtras?.notifications || []).map((row) => ({
+    id: row.id,
+    ts: row.created_at ? Date.parse(row.created_at) || 0 : 0,
+    communityId: row.community_id,
+    kind: row.kind,
+    payload: row.payload || {},
+    read: !!row.read,
+  }));
   const seen = ui.notifSeen || 0;
 
   useEffect(() => {
     // Ao abrir a lista, tudo conta como lido.
     actions.markNotifsSeen();
+    actions.markCommunityNotificationsRead?.();
   }, []);
 
-  if (!notifications.length) {
+  if (!notifications.length && !communityNotifications.length) {
     return (
       <div>
         <h2>Notificações</h2>
@@ -2160,6 +2169,34 @@ function NotificationsModal() {
                 </span>
               </span>
               {unread ? <span className="notif-dot" title="Nova" /> : null}
+            </button>
+          );
+        })}
+        {communityNotifications.map((n) => {
+          const community = data.comms?.find((c) => c.id === n.communityId);
+          const detail = n.payload?.text || n.payload?.title || n.payload?.body || '';
+          const description = n.kind
+            ? `${String(n.kind).replace(/_/g, ' ')}${detail ? `: ${detail}` : ''}`
+            : detail || 'Novidade na comunidade';
+          return (
+            <button
+              type="button"
+              className="share-person notif-row notif-community"
+              key={`comm:${n.id}`}
+              onClick={() => n.communityId && actions.openComm(n.communityId)}
+            >
+              <span className="notif-community-icon">
+                <Icon name="users" />
+              </span>
+              <span className="grow">
+                <b className="ell" style={{ display: 'block' }}>
+                  {community?.name || 'Comunidade'}
+                </b>
+                <span className="muted sm ell" style={{ display: 'block' }}>
+                  {description} · {ago(n.ts)}
+                </span>
+              </span>
+              {!n.read ? <span className="notif-dot" title="Nova" /> : null}
             </button>
           );
         })}

@@ -18,7 +18,8 @@ import { Icon } from './Icon';
 import Interactive from './Interactive';
 import { EditWrap } from './MediaEditor';
 import { FeedVideo } from './VideoPlayer';
-
+import AudioPlayer from './AudioPlayer';
+import PrivateAudio from './PrivateAudio';
 
 function MediaItem({ item, author, index }) {
   const [failedSrc, setFailedSrc] = useState(null);
@@ -30,7 +31,8 @@ function MediaItem({ item, author, index }) {
   const style = mediaDisplayStyle(edit);
 
   if (item.kind === 'audio') {
-    if (!item.src) {
+    const isPrivate = item.storageBucket === 'community-private' && item.storagePath;
+    if (!item.src && !isPrivate) {
       return (
         <div className="media-audio media-fallback">
           <Icon name="mic" /> Áudio indisponível
@@ -42,12 +44,24 @@ function MediaItem({ item, author, index }) {
         <span className="media-audio-ic">
           <Icon name="mic" />
         </span>
-        <audio
-          controls
-          preload="metadata"
-          src={item.src}
-          aria-label={`Áudio publicado por ${author.name}`}
-        />
+        {isPrivate ? (
+          <PrivateAudio
+            path={item.storagePath}
+            bucket={item.storageBucket}
+            duration={item.duration || item.dur}
+            waves={item.waves}
+            sender={author.name}
+            className="media-audio-player"
+          />
+        ) : (
+          <AudioPlayer
+            src={item.src}
+            duration={item.duration || item.dur}
+            waves={item.waves}
+            sender={author.name}
+            className="media-audio-player"
+          />
+        )}
       </div>
     );
   }

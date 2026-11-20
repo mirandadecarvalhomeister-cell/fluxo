@@ -1923,3 +1923,134 @@ html,body{max-width:100%;overflow-x:clip}
 .flag-emoji{display:inline-block;vertical-align:-0.14em;object-fit:contain;border-radius:2px;flex:none}
 .flag-emoji.msg-emoji{width:1.25em;height:1.25em}
 .emoji-grid .flag-emoji,.emoji-suggested .flag-emoji{vertical-align:middle}
+
+/* ==========================================================================
+   Áudio profissional e gravador gestual (VibeFluxo)
+   Player comum para chat, comunidade e publicações: onda, progresso,
+   -5s/+5s e velocidades 1x/1,5x/2x com reprodução exclusiva.
+   ========================================================================== */
+.audio-player{display:flex;align-items:center;gap:9px;min-width:200px;max-width:360px;width:100%;padding:5px 8px;border-radius:14px;background:rgba(255,255,255,.1)}
+.audio-player audio{display:none}
+.b.them .audio-player,.comm-chat-bubble .audio-player,.vr-review .audio-player{background:color-mix(in srgb,var(--fg) 9%,transparent)}
+.audio-player-play{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:#fff;box-shadow:0 5px 14px -6px color-mix(in srgb,var(--accent) 80%,transparent);transition:transform .12s}
+.audio-player-play:active{transform:scale(.93)}
+.audio-player-play .ic{width:16px;height:16px}
+.audio-player-main{flex:1;min-width:0;display:grid;gap:4px}
+.audio-player-wave{display:flex;align-items:center;gap:2px;height:24px;min-width:0;cursor:pointer;touch-action:none;outline:none}
+.audio-player-wave span{flex:1 1 0;min-width:2px;border-radius:999px;background:color-mix(in srgb,var(--fg) 26%,transparent);transition:background .12s ease}
+.audio-player-wave span.on{background:var(--accent)}
+.audio-player-wave:focus-visible{box-shadow:0 0 0 2px var(--accent);border-radius:6px}
+.audio-player-meta{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.audio-player-meta button{border:0;background:transparent;color:var(--muted);font:700 11px var(--f-body);padding:0 1px;cursor:pointer;line-height:1}
+.audio-player-meta button:hover,.audio-player-meta button:focus-visible{color:var(--accent)}
+.audio-player-sender{opacity:.78;max-width:86px;overflow:hidden;text-overflow:ellipsis}
+.audio-player-speed{flex:none;min-width:36px;padding:4px 5px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:700 10.5px var(--f-body)}
+.audio-player-speed:hover{border-color:var(--accent);color:var(--accent)}
+.audio-msg{min-width:200px;max-width:360px;padding:2px}
+.att-audio .audio-player{width:100%;max-width:none}
+.comm-chat-bubble .audio-player{max-width:min(330px,72vw)}
+.media-audio .media-audio-player{flex:1;min-width:0;max-width:none;background:transparent;padding:0}
+.media-audio audio{flex:1;min-width:0;height:38px}
+
+/* Gravador: botão, destinos de gesto e painéis flutuantes. */
+.voice-recorder{position:relative;display:flex;align-items:flex-end;flex:none}
+.voice-recorder .mic-btn{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.vr-mic-wrap{display:flex;align-items:flex-end;transition:transform .07s linear;will-change:transform}
+.vr-mic-wrap.held{z-index:4}
+.vr-cancel-target,.vr-lock-target{position:absolute;z-index:3;pointer-events:none;transition:opacity .12s,transform .12s,color .12s,border-color .12s}
+.vr-cancel-target{left:-6px;bottom:0;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:var(--hot);color:#fff;transform:translateX(-22px) scale(.78);box-shadow:0 8px 24px -10px rgba(0,0,0,.7)}
+.vr-cancel-target .ic{width:20px;height:20px}
+.vr-cancel-target.hot{transform:translateX(0) scale(1.16);box-shadow:0 0 0 7px color-mix(in srgb,var(--hot) 22%,transparent)}
+.vr-lock-target{left:50%;bottom:56px;transform:translate(-50%,10px);display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 11px;border-radius:14px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-size:10px;white-space:nowrap;box-shadow:var(--shadow)}
+.vr-lock-target .ic{width:18px;height:18px}
+.vr-lock-target.hot{color:var(--accent);border-color:var(--accent);transform:translate(-50%,0) scale(1.06);box-shadow:0 0 0 4px var(--accent-soft)}
+.vr-floating{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(12,8,30,.94);border:1px solid rgba(255,255,255,.14);color:#fff;box-shadow:var(--shadow);white-space:nowrap;pointer-events:none}
+.vr-floating.cancel{background:rgba(122,17,45,.95);border-color:var(--hot)}
+.vr-floating b{font-variant-numeric:tabular-nums;font-size:13px}
+.vr-floating small{font-size:10px;opacity:.78}
+.vr-rec-dot{width:9px;height:9px;border-radius:50%;background:var(--hot);animation:blink 1s infinite;flex:none}
+.vr-floating-wave,.vr-locked-wave{display:flex;align-items:center;gap:2px;height:20px}
+.vr-floating-wave i{width:2px;border-radius:2px;background:var(--accent);animation:vr-breathe .65s ease-in-out infinite alternate}
+@keyframes vr-breathe{from{transform:scaleY(.5)}to{transform:scaleY(1)}}
+.vr-locked{display:flex;align-items:center;gap:7px;max-width:min(320px,62vw);padding:5px 8px;border-radius:20px;background:color-mix(in srgb,var(--hot) 13%,var(--surface2));border:1px solid color-mix(in srgb,var(--hot) 38%,var(--line))}
+.vr-lock-badge{width:28px;height:28px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--hot);color:#fff}
+.vr-lock-badge .ic{width:15px;height:15px}
+.vr-locked b{font-size:13px;font-variant-numeric:tabular-nums}
+.vr-locked-wave{width:64px}
+.vr-locked-wave i{width:2px;min-height:3px;border-radius:2px;background:var(--hot);opacity:.85}
+.vr-stop,.vr-delete{width:32px;height:32px;flex:none;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.vr-stop{background:var(--accent);border-color:transparent;color:#fff}
+.vr-delete{color:var(--hot)}
+.vr-stop .ic,.vr-delete .ic{width:15px;height:15px}
+.vr-review,.vr-uploading,.vr-error,.vr-processing{position:absolute;left:0;bottom:calc(100% + 8px);z-index:20;width:min(440px,calc(100vw - 24px));padding:8px;border-radius:16px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+.vr-review{display:grid;gap:8px}
+.vr-review-player{width:100%;max-width:none}
+.vr-review-actions{display:flex;justify-content:flex-end;gap:8px}
+.vr-review-actions button{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface2);color:var(--fg)}
+.vr-review-actions button:hover{border-color:var(--accent);color:var(--accent)}
+.vr-review-actions .vr-send{background:var(--accent);border-color:transparent;color:#fff}
+.vr-review-actions .vr-send:hover{background:var(--accent);color:#fff;filter:brightness(1.08)}
+.vr-review-actions .ic{width:16px;height:16px}
+.vr-uploading,.vr-error,.vr-processing{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:12px;font-size:13px;color:var(--muted)}
+.vr-spinner{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:vr-spin .7s linear infinite}
+@keyframes vr-spin{to{transform:rotate(360deg)}}
+.vr-error button{padding:5px 9px;border-radius:8px;border:1px solid var(--line);background:var(--surface2);color:var(--accent);font-size:12px;font-weight:600}
+.vr-error button:hover{border-color:var(--accent)}
+@media (max-width:560px){
+  .audio-player{min-width:170px;gap:7px;padding:4px 6px}
+  .audio-player-sender{max-width:64px}
+  .vr-review,.vr-uploading,.vr-error,.vr-processing{left:-56px;width:calc(100vw - 20px)}
+  .vr-locked{gap:5px;padding:4px 6px}
+  .vr-locked-wave{width:40px}
+}
+@media (prefers-reduced-motion:reduce){
+  .vr-floating-wave i,.vr-rec-dot,.vr-spinner{animation:none}
+  .vr-mic-wrap,.vr-cancel-target,.vr-lock-target{transition:none}
+}
+
+/* Envio múltiplo de fotos/vídeos no chat direto. */
+.msg-caption{margin:0 0 4px;font-size:13px;line-height:1.35;overflow-wrap:anywhere}
+.msg-pending{display:grid;gap:8px;padding:8px;border-radius:16px;background:var(--surface2);border:1px solid var(--line)}
+.msg-pending-list{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.msg-pending-item{position:relative;flex:none;width:104px;display:grid;gap:4px}
+.msg-pending-item img,.msg-pending-item video{width:104px;height:78px;object-fit:cover;border-radius:10px;border:1px solid var(--line);background:var(--surface)}
+.msg-pending-item.sending img,.msg-pending-item.sending video{opacity:.55}
+.msg-pending-item.sent{opacity:.45}
+.msg-pending-remove{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.68);color:#fff}
+.msg-pending-remove .ic{width:12px;height:12px}
+.msg-pending-caption{width:104px;padding:5px 6px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:12px var(--f-body);outline:none}
+.msg-pending-caption:focus{border-color:var(--accent)}
+.msg-pending-status,.msg-pending-retry{font-size:10px;color:var(--muted)}
+.msg-pending-retry{justify-self:start;border:0;background:transparent;color:var(--hot);font-weight:700;cursor:pointer;padding:0}
+.msg-pending-send{justify-self:end;gap:6px;min-height:34px;padding:6px 12px;font-size:13px}
+.msg-pending-send .ic{width:14px;height:14px}
+
+/* Respostas e reações no chat da comunidade. */
+.comm-chat-actions{display:flex;gap:6px;align-items:center;padding-top:2px;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+.comm-chat-actions button,.comm-chat-comment button{display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;color:var(--muted);font:600 11px var(--f-body);padding:3px 4px;border-radius:7px;cursor:pointer}
+.comm-chat-actions button:hover,.comm-chat-comment button:hover{color:var(--accent);background:var(--surface2)}
+.comm-chat-actions button.on{color:var(--hot)}
+.comm-chat-actions .ic,.comm-chat-comment .ic{width:14px;height:14px}
+.comm-chat-comments{display:grid;gap:4px;padding:6px 8px;border-radius:10px;background:color-mix(in srgb,var(--surface) 78%,transparent);border-left:2px solid var(--accent)}
+.comm-chat-comment{display:flex;align-items:baseline;gap:5px;font-size:12px;line-height:1.35;overflow-wrap:anywhere}
+.comm-chat-comment.reply{margin-left:12px;opacity:.88}
+.comm-chat-comment b{color:var(--accent);white-space:nowrap}
+.comm-reply-banner{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:10px;background:var(--accent-soft);color:var(--fg);font-size:12px}
+.comm-reply-banner .ic{width:15px;height:15px}
+.comm-reply-banner b{color:var(--accent)}
+.comm-reply-banner button{margin-left:auto;display:grid;place-items:center;border:0;background:transparent;color:var(--muted)}
+.notif-community-icon{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+.notif-community-icon .ic{width:19px;height:19px}
+.comm-gallery-filters{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.comm-gallery-filters button{padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--surface2);color:var(--muted);font:600 12px var(--f-body)}
+.comm-gallery-filters button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.comm-gallery-file{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:110px;padding:10px;color:var(--muted);font-size:12px;text-align:center}
+.comm-gallery-file .ic{width:30px;height:30px}
+.comm-gallery-locate{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;border:0;background:transparent;color:var(--accent);font:600 11px var(--f-body);padding:0;cursor:pointer}
+.comm-gallery-locate .ic{width:12px;height:12px}
+.private-audio{display:flex;align-items:center;gap:8px;min-width:190px;max-width:340px;padding:7px 10px;border-radius:12px;background:color-mix(in srgb,var(--fg) 8%,transparent);color:var(--muted);font-size:12px}
+.private-audio .ic{width:18px;height:18px;flex:none}
+.private-audio span{flex:1}
+.private-audio button{border:0;background:transparent;color:var(--accent);font:700 11px var(--f-body);cursor:pointer;padding:0}
+.media-audio-player.private-audio{padding:0;background:transparent;max-width:none}
+

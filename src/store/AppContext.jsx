@@ -2178,18 +2178,62 @@ export function AppProvider({ children }) {
     window.scrollTo(0, 0);
   };
 
-  // Áudio enviado direto no chat da comunidade (barra de digitação).
-  async function sendCommunityAudio(communityId, blob) {
-    if (!communityId || !blob) return;
-    const file = new File([blob], `audio-${Date.now()}.webm`, {
-      type: blob.type || 'audio/webm',
-    });
-    let src = URL.createObjectURL(blob);
+  // Notificações persistentes das comunidades (tabela community_notifications).
+  function markCommunityNotificationsRead() {
+    const rows = dataRef.current?.commExtras?.notifications || [];
+    const unread = rows.filter((row) => !row.read);
+    if (!unread.length) return;
     if (sessionRef.current?.id) {
-      const uploaded = await remote.uploadMedia(file, sessionRef.current.id);
-      if (uploaded) src = uploaded;
+      unread.forEach((row) => remote.setCommunityNotificationRead(row.id));
     }
-    const media = [{ kind: 'audio', src, name: file.name }];
+    setData((cur) => ({
+      ...cur,
+      commExtras: {
+        ...(cur.commExtras || {}),
+        notifications: (cur.commExtras?.notifications || []).map((row) =>
+          row.read ? row : { ...row, read: true }
+        ),
+      },
+    }));
+  }
+
+  // Áudio enviado direto no chat da comunidade (barra de digitação).
+  async function sendCommunityAudio(communityId, blob, meta = {}) {
+    if (!communityId || !blob) return;
+    const mime = meta.mime || blob.type || 'audio/webm';
+    const name = `audio-${Date.now()}.${mime.includes('mp4') ? 'm4a' : 'webm'}`;
+    const privateCommunity = !!dataRef.current?.comms?.find(
+      (community) => community.id === communityId
+    )?.private;
+    let src = privateCommunity ? '' : URL.createObjectURL(blob);
+    let storagePath = null;
+    let storageBucket = null;
+    if (sessionRef.current?.id) {
+      const uploaded = await remote.uploadCommunityAudio(
+        blob,
+        communityId,
+        sessionRef.current.id,
+        mime,
+        privateCommunity
+      );
+      if (!uploaded && privateCommunity) {
+        throw new Error('Não foi possível enviar o áudio para esta comunidade.');
+      }
+      if (uploaded) {
+        src = uploaded.url || '';
+        storagePath = uploaded.path;
+        storageBucket = uploaded.bucket;
+      }
+    }
+    const media = [{
+      kind: 'audio',
+      src,
+      name,
+      duration: Math.max(1, Number(meta.duration) || 0),
+      waves: Array.isArray(meta.waves) ? meta.waves.slice(0, 96) : [],
+      storagePath,
+      storageBucket,
+    }];
     const post = {
       id: uid(),
       by: 'me',
@@ -2856,21 +2900,27 @@ export function AppProvider({ children }) {
     });
   }
 
-  function addComment(postId, text) {    const trimmed = text.trim();
+  function addComment(postId, text, parentId = null) {
+    const trimmed = String(text || '').trim();
     if (!trimmed) return;
     const post = dataRef.current?.posts.find((p) => p.id === postId);
     if (post?.commentsDisabled) {
       toast('Os comentários desta publicação estão desativados.');
       return;
     }
-    const comment = { id: uid(), by: 'me', text: trimmed, ts: Date.now() };
+    const comment = {
+      id: uid(), by: 'me', text: trimmed, ts: Date.now(),
+      ...(parentId ? { parentId } : {}),
+    };
     setData((cur) => ({
       ...cur,
       posts: cur.posts.map((p) =>
-        p.id === postId ? { ...p, comments: [...p.comments, comment] } : p
+        p.id === postId ? { ...p, comments: [...(p.comments || []), comment] } : p
       ),
     }));
-    if (sessionRef.current?.id) remote.addComment(comment, postId, sessionRef.current.id);
+    if (sessionRef.current?.id) {
+      remote.addComment(comment, postId, sessionRef.current.id, parentId);
+    }
   }
 
   function reactComment(postId, commentId) {
@@ -4016,7 +4066,7 @@ export function AppProvider({ children }) {
     presenceRef.current?.sendTyping(to);
   }
 
-  async function sendChatFile(file, kind) {
+  async function sendChatFile(file, kind, caption = '') {
     if (!file) return;
     if (file.size > 12 * 1024 * 1024) {
       toast('Arquivo muito grande (máximo de 12 MB).');
@@ -4032,10 +4082,32 @@ export function AppProvider({ children }) {
         src,
         name: file.name || 'arquivo',
         mime: file.type || '',
+        ...(caption ? { caption } : {}),
       });
     } catch {
       toast('Não foi possível ler esse arquivo.');
     }
+  }
+
+  /** Variante usada pelo envio múltiplo: propaga falha para permitir retry. */
+  async function sendChatMedia(file, kind, caption = '') {
+    if (!file) throw new Error('Arquivo vazio.');
+    if (file.size > 12 * 1024 * 1024) {
+      throw new Error('Arquivo muito grande (máximo de 12 MB).');
+    }
+    const src =
+      kind === 'photo'
+        ? await fileToDataURL(file, 1600)
+        : await fileToRawDataURL(file);
+    const message = sendMessage('', {
+      kind,
+      src,
+      name: file.name || 'arquivo',
+      mime: file.type || '',
+      ...(caption ? { caption } : {}),
+    });
+    if (!message) throw new Error('Não foi possível enviar o arquivo.');
+    return message;
   }
 
   async function sendChatBlob(blob, kind, name) {
@@ -4055,6 +4127,39 @@ export function AppProvider({ children }) {
     } catch {
       toast('Não foi possível processar a gravação.');
     }
+  }
+
+  /**
+   * Envio de áudio do gravador gestual. Prefere o bucket `audio` (contrato
+   * idêntico ao mobile) e mantém fallback local quando não há sessão.
+   * Nunca é chamado automaticamente: o gravador exige confirmação explícita.
+   */
+  async function sendChatAudio(blob, meta = {}) {
+    if (!blob || !blob.size) throw new Error('Gravação vazia.');
+    if (blob.size > 5 * 1024 * 1024) {
+      throw new Error('Áudio muito grande (máximo de 5 MB).');
+    }
+    const session = sessionRef.current;
+    const uploaded = session?.id
+      ? await remote.uploadAudio(blob, session.id, meta.mime || blob.type)
+      : null;
+    let src = uploaded?.url;
+    if (!src) {
+      // Sem sessão ou falha no Storage: mantém compatibilidade com o
+      // comportamento anterior usando data URL local.
+      src = await fileToRawDataURL(blob);
+    }
+    const message = sendMessage('', {
+      kind: 'audio',
+      src,
+      name: `audio-${Date.now()}.${(meta.mime || '').includes('mp4') ? 'm4a' : 'webm'}`,
+      mime: meta.mime || blob.type || 'audio/webm',
+      duration: Math.max(1, Number(meta.duration) || 0),
+      waves: Array.isArray(meta.waves) ? meta.waves.slice(0, 96) : [],
+      storagePath: uploaded?.path || null,
+    });
+    if (!message) throw new Error('Não foi possível enviar o áudio.');
+    return message;
   }
 
   function likeMessage(chatId, index) {
@@ -5070,6 +5175,7 @@ export function AppProvider({ children }) {
     openSettings: () => setUi((u) => ({ ...u, modal: { type: 'settings' } })),
     openNotifications: () => setUi((u) => ({ ...u, modal: { type: 'notifications' } })),
     markNotifsSeen,
+    markCommunityNotificationsRead,
     setSetting,
     createStickerPack,
     addStickerToPack,
@@ -5138,7 +5244,9 @@ export function AppProvider({ children }) {
     sendMessageTo,
     sendTyping,
     sendChatFile,
+    sendChatMedia,
     sendChatBlob,
+    sendChatAudio,
     viewPost,
     likeMessage,
     editMessage,

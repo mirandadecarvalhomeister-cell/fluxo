@@ -15,13 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import {
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-  useAudioRecorder,
-  useAudioRecorderState,
-} from 'expo-audio';
+
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Location from 'expo-location';
@@ -30,6 +24,7 @@ import { getConversation, uploadAudio, uploadMedia } from '../lib/api';
 import { colors, radius, spacing } from '../lib/theme';
 import { AvatarView, EmptyState } from '../components/Ui';
 import AudioBubble from '../components/AudioBubble';
+import VoiceRecorderSheet from '../components/VoiceRecorderSheet';
 import AnimatedEmoji from '../components/AnimatedEmoji';
 import { timeAgo } from '../lib/format';
 import type { DirectMessage } from '../types';
@@ -147,50 +142,23 @@ export default function ChatScreen({ userId }: { userId: string }) {
   const listRef = useRef<FlatList<DirectMessage>>(null);
   const other = users[userId];
 
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recState = useAudioRecorderState(recorder);
-  const [recording, setRecording] = useState(false);
-  const recStartRef = useRef(0);
-
-  const startRecording = async () => {
-    if (recording || sending) return;
+  const sendVoice = async (uri: string, meta: { duration: number; waves: number[] }) => {
+    if (!profile?.id) throw new Error('Perfil indisponível.');
+    setSending(true);
     try {
-      const perm = await requestRecordingPermissionsAsync();
-      if (!perm.granted) { actions.toast('Permissão de microfone negada.'); return; }
-      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
-      await recorder.prepareToRecordAsync();
-      recorder.record();
-      recStartRef.current = Date.now();
-      setRecording(true);
-    } catch (e: any) {
-      actions.toast(e?.message || 'Não foi possível iniciar a gravação.');
-    }
-  };
-
-  const finishRecording = async () => {
-    if (!recording) return;
-    setRecording(false);
-    const elapsed = Math.max(1, Math.round((Date.now() - recStartRef.current) / 1000));
-    try {
-      await recorder.stop();
-      const uri = recorder.uri;
-      if (!uri || !profile?.id) return;
-      setSending(true);
-      const uploaded = await uploadAudio({ uri, userId: profile.id, duration: elapsed });
+      const uploaded = await uploadAudio({ uri, userId: profile.id, duration: meta.duration });
       const sent = await actions.sendMessage(userId, '', {
         kind: 'audio',
         media: uploaded.url,
-        duration: elapsed,
+        duration: meta.duration,
+        waves: meta.waves,
         fileName: uploaded.path,
       });
+      if (!sent) throw new Error('Não foi possível enviar o áudio.');
+      setMessages((cur) => [...cur, sent]);
+      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+    } finally {
       setSending(false);
-      if (sent) {
-        setMessages((cur) => [...cur, sent]);
-        requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
-      }
-    } catch (e: any) {
-      setSending(false);
-      actions.toast(e?.message || 'Não foi possível enviar o áudio.');
     }
   };
 
@@ -407,14 +375,6 @@ export default function ChatScreen({ userId }: { userId: string }) {
           />
         )}
 
-        {recording ? (
-          <View style={styles.recBar}>
-            <View style={styles.recDot} />
-            <Text style={styles.recText}>Gravando · solte para enviar</Text>
-            <Text style={styles.recTime}>{Math.floor((recState.durationMillis || 0) / 1000)}s</Text>
-          </View>
-        ) : null}
-
         {editingId ? (
           <View style={styles.editBar}>
             <View style={{ flex: 1 }}>
@@ -448,15 +408,11 @@ export default function ChatScreen({ userId }: { userId: string }) {
                 <Ionicons name="send" size={18} color="#fff" />
               </Pressable>
             ) : (
-              <Pressable
-                onPressIn={startRecording}
-                onPressOut={finishRecording}
-                style={[styles.sendBtn, recording && styles.sendBtnRecording]}
-                hitSlop={6}
-                accessibilityLabel="Segure para gravar áudio"
-              >
-                <Ionicons name={recording ? 'radio' : 'mic'} size={20} color="#fff" />
-              </Pressable>
+              <VoiceRecorderSheet
+                onSend={sendVoice}
+                disabled={sending}
+                onError={(message) => actions.toast(message)}
+              />
             )}
           </View>
           {showEmoji ? (

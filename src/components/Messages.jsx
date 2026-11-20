@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { art } from '../lib/art';
 import { userOf } from '../lib/selectors';
 import { fileToDataURL, hm } from '../lib/utils';
@@ -11,6 +11,8 @@ import { Icon } from './Icon';
 import { VideoViewer } from './VideoPlayer';
 import AnimatedEmoji from './AnimatedEmoji';
 import EmojiText from './EmojiText';
+import AudioPlayer from './AudioPlayer';
+import VoiceRecorder from './VoiceRecorder';
 import { hasAnimatedEmoji } from '../lib/animatedEmoji';
 
 // Mensagens formadas só por emojis aparecem grandes já no campo de digitação.
@@ -73,6 +75,25 @@ const fmtTime = (seconds) =>
   `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(
     Math.floor(seconds % 60)
   ).padStart(2, '0')}`;
+
+const dayKey = (ts) => {
+  const date = new Date(ts);
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+};
+
+const dayLabel = (ts) => {
+  const date = new Date(ts);
+  const now = new Date();
+  if (dayKey(ts) === dayKey(now.getTime())) return 'Hoje';
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (dayKey(ts) === dayKey(yesterday.getTime())) return 'Ontem';
+  return date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'long',
+    ...(date.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
+  });
+};
 
 const PREVIEW_MAX = 64;
 
@@ -209,84 +230,15 @@ function ArenaAttachment({ attachment, onOpenArena }) {
   );
 }
 
-function AudioMessage({ src }) {
-  const audioRef = useRef(null);
-  const [playing, setPlaying] = useState(false);
-  const [time, setTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return undefined;
-    const onTime = () => setTime(audio.currentTime || 0);
-    const onMeta = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
-    const onEnd = () => {
-      setPlaying(false);
-      setTime(0);
-    };
-    audio.addEventListener('timeupdate', onTime);
-    audio.addEventListener('loadedmetadata', onMeta);
-    audio.addEventListener('durationchange', onMeta);
-    audio.addEventListener('ended', onEnd);
-    return () => {
-      audio.removeEventListener('timeupdate', onTime);
-      audio.removeEventListener('loadedmetadata', onMeta);
-      audio.removeEventListener('durationchange', onMeta);
-      audio.removeEventListener('ended', onEnd);
-      audio.pause();
-    };
-  }, [src]);
-
-  const toggle = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (audio.paused) {
-      audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
-    } else {
-      audio.pause();
-      setPlaying(false);
-    }
-  };
-
-  const seek = (event) => {
-    const audio = audioRef.current;
-    if (!audio || !duration) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-    audio.currentTime = ratio * duration;
-    setTime(audio.currentTime);
-  };
-
-  const progress = duration ? Math.min(100, (time / duration) * 100) : 0;
-  const shown = duration ? duration : time;
-
+function AudioMessage({ src, duration, waves, sender }) {
   return (
-    <div className="audio-msg">
-      <audio ref={audioRef} src={src} preload="metadata" />
-      <button
-        type="button"
-        className="audio-play"
-        onClick={toggle}
-        aria-label={playing ? 'Pausar áudio' : 'Reproduzir áudio'}
-        title={playing ? 'Pausar' : 'Reproduzir'}
-      >
-        <Icon name={playing ? 'pause' : 'play'} />
-      </button>
-      <div className="audio-main">
-        <button
-          type="button"
-          className="audio-bar"
-          onClick={seek}
-          aria-label="Avançar no áudio"
-        >
-          <span style={{ width: `${progress}%` }} />
-        </button>
-        <div className="audio-times">
-          <span>{fmtTime(time)}</span>
-          <span>{fmtTime(shown)}</span>
-        </div>
-      </div>
-    </div>
+    <AudioPlayer
+      src={src}
+      duration={duration}
+      waves={waves}
+      sender={sender}
+      className="audio-msg"
+    />
   );
 }
 
@@ -341,7 +293,7 @@ function QuizAttachment({ attachment }) {
   );
 }
 
-function Attachment({ attachment, onOpen, onForward, onOpenArena }) {
+function Attachment({ attachment, onOpen, onForward, onOpenArena, sender }) {
   if (attachment.kind === 'post') {
     return <PostAttachment attachment={attachment} />;
   }
@@ -418,7 +370,14 @@ function Attachment({ attachment, onOpen, onForward, onOpenArena }) {
     );
   }
   if (attachment.kind === 'audio') {
-    return <AudioMessage src={attachment.src} />;
+    return (
+      <AudioMessage
+        src={attachment.src}
+        duration={attachment.duration}
+        waves={attachment.waves}
+        sender={sender}
+      />
+    );
   }
   return (
     <button
@@ -609,12 +568,16 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia, onForw
               />
             ) : null;
           })()}
+          {message.attachment?.caption ? (
+            <p className="msg-caption">{message.attachment.caption}</p>
+          ) : null}
           {message.attachment ? (
             <Attachment
               attachment={message.attachment}
               onOpen={openMedia}
               onForward={forwardMessage}
               onOpenArena={actions.openArena}
+              sender={message.me ? 'Você' : author?.name}
             />
           ) : null}
           <span className="meta">
@@ -1284,23 +1247,15 @@ export default function Messages() {
   const [editText, setEditText] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [menuDragY, setMenuDragY] = useState(0);
-  const [recording, setRecording] = useState(false);
-  const [holding, setHolding] = useState(false);
-  const [cancelHint, setCancelHint] = useState(false);
-  const [recordSeconds, setRecordSeconds] = useState(0);
+  const [pending, setPending] = useState([]);
+  const pendingRef = useRef([]);
+  pendingRef.current = pending;
   const boxRef = useRef(null);
   const formRef = useRef(null);
   const inputRef = useRef(null);
   const mediaInputRef = useRef(null);
   const fileInputRef = useRef(null);
   const wallInputRef = useRef(null);
-  const recorderRef = useRef(null);
-  const chunksRef = useRef([]);
-  const timerRef = useRef(null);
-  const discardRef = useRef(false);
-  const canceledRef = useRef(false);
-  const holdRef = useRef(null);
-  const startedAtRef = useRef(0);
   const inputHoldRef = useRef(null);
   const caretRef = useRef({ start: 0, end: 0 });
   const backRef = useRef(actions.backChat);
@@ -1379,10 +1334,7 @@ export default function Messages() {
 
   useEffect(
     () => () => {
-      clearInterval(timerRef.current);
       clearTimeout(inputHoldRef.current?.id);
-      discardRef.current = true;
-      if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
     },
     []
   );
@@ -1452,13 +1404,64 @@ export default function Messages() {
   };
 
   const pickMedia = (event) => {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files || []);
     event.target.value = '';
     closeLayer(() => setAttachOpen(false));
-    if (!file) return;
-    const kind = file.type.startsWith('image/') ? 'photo' : 'video';
-    actions.sendChatFile(file, kind);
+    if (!files.length) return;
+    const items = files.slice(0, 10).map((file) => ({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      file,
+      url: URL.createObjectURL(file),
+      kind: file.type.startsWith('video/') ? 'video' : 'photo',
+      caption: '',
+      status: 'ready',
+    }));
+    setPending((current) => [...current, ...items].slice(0, 10));
   };
+
+  const removePending = (id) => {
+    setPending((current) => {
+      const item = current.find((entry) => entry.id === id);
+      if (item?.url) URL.revokeObjectURL(item.url);
+      return current.filter((entry) => entry.id !== id);
+    });
+  };
+
+  const updatePending = (id, patch) =>
+    setPending((current) =>
+      current.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry))
+    );
+
+  const sendPending = async () => {
+    const items = pending.filter((entry) => entry.status !== 'sent');
+    if (!items.length) return;
+    for (const item of items) {
+      updatePending(item.id, { status: 'sending' });
+      try {
+        await actions.sendChatMedia(item.file, item.kind, item.caption);
+        updatePending(item.id, { status: 'sent' });
+      } catch (error) {
+        updatePending(item.id, { status: 'error', error: error?.message });
+      }
+    }
+    window.setTimeout(() => {
+      setPending((current) => {
+        current.filter((entry) => entry.status === 'sent').forEach((entry) => {
+          if (entry.url) URL.revokeObjectURL(entry.url);
+        });
+        return current.filter((entry) => entry.status !== 'sent');
+      });
+    }, 500);
+  };
+
+  useEffect(
+    () => () => {
+      pendingRef.current.forEach((entry) => {
+        if (entry.url) URL.revokeObjectURL(entry.url);
+      });
+    },
+    []
+  );
 
   const pickFile = (event) => {
     const file = event.target.files?.[0];
@@ -1477,113 +1480,6 @@ export default function Messages() {
     } catch {
       actions.notify('Não foi possível usar essa imagem.');
     }
-  };
-
-  const startAudio = async () => {
-    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-      actions.notify('Gravação de áudio não é suportada neste navegador.');
-      setHolding(false);
-      holdRef.current = null;
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      if (!holdRef.current || canceledRef.current) {
-        stream.getTracks().forEach((track) => track.stop());
-        setHolding(false);
-        return;
-      }
-      const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((type) =>
-        MediaRecorder.isTypeSupported ? MediaRecorder.isTypeSupported(type) : false
-      );
-      const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-      chunksRef.current = [];
-      discardRef.current = false;
-      startedAtRef.current = Date.now();
-      recorder.ondataavailable = (event) => {
-        if (event.data?.size) chunksRef.current.push(event.data);
-      };
-      recorder.onstop = () => {
-        clearInterval(timerRef.current);
-        stream.getTracks().forEach((track) => track.stop());
-        recorderRef.current = null;
-        setRecording(false);
-        setRecordSeconds(0);
-        const discarded = discardRef.current;
-        const tooShort = Date.now() - startedAtRef.current < 700;
-        discardRef.current = false;
-        if (discarded || tooShort) {
-          chunksRef.current = [];
-          if (!discarded && tooShort) actions.notify('Segure para gravar um áudio.');
-          return;
-        }
-        const blob = new Blob(chunksRef.current, {
-          type: recorder.mimeType || 'audio/webm',
-        });
-        if (blob.size) {
-          actions.sendChatBlob(blob, 'audio', `audio-${Date.now()}.webm`);
-        }
-      };
-      recorderRef.current = recorder;
-      recorder.start();
-      setRecording(true);
-      setRecordSeconds(0);
-      timerRef.current = setInterval(() => setRecordSeconds((value) => value + 1), 1000);
-    } catch {
-      actions.notify('Não foi possível acessar o microfone.');
-      holdRef.current = null;
-      setHolding(false);
-    }
-  };
-
-  const stopAudio = () => {
-    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
-  };
-
-  const beginHold = (event) => {
-    if (event.pointerType === 'mouse' && event.button !== 0) return;
-    event.preventDefault();
-    try {
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-    } catch {
-      /* alguns navegadores não suportam */
-    }
-    holdRef.current = { x: event.clientX, y: event.clientY, cancel: false };
-    canceledRef.current = false;
-    discardRef.current = false;
-    setCancelHint(false);
-    setHolding(true);
-    startAudio();
-  };
-
-  const moveHold = (event) => {
-    const hold = holdRef.current;
-    if (!hold) return;
-    const dy = event.clientY - hold.y;
-    const dx = event.clientX - hold.x;
-    const cancel = dy < -70 || Math.abs(dx) > 120;
-    if (cancel !== hold.cancel) {
-      hold.cancel = cancel;
-      canceledRef.current = cancel;
-      discardRef.current = cancel;
-      setCancelHint(cancel);
-    }
-  };
-
-  const endHold = () => {
-    if (!holdRef.current) return;
-    holdRef.current = null;
-    setHolding(false);
-    setCancelHint(false);
-    if (recorderRef.current?.state === 'recording') stopAudio();
-    else canceledRef.current = true;
-  };
-
-  const cancelHold = () => {
-    canceledRef.current = true;
-    setCancelHint(false);
-    discardRef.current = true;
-    endHold();
   };
 
   const submit = (event) => {
@@ -1942,23 +1838,28 @@ export default function Messages() {
                 className={wallSrc ? 'has-wall' : ''}
                 style={wallStyle}
               >
-                <div className="dayline">Hoje</div>
                 {chat.msgs.length ? (
-                  chat.msgs.map((message, index) => (
-                    <ChatMessage
-                      key={message.id || `${message.ts}-${index}`}
-                      message={message}
-                      index={index}
-                      chat={chat}
-                      author={person}
-                      onMenu={setMenu}
-                      onOpenMedia={setViewer}
-                      onForward={(payload) => {
-                        setForward(payload);
-                        setMenu(null);
-                      }}
-                    />
-                  ))
+                  chat.msgs.map((message, index) => {
+                    const previous = chat.msgs[index - 1];
+                    const newDay = !previous || dayKey(message.ts) !== dayKey(previous.ts);
+                    return (
+                      <Fragment key={message.id || `${message.ts}-${index}`}>
+                        {newDay ? <div className="dayline">{dayLabel(message.ts)}</div> : null}
+                        <ChatMessage
+                          message={message}
+                          index={index}
+                          chat={chat}
+                          author={person}
+                          onMenu={setMenu}
+                          onOpenMedia={setViewer}
+                          onForward={(payload) => {
+                            setForward(payload);
+                            setMenu(null);
+                          }}
+                        />
+                      </Fragment>
+                    );
+                  })
                 ) : (
                   <div className="chat-empty">
                     <span className="chat-empty-ic">
@@ -2039,22 +1940,68 @@ export default function Messages() {
                   ref={mediaInputRef}
                   type="file"
                   accept="image/*,video/*"
+                  multiple
                   hidden
                   onChange={pickMedia}
                 />
                 <input ref={fileInputRef} type="file" hidden onChange={pickFile} />
 
-                {holding || recording ? (
-                  <div className={`rec-bar ${cancelHint ? 'cancel' : ''}`}>
-                    <span className="rec-dot" />
-                    <b>{fmtTime(recordSeconds)}</b>
-                    <span className="grow" />
-                    <span className="rec-hint">
-                      {cancelHint ? 'Solte para cancelar' : 'Solte para enviar'}
-                    </span>
+                {pending.length ? (
+                  <div className="msg-pending" role="group" aria-label="Mídias para enviar">
+                    <div className="msg-pending-list">
+                      {pending.map((item) => (
+                        <div className={`msg-pending-item ${item.status}`} key={item.id}>
+                          {item.kind === 'video' ? (
+                            <video src={item.url} muted playsInline preload="metadata" />
+                          ) : (
+                            <img src={item.url} alt="Prévia da mídia" />
+                          )}
+                          <button
+                            type="button"
+                            className="msg-pending-remove"
+                            onClick={() => removePending(item.id)}
+                            disabled={item.status === 'sending'}
+                            aria-label="Remover mídia"
+                          >
+                            <Icon name="x" />
+                          </button>
+                          <input
+                            className="msg-pending-caption"
+                            value={item.caption}
+                            maxLength={200}
+                            placeholder="Legenda (opcional)"
+                            aria-label="Legenda da mídia"
+                            onChange={(event) => updatePending(item.id, { caption: event.target.value })}
+                          />
+                          {item.status === 'sending' ? <span className="msg-pending-status">Enviando…</span> : null}
+                          {item.status === 'error' ? (
+                            <button
+                              type="button"
+                              className="msg-pending-retry"
+                              onClick={() =>
+                                actions.sendChatMedia(item.file, item.kind, item.caption)
+                                  .then(() => updatePending(item.id, { status: 'sent' }))
+                                  .catch((error) => updatePending(item.id, { error: error?.message }))
+                              }
+                            >
+                              Tentar novamente
+                            </button>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn primary msg-pending-send"
+                      onClick={() => void sendPending()}
+                      disabled={pending.some((item) => item.status === 'sending')}
+                    >
+                      <Icon name="send" /> Enviar mídias
+                    </button>
                   </div>
-                ) : (
-                  <div className="msg-composer">
+                ) : null}
+
+                <div className="msg-composer">
                     <button
                       className="icon-btn msg-composer-btn"
                       type="button"
@@ -2123,10 +2070,9 @@ export default function Messages() {
                       onSelect={saveCaret}
                       onBlur={saveCaret}
                     />
-                  </div>
-                )}
+                </div>
 
-                {text.trim() && !holding && !recording ? (
+                {text.trim() ? (
                   <button
                     className="btn primary send-btn"
                     type="submit"
@@ -2136,20 +2082,10 @@ export default function Messages() {
                     <Icon name="send" />
                   </button>
                 ) : (
-                  <button
-                    className={`icon-btn mic-btn ${holding || recording ? 'on' : ''} ${
-                      cancelHint ? 'cancel' : ''
-                    }`}
-                    type="button"
-                    onPointerDown={beginHold}
-                    onPointerMove={moveHold}
-                    onPointerUp={endHold}
-                    onPointerCancel={cancelHold}
-                    aria-label="Segure para gravar áudio"
-                    title="Segure para gravar"
-                  >
-                    <Icon name="mic" />
-                  </button>
+                  <VoiceRecorder
+                    onSend={(blob, meta) => actions.sendChatAudio(blob, meta)}
+                    onError={(message) => actions.notify(message)}
+                  />
                 )}
               </form>
             </>

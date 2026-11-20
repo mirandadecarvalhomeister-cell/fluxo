@@ -619,7 +619,7 @@ export async function reportPost(postId, uid, reason = '') {
   }
 }
 
-export async function addComment(comment, postId, uid) {
+export async function addComment(comment, postId, uid, parentId = null) {
   if (!enabled()) return;
   try {
     const { error } = await supabase.from('comments').insert({
@@ -628,6 +628,7 @@ export async function addComment(comment, postId, uid) {
       author_id: uid,
       text: comment.text,
       created_at: new Date(comment.ts).toISOString(),
+      ...(parentId ? { parent_id: parentId } : {}),
     });
     if (error) warn(error);
   } catch (error) {
@@ -1991,6 +1992,92 @@ export async function uploadMedia(file, uid) {
     }
     const { data } = supabase.storage.from('media').getPublicUrl(path);
     return data.publicUrl;
+  } catch (error) {
+    warn(error);
+    return null;
+  }
+}
+
+/**
+ * Áudio de mensagens no bucket dedicado (`audio`), com o mesmo contrato de
+ * caminho do aplicativo mobile: `<user_id>/<timestamp>-<random>.<ext>`.
+ * Retorna { url, path, mimeType } ou null quando não há sessão/falha.
+ */
+export async function uploadAudio(blob, uid, mimeType) {
+  if (!enabled() || !uid || !blob) return null;
+  try {
+    const mime = mimeType || blob.type || 'audio/webm';
+    const ext = mime.includes('mp4') ? 'm4a' : mime.includes('ogg') ? 'ogg' : 'webm';
+    const path = `${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+    const { error } = await supabase.storage.from('audio').upload(path, blob, {
+      cacheControl: '3600',
+      contentType: mime,
+      upsert: false,
+    });
+    if (error) {
+      warn(error);
+      return null;
+    }
+    const { data } = supabase.storage.from('audio').getPublicUrl(path);
+    return { url: data.publicUrl, path, mimeType: mime };
+  } catch (error) {
+    warn(error);
+    return null;
+  }
+}
+
+/**
+ * Áudio de comunidade. Comunidades privadas usam o bucket `community-private`
+ * (leitura restrita por RLS); as abertas continuam no bucket público `audio`.
+ * Caminho no bucket privado: <community_id>/<user_id>/<arquivo>.
+ */
+export async function uploadCommunityAudio(blob, communityId, uid, mime, isPrivate) {
+  if (!enabled() || !blob || !communityId || !uid) return null;
+  try {
+    const normalized = mime || blob.type || 'audio/webm';
+    const ext = normalized.includes('mp4')
+      ? 'm4a'
+      : normalized.includes('ogg')
+        ? 'ogg'
+        : 'webm';
+    const file = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+    const path = isPrivate
+      ? `${communityId}/${uid}/${file}`
+      : `${uid}/${file}`;
+    const bucket = isPrivate ? 'community-private' : 'audio';
+    const { error } = await supabase.storage.from(bucket).upload(path, blob, {
+      cacheControl: '3600',
+      contentType: normalized,
+      upsert: false,
+    });
+    if (error) {
+      warn(error);
+      return null;
+    }
+    let url = null;
+    if (!isPrivate) {
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+      url = data.publicUrl;
+    }
+    return { url, path, bucket, private: !!isPrivate };
+  } catch (error) {
+    warn(error);
+    return null;
+  }
+}
+
+/** URL assinada de curta duração para mídia de comunidade privada. */
+export async function createSignedMediaUrl(bucket, path, expiresIn = 3600) {
+  if (!enabled() || !bucket || !path) return null;
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(path, expiresIn);
+    if (error) {
+      warn(error);
+      return null;
+    }
+    return data?.signedUrl || null;
   } catch (error) {
     warn(error);
     return null;

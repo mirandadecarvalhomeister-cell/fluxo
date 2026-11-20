@@ -12,6 +12,9 @@ import { Icon } from './Icon';
 import { Verified } from './Brand';
 import Post from './Post';
 import Interactive from './Interactive';
+import AudioPlayer from './AudioPlayer';
+import PrivateAudio from './PrivateAudio';
+import VoiceRecorder from './VoiceRecorder';
 
 const NAV = [
   ['publicacoes', 'Publicações', 'chat'],
@@ -30,14 +33,12 @@ function personOf(data, id) {
 }
 
 // Barra de digitação da comunidade, no mesmo estilo da aba Mensagens.
-function CommunityChatComposer({ community, canPost }) {
+function CommunityChatComposer({ community, canPost, replyTarget, onCancelReply }) {
   const { ui, actions } = useApp();
   const [text, setText] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [recording, setRecording] = useState(false);
   const fileRef = useRef(null);
   const inputRef = useRef(null);
-  const recRef = useRef(null);
   const media = ui.draft?.media || [];
   const format = ui.draft?.format || 'classic';
   const options = ui.draft?.options || [];
@@ -51,41 +52,16 @@ function CommunityChatComposer({ community, canPost }) {
       return;
     }
     if (!text.trim() && !media.length && !isPoll) return;
-    actions.publish(text, community.id);
+    if (replyTarget) {
+      // Resposta encadeada: vira comentário do posts original, com parent_id.
+      actions.addComment(replyTarget.postId, text, replyTarget.commentId || null);
+      onCancelReply?.();
+    } else {
+      actions.publish(text, community.id);
+      actions.resetDraft();
+    }
     setText('');
-    actions.resetDraft();
     setPickerOpen(false);
-  }
-
-  async function toggleRecord() {
-    if (recRef.current) {
-      recRef.current.stop();
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(
-        (type) => MediaRecorder.isTypeSupported?.(type)
-      );
-      const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-      const chunks = [];
-      recorder.ondataavailable = (event) => {
-        if (event.data.size) chunks.push(event.data);
-      };
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
-        stream.getTracks().forEach((track) => track.stop());
-        recRef.current = null;
-        setRecording(false);
-        if (blob.size) actions.sendCommunityAudio(community.id, blob);
-      };
-      recorder.start();
-      recRef.current = recorder;
-      setRecording(true);
-    } catch {
-      actions.notify?.('Não foi possível acessar o microfone.');
-      setRecording(false);
-    }
   }
 
   if (!canPost) {
@@ -99,6 +75,17 @@ function CommunityChatComposer({ community, canPost }) {
 
   return (
     <form className="comm-chat-composer" onSubmit={submit}>
+      {replyTarget ? (
+        <div className="comm-reply-banner">
+          <Icon name="comment" />
+          <span>
+            Respondendo a <b>{replyTarget.name}</b>
+          </span>
+          <button type="button" onClick={onCancelReply} aria-label="Cancelar resposta">
+            <Icon name="x" />
+          </button>
+        </div>
+      ) : null}
       {pickerOpen ? (
         <>
           <button
@@ -254,31 +241,23 @@ function CommunityChatComposer({ community, canPost }) {
             <Icon name="send" />
           </button>
         ) : (
-          <button
-            className={`icon-btn mic ${recording ? 'on' : ''}`}
-            type="button"
-            onClick={toggleRecord}
-            aria-label={recording ? 'Parar gravação e enviar áudio' : 'Gravar áudio'}
-            title={recording ? 'Toque para enviar' : 'Gravar áudio'}
-          >
-            <Icon name="mic" />
-          </button>
+          <VoiceRecorder
+            compact
+            onSend={(blob, meta) => actions.sendCommunityAudio(community.id, blob, meta)}
+            onError={(message) => actions.notify?.(message)}
+          />
         )}
       </div>
-      {recording ? (
-        <span className="comm-chat-recording">
-          <span className="rec-dot" /> Gravando… toque no microfone para enviar
-        </span>
-      ) : null}
     </form>
   );
 }
 
 // Conversa da comunidade: mensagens em balões, como um chat amplo.
 function CommunityChat({ posts, canPost, community }) {
-  const { data } = useApp();
+  const { data, actions } = useApp();
   const boxRef = useRef(null);
   const prevCount = useRef(posts.length);
+  const [replyTarget, setReplyTarget] = useState(null);
   // data.posts vem do mais novo para o mais antigo; no chat vai do mais antigo
   // para o mais novo, como nas conversas.
   const messages = useMemo(() => [...posts].reverse(), [posts]);
@@ -319,10 +298,73 @@ function CommunityChat({ posts, canPost, community }) {
                       <img key={index} src={item.src} alt="Foto da comunidade" loading="lazy" />
                     )
                   )}
-                  {audios.map((item, index) => (
-                    <audio key={`a${index}`} src={item.src} controls preload="metadata" />
-                  ))}
+                  {audios.map((item, index) =>
+                    item.storageBucket === 'community-private' && item.storagePath ? (
+                      <PrivateAudio
+                        key={`a${index}`}
+                        path={item.storagePath}
+                        bucket={item.storageBucket}
+                        duration={item.duration || item.dur}
+                        waves={item.waves}
+                        sender={person.name}
+                      />
+                    ) : (
+                      <AudioPlayer
+                        key={`a${index}`}
+                        src={item.src}
+                        duration={item.duration || item.dur}
+                        waves={item.waves}
+                        sender={person.name}
+                      />
+                    )
+                  )}
                   {interactive ? <Interactive post={post} /> : null}
+                  <div className="comm-chat-actions">
+                    <button
+                      type="button"
+                      className={post.myReaction ? 'on' : ''}
+                      onClick={() => actions.reactPost(post.id)}
+                      aria-label="Reagir com coração"
+                      title="Reagir"
+                    >
+                      <Icon name="heart" />
+                      <span>{post.reactionCounts?.['❤️'] || post.likes || 0}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReplyTarget({ postId: post.id, name: person.name })}
+                      aria-label="Responder"
+                      title="Responder"
+                    >
+                      <Icon name="comment" />
+                    </button>
+                  </div>
+                  {(post.comments || []).length ? (
+                    <div className="comm-chat-comments">
+                      {post.comments.map((comment) => {
+                        const commentAuthor = personOf(data, comment.by);
+                        return (
+                          <div className={`comm-chat-comment${comment.parentId ? ' reply' : ''}`} key={comment.id}>
+                            <b>{commentAuthor.name}</b>
+                            <EmojiText text={comment.text} size={14} />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setReplyTarget({
+                                  postId: post.id,
+                                  commentId: comment.id,
+                                  name: commentAuthor.name,
+                                })
+                              }
+                              aria-label={`Responder ${commentAuthor.name}`}
+                            >
+                              <Icon name="comment" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -335,7 +377,12 @@ function CommunityChat({ posts, canPost, community }) {
           />
         ) : null}
       </div>
-      <CommunityChatComposer community={community} canPost={canPost} />
+      <CommunityChatComposer
+        community={community}
+        canPost={canPost}
+        replyTarget={replyTarget}
+        onCancelReply={() => setReplyTarget(null)}
+      />
     </div>
   );
 }
@@ -359,7 +406,7 @@ export default function CommunitySpace({ community, onAdmin }) {
     () =>
       posts.flatMap((post) =>
         mediaOf(post)
-          .filter((item) => item.src && ['photo', 'video'].includes(item.kind))
+          .filter((item) => item.src && ['photo', 'video', 'audio', 'file'].includes(item.kind))
           .map((item, index) => ({
             id: `${post.id}-${index}`,
             kind: item.kind,
@@ -369,6 +416,8 @@ export default function CommunitySpace({ community, onAdmin }) {
             author_id: post.by,
             post_id: post.id,
             ts: post.ts,
+            storagePath: item.storagePath,
+            storageBucket: item.storageBucket,
           }))
       ),
     [posts]
@@ -381,6 +430,7 @@ export default function CommunitySpace({ community, onAdmin }) {
   );
   const members = community.members || [];
 
+  const [galleryFilter, setGalleryFilter] = useState('todos');
   const [topic, setTopic] = useState('');
   const [evTitle, setEvTitle] = useState('');
   const [evDate, setEvDate] = useState('');
@@ -552,18 +602,55 @@ export default function CommunitySpace({ community, onAdmin }) {
             <div className="comm-section">
               <h2 className="h2">Galeria da comunidade</h2>
               <p className="muted sm">
-                Fotos, vídeos e áudios publicados pela comunidade aparecem aqui.
+                Fotos, vídeos, áudios e arquivos publicados pela comunidade aparecem aqui.
               </p>
-              {gallery.length ? (
+              <div className="comm-gallery-filters" role="tablist" aria-label="Categorias da galeria">
+                {[
+                  ['todos', 'Todos'],
+                  ['photo', 'Fotos'],
+                  ['video', 'Vídeos'],
+                  ['audio', 'Áudios'],
+                  ['file', 'Arquivos'],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={galleryFilter === key}
+                    className={galleryFilter === key ? 'on' : ''}
+                    onClick={() => setGalleryFilter(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {gallery.filter((g) => galleryFilter === 'todos' || g.kind === galleryFilter).length ? (
                 <div className="comm-gallery">
-                  {gallery.map((g) => (
+                  {gallery
+                    .filter((g) => galleryFilter === 'todos' || g.kind === galleryFilter)
+                    .map((g) => (
                     <div key={g.id} className="comm-gallery-item">
                       {g.kind === 'video' ? (
                         <video src={g.src} controls preload="metadata" />
                       ) : g.kind === 'audio' ? (
-                        <div className="comm-gallery-audio">
-                          <Icon name="mic" />
-                          <audio src={g.src} controls preload="metadata" />
+                        g.storageBucket === 'community-private' && g.storagePath ? (
+                          <PrivateAudio
+                            path={g.storagePath}
+                            bucket={g.storageBucket}
+                            waves={g.waves}
+                            sender={personOf(data, g.author_id).name}
+                          />
+                        ) : (
+                          <AudioPlayer
+                            src={g.src}
+                            waves={g.waves}
+                            sender={personOf(data, g.author_id).name}
+                          />
+                        )
+                      ) : g.kind === 'file' ? (
+                        <div className="comm-gallery-file">
+                          <Icon name="file" />
+                          <span className="ell">{g.title || 'Arquivo'}</span>
                         </div>
                       ) : (
                         <img src={g.src} alt={g.title || 'Mídia'} loading="lazy" />
@@ -573,6 +660,14 @@ export default function CommunitySpace({ community, onAdmin }) {
                         <span className="muted sm">
                           {personOf(data, g.author_id).name}
                         </span>
+                        <button
+                          type="button"
+                          className="comm-gallery-locate"
+                          onClick={() => actions.openPost(g.post_id)}
+                          title="Localizar publicação original"
+                        >
+                          <Icon name="link" /> Ver original
+                        </button>
                       </div>
                     </div>
                   ))}
