@@ -2066,3 +2066,26 @@ html,body{max-width:100%;overflow-x:clip}
 .skeleton-actions{display:flex;gap:14px;padding-top:4px}
 @media (prefers-reduced-motion:reduce){.skeleton{animation:none}}
 
+/* Comunicados oficiais das comunidades. */
+.comm-ann-form{display:grid;gap:8px}
+.comm-ann-form textarea{resize:vertical;min-height:72px}
+.comm-ann-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.comm-ann-row label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.comm-ann-row label .in{width:70px}
+.comm-ann-check input{width:16px;height:16px;accent-color:var(--accent)}
+.comm-ann-list{display:grid;gap:10px;margin:12px 0}
+.comm-ann{display:grid;gap:6px;padding:14px;border-radius:14px;background:var(--surface2);border:1px solid var(--line);cursor:pointer}
+.comm-ann.pinned{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.comm-ann-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.comm-ann-head time{margin-left:auto;font-size:11px;color:var(--muted)}
+.comm-ann h3{margin:0;font-size:16px;line-height:1.3}
+.comm-ann p{margin:0;font-size:13.5px;line-height:1.5;color:var(--fg);white-space:pre-wrap;overflow-wrap:anywhere}
+.comm-ann img{display:block;max-width:100%;max-height:280px;border-radius:11px;object-fit:cover}
+.comm-ann-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.comm-ann-foot .icon-btn{width:30px;height:30px}
+.comm-ann-foot .ic{width:14px;height:14px}
+.comm-classified.sold{opacity:.7}
+.comm-classified-actions{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.comm-classified-actions .icon-btn{width:32px;height:32px}
+.comm-classified-actions .ic{width:15px;height:15px}
+

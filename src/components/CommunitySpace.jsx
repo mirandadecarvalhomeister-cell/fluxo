@@ -431,6 +431,9 @@ export default function CommunitySpace({ community, onAdmin }) {
       ),
     [posts]
   );
+  const announcements = (extras.announcements || []).filter(
+    (a) => a.community_id === community.id
+  );
   const events = (extras.events || []).filter((e) => e.community_id === community.id);
   const classifieds = (extras.classifieds || []).filter((c) => c.community_id === community.id);
   const rsvps = extras.rsvps || [];
@@ -440,12 +443,19 @@ export default function CommunitySpace({ community, onAdmin }) {
   const members = community.members || [];
 
   const [galleryFilter, setGalleryFilter] = useState('todos');
+  const [annTitle, setAnnTitle] = useState('');
+  const [annBody, setAnnBody] = useState('');
+  const [annPriority, setAnnPriority] = useState(0);
+  const [annPinned, setAnnPinned] = useState(false);
+  const [annImage, setAnnImage] = useState('');
+  const [annEditingId, setAnnEditingId] = useState(null);
   const [topic, setTopic] = useState('');
   const [evTitle, setEvTitle] = useState('');
   const [evDate, setEvDate] = useState('');
   const [evDesc, setEvDesc] = useState('');
   const [clTitle, setClTitle] = useState('');
   const [clCat, setClCat] = useState('venda');
+  const [clFilter, setClFilter] = useState('todos');
   const [clDesc, setClDesc] = useState('');
   const [clPrice, setClPrice] = useState('');
   const [clContact, setClContact] = useState('');
@@ -543,35 +553,167 @@ export default function CommunitySpace({ community, onAdmin }) {
           {tab === 'comunicados' ? (
             <div className="comm-section">
               <h2 className="h2">Comunicados</h2>
-              {canPost ? (
+              {canManage ? (
                 <form
-                  className="comm-form"
+                  className="comm-form comm-ann-form"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    if (!topic.trim()) return;
-                    actions.addTopic(community.id, topic.trim());
-                    setTopic('');
+                    if (!annTitle.trim()) return;
+                    const fields = {
+                      title: annTitle,
+                      body: annBody,
+                      priority: annPriority,
+                      pinned: annPinned,
+                      imageUrl: annImage.trim() || null,
+                    };
+                    if (annEditingId) actions.updateCommunityAnnouncement(annEditingId, fields);
+                    else actions.addCommunityAnnouncement(community.id, fields);
+                    setAnnTitle('');
+                    setAnnBody('');
+                    setAnnPriority(0);
+                    setAnnPinned(false);
+                    setAnnImage('');
+                    setAnnEditingId(null);
                   }}
                 >
                   <input
                     className="in"
-                    placeholder="Novo comunicado"
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
+                    placeholder="Título do comunicado"
+                    value={annTitle}
+                    onChange={(e) => setAnnTitle(e.target.value)}
+                  />
+                  <textarea
+                    className="in"
+                    rows={3}
+                    placeholder="Mensagem (opcional)"
+                    value={annBody}
+                    onChange={(e) => setAnnBody(e.target.value)}
+                  />
+                  <div className="comm-ann-row">
+                    <label>
+                      Prioridade
+                      <input
+                        className="in"
+                        type="number"
+                        min={0}
+                        max={10}
+                        value={annPriority}
+                        onChange={(e) => setAnnPriority(Number(e.target.value))}
+                      />
+                    </label>
+                    <label className="comm-ann-check">
+                      <input
+                        type="checkbox"
+                        checked={annPinned}
+                        onChange={(e) => setAnnPinned(e.target.checked)}
+                      />
+                      Fixar no topo
+                    </label>
+                  </div>
+                  <input
+                    className="in"
+                    placeholder="URL da imagem (opcional)"
+                    value={annImage}
+                    onChange={(e) => setAnnImage(e.target.value)}
                   />
                   <button className="btn primary" type="submit">
-                    <Icon name="plus" /> Publicar
+                    <Icon name={annEditingId ? 'check' : 'plus'} />
+                    {annEditingId ? 'Salvar' : 'Publicar comunicado'}
                   </button>
+                  {annEditingId ? (
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => {
+                        setAnnEditingId(null);
+                        setAnnTitle('');
+                        setAnnBody('');
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                  ) : null}
                 </form>
               ) : null}
+              {announcements.length ? (
+                <div className="comm-ann-list">
+                  {announcements.map((item) => (
+                    <article
+                      key={item.id}
+                      className={`comm-ann${item.pinned ? ' pinned' : ''}`}
+                      onClick={() => actions.markAnnouncementRead(item.id)}
+                    >
+                      <div className="comm-ann-head">
+                        {item.pinned ? (
+                          <span className="pill acc"><Icon name="mega" /> Fixado</span>
+                        ) : null}
+                        {Number(item.priority) > 0 ? (
+                          <span className="pill">Prioridade {item.priority}</span>
+                        ) : null}
+                        <time>{hm(item.created_at ? Date.parse(item.created_at) : item.ts)}</time>
+                      </div>
+                      <h3>{item.title}</h3>
+                      {item.body ? <p>{item.body}</p> : null}
+                      {item.image_url ? (
+                        <img src={item.image_url} alt={item.title} loading="lazy" />
+                      ) : null}
+                      <div className="comm-ann-foot">
+                        <span>Por {personOf(data, item.author_id).name}</span>
+                        <span>{item.readCount || 0} visualizações</span>
+                        {canManage ? (
+                          <>
+                            <button
+                              type="button"
+                              className="icon-btn"
+                              title={item.pinned ? 'Desafixar' : 'Fixar'}
+                              onClick={() =>
+                                actions.updateCommunityAnnouncement(item.id, { pinned: !item.pinned })
+                              }
+                            >
+                              <Icon name="mega" />
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-btn"
+                              title="Editar"
+                              onClick={() => {
+                                setAnnEditingId(item.id);
+                                setAnnTitle(item.title);
+                                setAnnBody(item.body || '');
+                                setAnnPriority(item.priority || 0);
+                                setAnnPinned(!!item.pinned);
+                                setAnnImage(item.image_url || '');
+                              }}
+                            >
+                              <Icon name="edit" />
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-btn danger"
+                              title="Remover"
+                              onClick={() => actions.removeCommunityAnnouncement(item.id)}
+                            >
+                              <Icon name="trash" />
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <Empty
+                  title="Sem comunicados"
+                  text="Avisos importantes da administração aparecem aqui."
+                />
+              )}
+              <h3 className="h3">Avisos rápidos</h3>
               {topics.length ? (
                 topics.map((t) => (
                   <div key={t.id} className="comm-topic">
                     <div className="grow">
                       {t.pinned ? (
-                        <span className="pill acc">
-                          <Icon name="mega" /> Fixado
-                        </span>
+                        <span className="pill acc"><Icon name="mega" /> Fixado</span>
                       ) : null}
                       <b>{t.title}</b>
                       <div className="muted sm">{personOf(data, t.by).name}</div>
@@ -581,9 +723,7 @@ export default function CommunitySpace({ community, onAdmin }) {
                         <button
                           className="icon-btn"
                           title={t.pinned ? 'Desafixar' : 'Fixar'}
-                          onClick={() =>
-                            actions.pinCommunityTopic(community.id, t.id)
-                          }
+                          onClick={() => actions.pinCommunityTopic(community.id, t.id)}
                         >
                           <Icon name="mega" />
                         </button>
@@ -599,11 +739,29 @@ export default function CommunitySpace({ community, onAdmin }) {
                   </div>
                 ))
               ) : (
-                <Empty
-                  title="Sem comunicados"
-                  text="Avisos importantes fixados pela administração."
-                />
+                <p className="muted sm">Nenhum aviso rápido.</p>
               )}
+              {canManage ? (
+                <form
+                  className="comm-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!topic.trim()) return;
+                    actions.addTopic(community.id, topic.trim());
+                    setTopic('');
+                  }}
+                >
+                  <input
+                    className="in"
+                    placeholder="Novo aviso rápido"
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                  />
+                  <button className="btn primary" type="submit">
+                    <Icon name="plus" /> Publicar
+                  </button>
+                </form>
+              ) : null}
             </div>
           ) : null}
 
@@ -825,6 +983,29 @@ export default function CommunitySpace({ community, onAdmin }) {
           {tab === 'classificados' ? (
             <div className="comm-section">
               <h2 className="h2">Classificados</h2>
+              <div className="comm-gallery-filters" role="tablist" aria-label="Filtros de classificados">
+                {[
+                  ['todos', 'Todos'],
+                  ['venda', 'Venda'],
+                  ['servico', 'Serviços'],
+                  ['trabalho', 'Trabalho'],
+                  ['parceria', 'Parcerias'],
+                  ['outros', 'Outros'],
+                  ['active', 'Disponíveis'],
+                  ['sold', 'Vendidos'],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={clFilter === key}
+                    className={clFilter === key ? 'on' : ''}
+                    onClick={() => setClFilter(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               {canPost ? (
                 <form
                   className="comm-form"
@@ -886,11 +1067,22 @@ export default function CommunitySpace({ community, onAdmin }) {
                   </button>
                 </form>
               ) : null}
-              {classifieds.length ? (
-                classifieds.map((c) => (
-                  <div key={c.id} className="comm-classified">
+              {classifieds.filter((c) =>
+                ['active', 'sold'].includes(clFilter)
+                  ? (c.status || 'active') === clFilter
+                  : clFilter === 'todos' || c.category === clFilter
+              ).length ? (
+                classifieds
+                  .filter((c) =>
+                    ['active', 'sold'].includes(clFilter)
+                      ? (c.status || 'active') === clFilter
+                      : clFilter === 'todos' || c.category === clFilter
+                  )
+                  .map((c) => (
+                  <div key={c.id} className={`comm-classified${c.status === 'sold' ? ' sold' : ''}`}>
                     <div className="grow">
                       <span className="pill">{c.category}</span>
+                      {c.status === 'sold' ? <span className="pill hot">Vendido</span> : null}
                       <b>{c.title}</b>
                       {c.description ? (
                         <p className="muted sm">{c.description}</p>
@@ -900,8 +1092,49 @@ export default function CommunitySpace({ community, onAdmin }) {
                         {c.contact ? `· ${c.contact}` : ''}
                       </div>
                     </div>
+                    <div className="comm-classified-actions">
+                    {c.contact ? (
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        title="Copiar contato"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(String(c.contact)).then(
+                            () => actions.notify?.('Contato copiado'),
+                            () => actions.notify?.('Não foi possível copiar')
+                          );
+                        }}
+                      >
+                        <Icon name="link" />
+                      </button>
+                    ) : null}
+                    {c.author_id !== uid ? (
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        title="Denunciar anúncio"
+                        onClick={() => {
+                          const reason = window.prompt('Motivo da denúncia', '');
+                          if (reason !== null) actions.reportCommunityClassified(c.id, reason);
+                        }}
+                      >
+                        <Icon name="shield" />
+                      </button>
+                    ) : null}
                     {(c.author_id === uid || canManage) ? (
                       <>
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          title={c.status === 'sold' ? 'Marcar como disponível' : 'Marcar como vendido'}
+                          onClick={() =>
+                            actions.editCommunityClassifiedEntry(c.id, {
+                              status: c.status === 'sold' ? 'active' : 'sold',
+                            })
+                          }
+                        >
+                          <Icon name="check" />
+                        </button>
                         <button
                           className="icon-btn"
                           onClick={() => {
@@ -924,6 +1157,7 @@ export default function CommunitySpace({ community, onAdmin }) {
                         </button>
                       </>
                     ) : null}
+                    </div>
                   </div>
                 ))
               ) : (

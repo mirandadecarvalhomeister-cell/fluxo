@@ -687,7 +687,7 @@ function mergeWorkspace(base, ws, user) {
     followers,
     posts,
     comms,
-    commExtras: ws.communityExtras || { gallery: [], events: [], rsvps: [], classifieds: [], notifications: [] },
+    commExtras: ws.communityExtras || { gallery: [], events: [], rsvps: [], classifieds: [], notifications: [], announcements: [] },
     emojiFavorites: ws.emojiFavorites || [],
     chans,
     chats,
@@ -2183,6 +2183,68 @@ export function AppProvider({ children }) {
     setUi((u) => ({ ...u, route, room: route === 'conexoes' ? null : u.room }));
     window.scrollTo(0, 0);
   };
+
+  // Comunicados oficiais das comunidades.
+  function addCommunityAnnouncement(communityId, fields) {
+    const row = {
+      id: uid(),
+      community_id: communityId,
+      author_id: sessionRef.current?.id || 'me',
+      title: String(fields.title || '').trim().slice(0, 140),
+      body: String(fields.body || '').trim().slice(0, 4000),
+      image_url: fields.imageUrl || null,
+      priority: Math.max(0, Math.min(10, Number(fields.priority) || 0)),
+      pinned: !!fields.pinned,
+      created_at: new Date().toISOString(),
+    };
+    if (!row.title) return;
+    if (sessionRef.current?.id) remote.saveCommunityAnnouncement(row);
+    setData((cur) => ({
+      ...cur,
+      commExtras: {
+        ...(cur.commExtras || {}),
+        announcements: [row, ...(cur.commExtras?.announcements || [])],
+      },
+    }));
+  }
+
+  function updateCommunityAnnouncement(id, patch) {
+    if (sessionRef.current?.id) remote.updateCommunityAnnouncement(id, patch);
+    setData((cur) => ({
+      ...cur,
+      commExtras: {
+        ...(cur.commExtras || {}),
+        announcements: (cur.commExtras?.announcements || []).map((row) =>
+          row.id === id ? { ...row, ...patch } : row
+        ),
+      },
+    }));
+  }
+
+  function removeCommunityAnnouncement(id) {
+    if (sessionRef.current?.id) remote.removeCommunityAnnouncement(id);
+    setData((cur) => ({
+      ...cur,
+      commExtras: {
+        ...(cur.commExtras || {}),
+        announcements: (cur.commExtras?.announcements || []).filter((row) => row.id !== id),
+      },
+    }));
+  }
+
+  function markAnnouncementRead(id) {
+    const uidv = sessionRef.current?.id;
+    if (uidv) remote.markCommunityAnnouncementRead(id, uidv);
+    setData((cur) => ({
+      ...cur,
+      commExtras: {
+        ...(cur.commExtras || {}),
+        announcements: (cur.commExtras?.announcements || []).map((row) =>
+          row.id === id ? { ...row, readCount: (row.readCount || 0) + 1 } : row
+        ),
+      },
+    }));
+  }
 
   // Notificações persistentes das comunidades (tabela community_notifications).
   function markCommunityNotificationsRead() {
@@ -4023,6 +4085,16 @@ export function AppProvider({ children }) {
     toast('Anúncio atualizado');
   }
 
+  function reportCommunityClassified(id, reason) {
+    const uidv = sessionRef.current?.id;
+    if (!uidv) {
+      toast('Entre na sua conta para denunciar.');
+      return;
+    }
+    remote.reportCommunityClassified(id, uidv, reason);
+    toast('Denúncia enviada. A moderação vai analisar.');
+  }
+
   function removeCommunityClassifiedEntry(id) {
     setData((cur) => ({
       ...cur,
@@ -5208,6 +5280,10 @@ export function AppProvider({ children }) {
     openNotifications: () => setUi((u) => ({ ...u, modal: { type: 'notifications' } })),
     markNotifsSeen,
     markCommunityNotificationsRead,
+    addCommunityAnnouncement,
+    updateCommunityAnnouncement,
+    removeCommunityAnnouncement,
+    markAnnouncementRead,
     setSetting,
     createStickerPack,
     addStickerToPack,
@@ -5268,6 +5344,7 @@ export function AppProvider({ children }) {
     addCommunityClassifiedEntry,
     editCommunityClassifiedEntry,
     removeCommunityClassifiedEntry,
+    reportCommunityClassified,
     setCommSeed: (commSeed) => setUi((u) => ({ ...u, commSeed })),
     openChat,
     backChat: () => setUi((u) => ({ ...u, chatOpen: false })),

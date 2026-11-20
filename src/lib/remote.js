@@ -969,23 +969,25 @@ export async function toggleEmojiFavorite(uid, emoji, favorite) {
 // --- Comunidades v2: galeria, eventos, classificados e notificações -------
 export async function loadCommunityExtras(communityIds) {
   if (!enabled() || !communityIds?.length) {
-    return { gallery: [], events: [], rsvps: [], classifieds: [], notifications: [] };
+    return { gallery: [], events: [], rsvps: [], classifieds: [], notifications: [], announcements: [] };
   }
   try {
-    const [gallery, events, rsvps, classifieds, notifications] = await Promise.all([
+    const [gallery, events, rsvps, classifieds, notifications, announcements] = await Promise.all([
       safe(supabase.from('community_gallery').select('*').in('community_id', communityIds)),
       safe(supabase.from('community_events').select('*').in('community_id', communityIds)),
       safe(supabase.from('community_event_rsvps').select('*')),
       safe(supabase.from('community_classifieds').select('*').in('community_id', communityIds)),
       safe(supabase.from('community_notifications').select('*')),
+      loadCommunityAnnouncements(communityIds),
     ]);
     return {
       gallery: gallery || [], events: events || [], rsvps: rsvps || [],
       classifieds: classifieds || [], notifications: notifications || [],
+      announcements: announcements || [],
     };
   } catch (error) {
     warn(error);
-    return { gallery: [], events: [], rsvps: [], classifieds: [], notifications: [] };
+    return { gallery: [], events: [], rsvps: [], classifieds: [], notifications: [], announcements: [] };
   }
 }
 
@@ -1005,6 +1007,93 @@ export async function removeCommunityGallery(id) {
     if (error) { warn(error); return false; }
     return true;
   } catch (error) { warn(error); return false; }
+}
+
+export async function reportCommunityClassified(classifiedId, uid, reason = '') {
+  if (!enabled() || !classifiedId || !uid) return false;
+  try {
+    const { error } = await supabase.from('community_classified_reports').upsert(
+      {
+        id: `${classifiedId}:${uid}`,
+        classified_id: classifiedId,
+        reporter_id: uid,
+        reason: String(reason || '').slice(0, 300),
+      },
+      { onConflict: 'id', ignoreDuplicates: true }
+    );
+    if (error) { warn(error); return false; }
+    return true;
+  } catch (error) { warn(error); return false; }
+}
+
+// Comunicados oficiais das comunidades.
+export async function loadCommunityAnnouncements(communityIds = []) {
+  if (!enabled() || !communityIds.length) return [];
+  try {
+    const { data, error } = await supabase
+      .from('community_announcements')
+      .select('*')
+      .in('community_id', communityIds)
+      .order('pinned', { ascending: false })
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: false });
+    if (error) { warn(error); return []; }
+    const ids = (data || []).map((row) => row.id);
+    let reads = [];
+    if (ids.length) {
+      const result = await supabase
+        .from('community_announcement_reads')
+        .select('announcement_id')
+        .in('announcement_id', ids);
+      if (!result.error) reads = result.data || [];
+    }
+    const counts = reads.reduce((map, row) => {
+      map[row.announcement_id] = (map[row.announcement_id] || 0) + 1;
+      return map;
+    }, {});
+    return (data || []).map((row) => ({ ...row, readCount: counts[row.id] || 0 }));
+  } catch (error) { warn(error); return []; }
+}
+
+export async function saveCommunityAnnouncement(row) {
+  if (!enabled()) return null;
+  try {
+    const { data, error } = await supabase
+      .from('community_announcements')
+      .insert(row)
+      .select()
+      .single();
+    if (error) { warn(error); return null; }
+    return data;
+  } catch (error) { warn(error); return null; }
+}
+
+export async function updateCommunityAnnouncement(id, patch) {
+  if (!enabled()) return false;
+  try {
+    const { error } = await supabase.from('community_announcements').update(patch).eq('id', id);
+    if (error) { warn(error); return false; }
+    return true;
+  } catch (error) { warn(error); return false; }
+}
+
+export async function removeCommunityAnnouncement(id) {
+  if (!enabled()) return false;
+  try {
+    const { error } = await supabase.from('community_announcements').delete().eq('id', id);
+    if (error) { warn(error); return false; }
+    return true;
+  } catch (error) { warn(error); return false; }
+}
+
+export async function markCommunityAnnouncementRead(announcementId, uid) {
+  if (!enabled() || !announcementId || !uid) return;
+  try {
+    await supabase.from('community_announcement_reads').upsert(
+      { announcement_id: announcementId, user_id: uid },
+      { onConflict: 'announcement_id,user_id', ignoreDuplicates: true }
+    );
+  } catch (error) { warn(error); }
 }
 
 export async function addCommunityEvent(data) {
