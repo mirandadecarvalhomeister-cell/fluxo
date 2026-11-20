@@ -33,6 +33,7 @@ import MentionField from './MentionField';
 import Post from './Post';
 import PostComposerTrigger from './PostComposerTrigger';
 import RichTextTools from './RichTextTools';
+import MediaManager from './MediaManager';
 
 export function Composer({ inModal = false }) {
   const { data, ui, actions } = useApp();
@@ -301,54 +302,15 @@ export function Composer({ inModal = false }) {
         </div>
       ) : null}
 
-      {media.length ? (
-        <div className="cprev-list" aria-label="Prévia das mídias selecionadas">
-          {media.map((item, index) => (
-            <div className="cprev-item" key={`${item.src}-${index}`}>
-              {item.edit ? (
-                <span className="cprev-frame">
-                  {item.kind === 'photo' ? (
-                    <img src={item.src} alt="" style={mediaDisplayStyle(item.edit)} />
-                  ) : (
-                    <video
-                      src={item.src}
-                      muted
-                      playsInline
-                      preload="metadata"
-                      style={mediaDisplayStyle(item.edit)}
-                    />
-                  )}
-                  <EditOverlay edit={item.edit} />
-                </span>
-              ) : item.kind === 'photo' ? (
-                <img src={item.src} alt={`Prévia ${index + 1}`} />
-              ) : (
-                <video src={item.src} muted playsInline preload="metadata" />
-              )}
-              <span className="cprev-tag">
-                {item.kind === 'photo' ? <Icon name="image" /> : <Icon name="video" />}
-              </span>
-              <button
-                type="button"
-                className="cprev-edit"
-                onClick={() => setEditing(index)}
-                aria-label="Editar mídia"
-                title="Editar mídia"
-              >
-                <Icon name="edit" />
-              </button>
-              <button
-                type="button"
-                className="x"
-                onClick={() => actions.removeDraftMedia(index)}
-                aria-label="Remover mídia"
-              >
-                <Icon name="x" />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : null}
+      <MediaManager
+        media={media}
+        max={MAX_POST_MEDIA}
+        onFiles={(files) => actions.attachMedia(files)}
+        onEdit={setEditing}
+        onRemove={(index) => actions.removeDraftMedia(index)}
+        onReorder={(from, to) => actions.reorderDraftMedia(from, to)}
+        onCover={(index) => actions.reorderDraftMedia(index, 0)}
+      />
 
       {editingItem ? (
         <MediaEditor

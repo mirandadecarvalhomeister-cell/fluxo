@@ -2183,6 +2183,25 @@ html,body{max-width:100%;overflow-x:clip}
 .rich-tag{color:var(--accent);font-weight:600}
 .rich-list{margin:4px 0;padding-left:20px;display:grid;gap:2px}
 .rich-text a{color:var(--sky);text-decoration:underline}
+.media-manager{display:grid;gap:8px}
+.media-drop{display:grid;justify-items:center;gap:4px;padding:12px;border-radius:13px;border:1px dashed var(--line);background:var(--surface2);color:var(--muted);text-align:center;transition:border-color .16s,background .16s}
+.media-drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.media-drop .ic{width:22px;height:22px;color:var(--accent)}
+.media-drop span{font-size:12px;font-weight:700;color:var(--fg)}
+.media-drop small{font-size:10px}
+.media-drop .btn{margin-top:4px;cursor:pointer}
+.cprev-open{display:block;width:100%;height:100%;padding:0;border:0;background:transparent;cursor:zoom-in}
+.cprev-item.cover{outline:2px solid var(--accent);outline-offset:-2px}
+.cprev-cover{position:absolute;left:6px;top:6px;padding:2px 6px;border-radius:6px;background:var(--accent);color:#fff;font:700 9px var(--f-body)}
+.cprev-cover-btn{position:absolute;bottom:6px;left:6px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.65);color:#fff;padding:0}
+.cprev-cover-btn .ic{width:14px;height:14px}
+.media-lightbox{position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;gap:12px;padding:48px 16px;background:rgba(3,2,10,.95)}
+.media-lightbox img,.media-lightbox video{max-width:min(960px,100%);max-height:100%;object-fit:contain;border-radius:12px}
+.media-lightbox > .icon-btn{position:absolute;top:14px;right:16px;color:#fff}
+.media-lightbox-nav{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;color:#fff;font-size:12px}
+.media-lightbox-nav button{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff}
+.media-lightbox-nav .ic{width:16px;height:16px}
+.media-lightbox-nav .flip .ic{transform:rotate(180deg)}
 @media (max-width:560px){
   .composer-trigger{padding:12px;gap:9px}
   .composer-trigger-field{font-size:12.5px;padding:10px 12px}

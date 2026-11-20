@@ -2501,6 +2501,25 @@ export function AppProvider({ children }) {
     });
   }
 
+  function reorderDraftMedia(from, to) {
+    setUi((u) => {
+      const list = [...(u.draft.media || [])];
+      if (from < 0 || to < 0 || from >= list.length || to >= list.length) return u;
+      const [item] = list.splice(from, 1);
+      list.splice(to, 0, item);
+      return {
+        ...u,
+        draft: {
+          ...u.draft,
+          media: list,
+          ...(u.draft.format === 'imageVote'
+            ? { options: syncImageVoteOptions(list, u.draft.options) }
+            : {}),
+        },
+      };
+    });
+  }
+
   function setDraftFormat(format) {
     setUi((u) => {
       const media = u.draft.media || [];
@@ -5341,6 +5360,7 @@ export function AppProvider({ children }) {
         },
       })),
     removeDraftMedia,
+    reorderDraftMedia,
     applyMediaEdit,
     attachMedia,
     attachPostMedia,
