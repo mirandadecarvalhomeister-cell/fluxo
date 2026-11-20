@@ -23,7 +23,7 @@ import AudioPlayer from './AudioPlayer';
 import PrivateAudio from './PrivateAudio';
 import PrivateMedia from './PrivateMedia';
 
-function MediaItem({ item, author, index, postId }) {
+export function MediaItem({ item, author, index, postId }) {
   const [failedSrc, setFailedSrc] = useState(null);
   const [videoFailed, setVideoFailed] = useState(false);
   const seed = item.seed || `${author.id}-${index}`;

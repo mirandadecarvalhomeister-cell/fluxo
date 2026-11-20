@@ -2569,7 +2569,7 @@ export default function ModalHost() {
     <div id="modal">
       <div className="scrim" onClick={actions.closeModal} />
       <div
-        className={`sheet ${wide ? 'wide' : ''}`}
+        className={`sheet ${wide ? 'wide' : ''}${modal.type === 'composer' ? ' sheet-composer' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={MODAL_LABELS[modal.type] || 'Janela'}

@@ -2,6 +2,7 @@ import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import { Verified } from './Brand';
 import { Composer } from './Feed';
+import PostPreview from './PostPreview';
 
 /**
  * Card de criação de publicação. Nesta etapa contém apenas a estrutura inicial:
@@ -9,7 +10,7 @@ import { Composer } from './Feed';
  * O comportamento de abrir/fechar é reaproveitado do ModalHost.
  */
 export default function PostComposerModal() {
-  const { data } = useApp();
+  const { data, ui } = useApp();
   const me = data.me;
 
   return (
@@ -24,9 +25,12 @@ export default function PostComposerModal() {
         </div>
       </header>
 
-      <div className="composer-modal-body">
-        <h2>Criar publicação</h2>
-        <Composer inModal />
+      <h2 className="composer-modal-title">Criar publicação</h2>
+      <div className="composer-modal-layout">
+        <div className="composer-modal-body">
+          <Composer inModal />
+        </div>
+        <PostPreview draft={ui.draft} />
       </div>
     </div>
   );
