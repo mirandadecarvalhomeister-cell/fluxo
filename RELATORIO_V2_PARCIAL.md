@@ -31,6 +31,16 @@ Verificação: policies confirmadas no banco; helper validado com JWT real (púb
 - CRUD completo de comunicados: título, corpo, imagem, prioridade, fixação, contagem de visualizações, editar e excluir — integrado na aba Comunicados, preservando os "avisos rápidos" anteriores.
 - Classificados: filtros por categoria e status, alternância disponível/vendido, copiar contato e denúncias (`community_classified_reports`, aplicada) com RLS.
 
+## Etapa 3 (continuação) — Comunidades no mobile
+
+- `CommunityScreen.tsx` ganhou abas: Publicações, Galeria, Comunicados, Eventos e Classificados.
+- Novo `CommunitySections.tsx` com galeria derivada das mídias publicadas, CRUD de comunicados (para owner), criação de eventos + RSVP, e classificados com filtros, status e denúncia.
+- API correspondente em `mobile/src/lib/api.ts`, usando as mesmas tabelas e RLS do site.
+
+## Verificação de um achado da auditoria
+
+- O alerta "Quiz promete refresh rounds mas o banco não retorna" era **falso positivo**: a função implantada `quiz_round_status()` retorna `refresh_rounds` (via `quiz_refresh_rounds()`) e `remote.js:1575` consome o campo. Nenhuma correção necessária.
+
 ## Verificação final
 
 | Comando | Resultado |
