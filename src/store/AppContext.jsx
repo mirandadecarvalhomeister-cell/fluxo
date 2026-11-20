@@ -71,6 +71,44 @@ const SETTINGS_KEY = 'fluxo.settings';
 const SESSION_KEY = 'fluxo.session';
 const ACCOUNTS_KEY = 'fluxo.accounts';
 const DATA_PREFIX = 'fluxo.data.';
+const DRAFT_KEY = 'fluxo.post.draft.v1';
+
+function readDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved || typeof saved !== 'object') return null;
+    return {
+      text: String(saved.text || '').slice(0, 600),
+      // Mídias locais não sobrevivem a recarregar: só referências remotas.
+      media: Array.isArray(saved.media)
+        ? saved.media.filter((item) => item?.src && !item.src.startsWith('blob:')).slice(0, 10)
+        : [],
+      format: String(saved.format || 'classic'),
+      options: Array.isArray(saved.options) ? saved.options.slice(0, 6) : [],
+      reactions: DEFAULT_REACTIONS,
+      invited: Array.isArray(saved.invited) ? saved.invited.slice(0, 20) : [],
+      communityId: saved.communityId || null,
+      schedule: saved.schedule && typeof saved.schedule === 'object' ? saved.schedule : DEFAULT_SCHEDULE,
+      live: null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(draft) {
+  try {
+    if (!draft?.text && !(draft?.media || []).length) {
+      localStorage.removeItem(DRAFT_KEY);
+      return;
+    }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    /* armazenamento indisponível */
+  }
+}
 
 const DEFAULT_SETTINGS = {
   messageSound: true,
@@ -805,7 +843,7 @@ const initialUi = () => {
   const { route, room, arenaCode, quizOpen, quizChallenge, quizInvite, enigmasOpen, defesaOpen, commId } = readHash();
   return {
     route,
-    draft: {
+    draft: readDraft() || {
       text: '',
       media: [],
       format: 'classic',
@@ -900,6 +938,11 @@ export function AppProvider({ children }) {
     lsSet(SETTINGS_KEY, JSON.stringify(ui.settings));
     document.documentElement.dataset.motion = ui.settings.reduceMotion ? 'reduce' : 'full';
   }, [ui.settings]);
+
+  // Rascunho do site: salvo automaticamente no armazenamento local.
+  useEffect(() => {
+    writeDraft(ui.draft);
+  }, [ui.draft]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -5397,6 +5440,21 @@ export function AppProvider({ children }) {
     openSettings: () => setUi((u) => ({ ...u, modal: { type: 'settings' } })),
     openNotifications: () => setUi((u) => ({ ...u, modal: { type: 'notifications' } })),
     openComposer: () => setUi((u) => ({ ...u, modal: { type: 'composer' } })),
+    saveDraftNow: () => {
+      writeDraft(uiRef.current.draft);
+      toast('Rascunho salvo');
+    },
+    discardDraft: () => {
+      writeDraft(null);
+      setUi((u) => ({
+        ...u,
+        draft: {
+          text: '', media: [], format: 'classic', options: [], reactions: DEFAULT_REACTIONS,
+          invited: [], communityId: null, schedule: DEFAULT_SCHEDULE, live: null,
+        },
+      }));
+      toast('Rascunho descartado');
+    },
     markNotifsSeen,
     markCommunityNotificationsRead,
     loadMoreFeed,

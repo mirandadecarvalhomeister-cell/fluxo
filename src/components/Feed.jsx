@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   INTERACTIVE_FORMATS,
   MAX_OPTIONS,
@@ -43,7 +43,20 @@ export function Composer({ inModal = false }) {
   const meta = formatMeta(format);
   const first = data.me.name.split(' ')[0];
   const [editing, setEditing] = useState(null);
+  const [review, setReview] = useState(false);
+  const [draftStatus, setDraftStatus] = useState('');
   const editingItem = editing !== null ? media[editing] : null;
+
+  useEffect(() => {
+    if (!draft.text && !media.length) {
+      setDraftStatus('');
+      return undefined;
+    }
+    setDraftStatus('Salvando…');
+    const timer = window.setTimeout(() => setDraftStatus('Rascunho salvo'), 400);
+    return () => window.clearTimeout(timer);
+  }, [draft.text, media.length]);
+
   const options = draft.options || [];
   const invited = draft.invited || [];
   const friends = (data.follows || []).filter((id) => id !== 'me');
@@ -63,8 +76,7 @@ export function Composer({ inModal = false }) {
       className={inModal ? 'composer composer-in-modal' : 'card composer'}
       onSubmit={(event) => {
         event.preventDefault();
-        actions.publish(draft.text);
-        if (inModal) actions.closeModal();
+        setReview(true);
       }}
     >
       <div className="row" style={{ alignItems: 'flex-start' }}>
@@ -366,12 +378,40 @@ export function Composer({ inModal = false }) {
           </span>
         </div>
         <div className="row">
-          <span className="muted sm">{draft.text.length}/600</span>
+          {draftStatus ? <span className="draft-status">{draftStatus}</span> : null}
+          <button className="btn ghost sm" type="button" onClick={() => actions.saveDraftNow()}>
+            Salvar rascunho
+          </button>
           <button className="btn primary" type="submit">
-            Publicar
+            Revisar publicação
           </button>
         </div>
       </div>
+
+      {review ? (
+        <div className="publish-review" role="region" aria-label="Revisão final da publicação">
+          <b>Revisão final</b>
+          <p className="muted sm">
+            {draft.text.trim() ? draft.text.trim().slice(0, 240) : 'Sem texto'} · {media.length} mídia(s) · {formatMeta(format).label} · {draft.communityId ? 'Comunidade' : 'Feed público'}
+          </p>
+          <div className="row">
+            <button type="button" className="btn ghost" onClick={() => setReview(false)}>
+              Voltar
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => {
+                actions.publish(draft.text);
+                setReview(false);
+                if (inModal) actions.closeModal();
+              }}
+            >
+              Publicar agora
+            </button>
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }

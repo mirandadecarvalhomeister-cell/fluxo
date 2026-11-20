@@ -2228,6 +2228,11 @@ html,body{max-width:100%;overflow-x:clip}
 .media-lightbox-nav button{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff}
 .media-lightbox-nav .ic{width:16px;height:16px}
 .media-lightbox-nav .flip .ic{transform:rotate(180deg)}
+.draft-status{font-size:11px;color:var(--ok);font-weight:700}
+.publish-review{display:grid;gap:8px;padding:12px;border-radius:13px;border:1px solid var(--accent);background:var(--accent-soft)}
+.publish-review b{font-size:13px}
+.publish-review p{margin:0;line-height:1.4;overflow-wrap:anywhere}
+.publish-review .row{justify-content:flex-end}
 @media (max-width:560px){
   .composer-trigger{padding:12px;gap:9px}
   .composer-trigger-field{font-size:12.5px;padding:10px 12px}
