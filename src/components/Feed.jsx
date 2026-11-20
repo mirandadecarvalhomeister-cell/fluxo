@@ -408,8 +408,11 @@ function Composer() {
 }
 
 function FeedControls({ prefs, suggestions }) {
-  const { actions } = useApp();
+  const { actions, data } = useApp();
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [commCat, setCommCat] = useState('todas');
+  const categories = [...new Set((data.comms || []).map((item) => item.category).filter(Boolean))].slice(0, 8);
+  const discover = suggestions.filter((item) => commCat === 'todas' || item.category === commCat);
 
   const toggleFormat = (id) => {
     const next = prefs.formats.includes(id)
@@ -480,13 +483,29 @@ function FeedControls({ prefs, suggestions }) {
         </div>
       ) : null}
 
-      {prefs.mode === 'communities' && suggestions.length ? (
+      {suggestions.length ? (
         <div className="feed-suggest">
           <span className="feed-suggest-title">
             <Icon name="spark" /> Comunidades para descobrir
           </span>
+          {categories.length ? (
+            <div className="feed-suggest-cats" role="tablist" aria-label="Categorias de comunidades">
+              {['todas', ...categories].map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  role="tab"
+                  aria-selected={commCat === cat}
+                  className={commCat === cat ? 'on' : ''}
+                  onClick={() => setCommCat(cat)}
+                >
+                  {cat === 'todas' ? 'Todas' : cat}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className="feed-suggest-row">
-            {suggestions.map((item) => (
+            {discover.map((item) => (
               <button
                 key={item.id}
                 type="button"
@@ -542,14 +561,15 @@ function SpontaneousTopics({ topics }) {
 import { ListSkeleton } from './Skeleton';
 
 export default function Feed() {
-  const { data, ui, ready } = useApp();
+  const { data, ui, ready, actions } = useApp();
+  const [loadingMore, setLoadingMore] = useState(false);
   const prefs = feedPrefs(ui.settings);
   const followedTerms = interestTerms(data.me, data.comms);
   const commById = new Map((data.comms || []).map((item) => [item.id, item]));
   // Publicações de comunidade vivem dentro da comunidade (e do Radar quando
   // estão em alta), nunca no feed principal.
   const enriched = data.posts
-    .filter((post) => !post.communityId && post.kind !== 'audio')
+    .filter((post) => (!post.communityId || post.shareToFeed) && post.kind !== 'audio')
     .map((post) => {
     const community = post.communityId ? commById.get(post.communityId) : null;
     return {
@@ -608,6 +628,25 @@ export default function Feed() {
         )}
       </div>
       )}
+      {ready && list.length ? (
+        <div className="feed-more">
+          <button
+            type="button"
+            className="btn"
+            disabled={loadingMore}
+            onClick={async () => {
+              setLoadingMore(true);
+              try {
+                await actions.loadMoreFeed();
+              } finally {
+                setLoadingMore(false);
+              }
+            }}
+          >
+            {loadingMore ? 'Carregando…' : 'Carregar mais publicações'}
+          </button>
+        </div>
+      ) : null}
     </>
   );
 }

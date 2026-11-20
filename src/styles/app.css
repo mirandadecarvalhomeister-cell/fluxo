@@ -2057,6 +2057,10 @@ html,body{max-width:100%;overflow-x:clip}
 .comm-react-picker button.on{background:var(--accent-soft)}
 .comm-react-custom{color:var(--muted)}
 .comm-react-custom .ic{width:14px;height:14px}
+.feed-more{display:flex;justify-content:center;padding:14px 0 4px}
+.feed-suggest-cats{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.feed-suggest-cats button{padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface2);color:var(--muted);font:600 11px var(--f-body)}
+.feed-suggest-cats button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 
 /* Envio múltiplo de fotos/vídeos no chat direto. */
 .msg-caption{margin:0 0 4px;font-size:13px;line-height:1.35;overflow-wrap:anywhere}

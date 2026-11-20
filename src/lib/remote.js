@@ -387,6 +387,34 @@ export async function setProfileTheme(uid, theme) {
   }
 }
 
+/**
+ * Página do feed por cursor (created_at do último item da página anterior).
+ * Retorna linhas cruas; a normalização para o formato do app é feita no store.
+ */
+export async function fetchFeedPage(cursor = null, limit = 12) {
+  if (!enabled()) return { rows: [], nextCursor: null };
+  try {
+    let query = supabase
+      .from('posts')
+      .select('*')
+      .is('community_id', null)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(limit);
+    if (cursor) query = query.lt('created_at', cursor);
+    const { data, error } = await query;
+    if (error) { warn(error); return { rows: [], nextCursor: null }; }
+    const rows = data || [];
+    return {
+      rows,
+      nextCursor: rows.length === limit ? rows[rows.length - 1].created_at : null,
+    };
+  } catch (error) {
+    warn(error);
+    return { rows: [], nextCursor: null };
+  }
+}
+
 export async function saveFeedPreferences(uid, prefs) {
   if (!enabled() || !uid) return;
   try {
@@ -491,6 +519,9 @@ export async function updatePost(post) {
     };
     if (post.interactive !== undefined) {
       patch.interactive = post.interactive || null;
+    }
+    if (post.shareToFeed !== undefined) {
+      patch.share_to_feed = !!post.shareToFeed;
     }
     if (Array.isArray(post.media)) {
       patch.media = post.media.map((item) => ({

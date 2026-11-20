@@ -386,6 +386,16 @@ function CommunityChat({ posts, canPost, community }) {
                   {interactive ? <Interactive post={post} /> : null}
                   <div className="comm-chat-actions">
                     <CommunityReactions post={post} />
+                    {mine && !community.private ? (
+                      <button
+                        type="button"
+                        onClick={() => actions.shareCommunityPostToFeed(post.id)}
+                        aria-label="Compartilhar no feed"
+                        title="Compartilhar no feed"
+                      >
+                        <Icon name="share" />
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => setReplyTarget({ postId: post.id, name: person.name })}

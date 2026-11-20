@@ -873,6 +873,7 @@ export function AppProvider({ children }) {
   const typingTimersRef = useRef({});
   const lastTypingRef = useRef({});
   const viewedRef = useRef(new Set());
+  const feedCursorRef = useRef(null);
   const resultsNotifiedRef = useRef(new Set());
   const resultsHydratedRef = useRef(new Set());
   uiRef.current = ui;
@@ -1037,6 +1038,7 @@ export function AppProvider({ children }) {
             }
           : u.settings,
       }));
+      feedCursorRef.current = null;
       writeCache(email, merged);
       setReady(true);
 
@@ -2183,6 +2185,73 @@ export function AppProvider({ children }) {
     setUi((u) => ({ ...u, route, room: route === 'conexoes' ? null : u.room }));
     window.scrollTo(0, 0);
   };
+
+  // Paginação do feed por cursor e compartilhamento comunidade -> feed.
+  async function loadMoreFeed() {
+    const { rows, nextCursor } = await remote.fetchFeedPage(feedCursorRef.current, 12);
+    feedCursorRef.current = nextCursor;
+    if (!rows.length) return { added: 0, nextCursor: null };
+    const uidv = sessionRef.current?.id;
+    const mapped = rows.map((row) => {
+      const media = parseRemoteMedia(row.media);
+      if (!media.length && row.media_url) {
+        media.push({
+          kind: ['video', 'audio'].includes(row.kind) ? row.kind : 'photo',
+          src: row.media_url,
+          seed: row.seed || row.id,
+          dur: row.dur,
+        });
+      }
+      if (!media.length && ['photo', 'video', 'audio'].includes(row.kind)) {
+        media.push({ kind: row.kind, seed: row.seed || row.id, dur: row.dur });
+      }
+      return {
+        id: row.id,
+        by: uidv && row.author_id === uidv ? 'me' : row.author_id,
+        ts: row.created_at ? Date.parse(row.created_at) : Date.now(),
+        text: row.text || '',
+        kind: row.kind || 'text',
+        media,
+        src: row.media_url || media[0]?.src || null,
+        seed: row.seed || undefined,
+        communityId: row.community_id || null,
+        likes: 0,
+        liked: false,
+        myReaction: null,
+        reactionCounts: {},
+        saved: false,
+        comments: [],
+        interactions: [],
+        interactive: normalizeInteractive(row.interactive),
+        views: 0,
+        viewed: false,
+      };
+    });
+    setData((cur) => {
+      const seen = new Set(cur.posts.map((post) => post.id));
+      const fresh = mapped.filter((post) => !seen.has(post.id));
+      return fresh.length ? { ...cur, posts: [...cur.posts, ...fresh] } : cur;
+    });
+    return { added: mapped.length, nextCursor };
+  }
+
+  function shareCommunityPostToFeed(postId) {
+    const post = dataRef.current?.posts.find((item) => item.id === postId);
+    if (!post?.communityId) return false;
+    const community = dataRef.current?.comms?.find((item) => item.id === post.communityId);
+    if (community?.private) {
+      toast('Posts de comunidades privadas não podem ir para o feed.');
+      return false;
+    }
+    const updated = { ...post, shareToFeed: true };
+    setData((cur) => ({
+      ...cur,
+      posts: cur.posts.map((item) => (item.id === postId ? updated : item)),
+    }));
+    if (sessionRef.current?.id) remote.updatePost(updated);
+    toast('Publicação compartilhada no feed');
+    return true;
+  }
 
   // Comunicados oficiais das comunidades.
   function addCommunityAnnouncement(communityId, fields) {
@@ -5289,6 +5358,8 @@ export function AppProvider({ children }) {
     openNotifications: () => setUi((u) => ({ ...u, modal: { type: 'notifications' } })),
     markNotifsSeen,
     markCommunityNotificationsRead,
+    loadMoreFeed,
+    shareCommunityPostToFeed,
     addCommunityAnnouncement,
     updateCommunityAnnouncement,
     removeCommunityAnnouncement,
