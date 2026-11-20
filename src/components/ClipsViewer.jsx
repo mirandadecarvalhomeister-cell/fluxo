@@ -73,15 +73,19 @@ export default function ClipsViewer() {
       if (event.key === 'Escape') { close(); return; }
       if (['ArrowDown', 'PageDown'].includes(event.key)) {
         event.preventDefault();
-        actions.setClipIndex(Math.min(items.length - 1, active + 1));
+        const next = Math.min(items.length - 1, active + 1);
+        setActive(next);
+        actions.setClipIndex(next);
       }
       if (['ArrowUp', 'PageUp'].includes(event.key)) {
         event.preventDefault();
-        actions.setClipIndex(Math.max(0, active - 1));
+        const next = Math.max(0, active - 1);
+        setActive(next);
+        actions.setClipIndex(next);
       }
       if (event.key === ' ') {
         event.preventDefault();
-        const video = itemRefs.current[active];
+        const video = itemRefs.current[active]?.querySelector('video');
         if (!video) return;
         if (video.paused) video.play().catch(() => {});
         else video.pause();
@@ -105,7 +109,7 @@ export default function ClipsViewer() {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          const index = Number(entry.target.dataset.ClipIndex);
+          const index = Number(entry.target.dataset.clipIndex);
           const video = entry.target.querySelector('video');
           if (!video) return;
           if (entry.intersectionRatio >= 0.65) {
@@ -124,7 +128,8 @@ export default function ClipsViewer() {
   }, [items.length, muted, state]);
 
   useEffect(() => {
-    Object.values(itemRefs.current).forEach((video) => {
+    Object.values(itemRefs.current).forEach((node) => {
+      const video = node?.querySelector('video');
       if (video) video.muted = muted;
     });
   }, [muted]);
@@ -162,9 +167,9 @@ export default function ClipsViewer() {
           <div
             className="clips-item"
             key={item.postId}
-            data-Clip-index={index}
+            data-clip-index={index}
             ref={(node) => {
-              if (node) itemRefs.current[index] = node.querySelector('video');
+              if (node) itemRefs.current[index] = node;
             }}
           >
             <video
@@ -174,7 +179,7 @@ export default function ClipsViewer() {
               loop
               preload={Math.abs(index - active) <= 1 ? 'auto' : 'metadata'}
               onClick={() => {
-                const video = itemRefs.current[index];
+                const video = itemRefs.current[index]?.querySelector('video');
                 if (!video) return;
                 if (video.paused) video.play().catch(() => {});
                 else video.pause();

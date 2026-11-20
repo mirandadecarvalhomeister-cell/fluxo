@@ -22,9 +22,11 @@ export function readSave() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const save = JSON.parse(raw);
-    if (!save || !Number.isFinite(save.level)) return null;
+    if (!save) return null;
+    const level = Number(save.level);
+    if (!Number.isFinite(level)) return null;
     return {
-      level: Math.min(Math.max(1, Math.floor(save.level)), TOTAL_LEVELS),
+      level: Math.min(Math.max(1, Math.floor(level)), TOTAL_LEVELS),
       score: Number(save.score) || 0,
       hints: Number(save.hints) || 0,
       attempts: Number(save.attempts) || 0,

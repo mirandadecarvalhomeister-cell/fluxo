@@ -260,7 +260,8 @@ export default function Enigmas() {
           <div className="enigmas-intro">
             <div className="enigmas-intro-copy">
               <span className="enigmas-eyebrow"><Icon name="spark" /> DESAFIO DE LÓGICA</span>
-              <h1>NÍVEL ZERO</h1>
+              <b className="enigmas-title-solid">NÍVEL ZERO</b>
+              <h1 aria-hidden="true">NÍVEL ZERO</h1>
               <p>
                 100 enigmas em sequência, sem voltar e sem pular. Cada resposta
                 certa desbloqueia o próximo nível — cada dica custa pontos.

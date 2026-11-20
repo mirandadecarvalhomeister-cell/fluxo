@@ -114,7 +114,8 @@
 .enigmas-intro-copy{text-align:left;display:grid;gap:8px}
 .enigmas-eyebrow{display:inline-flex;align-items:center;gap:6px;font:800 11px var(--f-body);letter-spacing:.16em;color:var(--en-cyan)}
 .enigmas-eyebrow .ic{width:14px;height:14px}
-.enigmas-intro h1{margin:0;text-align:left;font-size:clamp(2rem,6vw,3rem)}
+.enigmas-title-solid{display:block;font:900 clamp(2rem,6vw,3rem) var(--f-display);letter-spacing:.14em;color:#22e6ff;text-shadow:0 0 24px rgba(34,230,255,.55)}
+.enigmas-intro h1{display:none}
 .enigmas-intro p{margin:0;max-width:480px;color:var(--en-muted);font-size:13px;line-height:1.55}
 .enigmas-intro-mark{position:relative;flex:none;width:132px;height:132px;border-radius:30px;display:grid;place-items:center;background:radial-gradient(circle,rgba(154,92,255,.28),rgba(5,4,11,.9));border:1px solid rgba(34,230,255,.4);box-shadow:0 0 38px -8px rgba(34,230,255,.55)}
 .enigmas-intro-mark .enigmas-mark-svg{width:86%;height:86%}
