@@ -29,8 +29,8 @@ export function PostThumb({ post }) {
     <button
       type="button"
       className="pgitem"
-      onClick={() => actions.openPost(post.id)}
-      aria-label={`Abrir publicação de ${author.name}`}
+      onClick={() => (isVideo ? actions.openClips(post.id) : actions.openPost(post.id))}
+      aria-label={`Abrir ${isVideo ? 'vídeo' : 'publicação'} de ${author.name}`}
     >
       {isVideo ? (
         <video
@@ -191,7 +191,6 @@ export default function Profile() {
   const photos = mine.filter(hasPhotoOrVideo);
   const polls = mine.filter((post) => ['poll', 'imageVote'].includes(formatOf(post)));
   const challenges = mine.filter((post) => formatOf(post) === 'challenge');
-  const questions = mine.filter((post) => formatOf(post) === 'question');
   const saved = data.posts
     .filter((p) => p.saved && p.kind !== 'story')
     .sort((a, b) => b.ts - a.ts);
@@ -242,7 +241,7 @@ export default function Profile() {
         </button>
       </Empty>
     );
-  } else if (['polls', 'challenges', 'questions'].includes(tab)) {
+  } else if (['polls', 'challenges'].includes(tab)) {
     const config = {
       polls: {
         list: polls,
@@ -253,11 +252,6 @@ export default function Profile() {
         list: challenges,
         title: 'Nenhum desafio ainda',
         text: 'Os desafios que você propôs aparecem aqui.',
-      },
-      questions: {
-        list: questions,
-        title: 'Nenhuma pergunta ainda',
-        text: 'As perguntas que você publicou aparecem aqui.',
       },
     }[tab];
     body = config.list.length ? (
@@ -586,12 +580,6 @@ export default function Profile() {
               onClick={() => actions.setProfTab('challenges')}
             >
               Desafios
-            </button>
-            <button
-              className={tab === 'questions' ? 'on' : ''}
-              onClick={() => actions.setProfTab('questions')}
-            >
-              Perguntas
             </button>
             <button
               className={tab === 'saved' ? 'on' : ''}

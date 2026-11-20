@@ -5,6 +5,7 @@ import { Logo } from './components/Brand';
 import GuestGate from './components/GuestGate';
 import IconSprite from './components/Icon';
 import ModalHost from './components/ModalHost';
+import ClipsViewer from './components/ClipsViewer';
 import ResetPassword from './components/ResetPassword';
 import Shell from './components/Shell';
 import Toast from './components/Toast';
@@ -29,6 +30,7 @@ export default function App() {
         <>
           <Shell />
           <ModalHost />
+          <ClipsViewer />
           {guest ? <GuestGate /> : null}
         </>
       ) : (

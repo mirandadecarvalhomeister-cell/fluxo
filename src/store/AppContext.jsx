@@ -834,6 +834,7 @@ const initialUi = () => {
     myLive: null,
     authTab: 'in',
     modal: null,
+    clips: null,
     commSeed: COVERS[0],
     commDraft: null,
     settings: readSettings(),
@@ -3032,6 +3033,22 @@ export function AppProvider({ children }) {
 
   function toggleComments(id) {
     setUi((u) => ({ ...u, open: { ...u.open, [id]: !u.open[id] } }));
+  }
+
+  function openClips(postId) {
+    const videos = (dataRef.current?.posts || [])
+      .filter((post) => mediaOf(post).some((item) => item.kind === 'video' && item.src))
+      .sort((a, b) => b.ts - a.ts);
+    const index = Math.max(0, videos.findIndex((post) => post.id === postId));
+    setUi((u) => ({ ...u, clips: { index }, modal: null }));
+  }
+
+  function closeClips() {
+    setUi((u) => ({ ...u, clips: null }));
+  }
+
+  function setClipIndex(index) {
+    setUi((u) => (u.clips ? { ...u, clips: { ...u.clips, index } } : u));
   }
 
   function openPost(id) {
@@ -5339,6 +5356,9 @@ export function AppProvider({ children }) {
     reactPost,
     toggleComments,
     openPost,
+    openClips,
+    closeClips,
+    setClipIndex,
     openUser,
     reportPost,
     addComment,

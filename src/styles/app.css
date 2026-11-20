@@ -2069,6 +2069,40 @@ html,body{max-width:100%;overflow-x:clip}
 .sheet .post-detail-controls .post-menu > summary:hover{background:var(--surface);color:var(--accent)}
 .sheet .post-detail-controls .menu-pop{right:0}
 
+/* Clips — visualizador vertical de vídeos. */
+.clips-root{position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;background:#05040b;color:#fff}
+.clips-top{position:absolute;top:0;left:0;right:0;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;background:linear-gradient(180deg,rgba(0,0,0,.65),transparent);color:#fff}
+.clips-top b{font-size:14px;letter-spacing:.06em;text-transform:uppercase}
+.clips-top .icon-btn{color:#fff}
+.clips-track{width:100%;height:100dvh;overflow-y:auto;scroll-snap-type:y mandatory;scrollbar-width:none;overscroll-behavior:contain}
+.clips-track::-webkit-scrollbar{display:none}
+.clips-item{position:relative;width:100%;height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center;background:#05040b}
+.clips-item video{width:100%;height:100%;max-height:100dvh;object-fit:contain;background:#05040b}
+.clips-nav{position:absolute;right:14px;top:50%;z-index:5;transform:translateY(-50%);display:grid;gap:8px;justify-items:center}
+.clips-nav button{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.38);color:#fff;backdrop-filter:blur(6px)}
+.clips-nav button:disabled{opacity:.25;cursor:default}
+.clips-nav button .ic.flip{transform:rotate(180deg)}
+.clips-nav span{font-size:10px;font-variant-numeric:tabular-nums;opacity:.7}
+.clips-rail{position:absolute;right:12px;bottom:96px;z-index:5;display:grid;gap:16px;justify-items:center}
+.clips-rail button{display:grid;gap:3px;justify-items:center;border:0;background:transparent;color:#fff;font:700 11px var(--f-body);text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.clips-rail button.on{color:var(--hot)}
+.clips-rail .ic{width:27px;height:27px;filter:drop-shadow(0 2px 5px rgba(0,0,0,.6))}
+.clips-rail button:first-child .av{width:42px!important;height:42px!important}
+.clips-info{position:absolute;left:14px;right:76px;bottom:38px;z-index:5;text-shadow:0 1px 5px rgba(0,0,0,.7)}
+.clips-author{display:flex;align-items:baseline;gap:7px;margin-bottom:5px}
+.clips-author b{font-size:14px}
+.clips-author span{font-size:11px;opacity:.75}
+.clips-info p{margin:0;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.clips-more{border:0;background:transparent;color:rgba(255,255,255,.8);font-size:11px;font-weight:700;padding:2px 0}
+.clips-progress{position:absolute;left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:5;height:3px;border-radius:3px;background:rgba(255,255,255,.25)}
+.clips-progress span{display:block;height:100%;border-radius:3px;background:#fff;transition:width .12s linear}
+.clips-progress small{position:absolute;right:0;bottom:8px;font-size:10px;font-variant-numeric:tabular-nums;opacity:.75}
+@media (max-width:560px){
+  .clips-rail{bottom:104px;gap:12px}
+  .clips-info{right:64px;bottom:44px}
+  .clips-nav{display:none}
+}
+
 /* Envio múltiplo de fotos/vídeos no chat direto. */
 .msg-caption{margin:0 0 4px;font-size:13px;line-height:1.35;overflow-wrap:anywhere}
 .msg-pending{display:grid;gap:8px;padding:8px;border-radius:16px;background:var(--surface2);border:1px solid var(--line)}

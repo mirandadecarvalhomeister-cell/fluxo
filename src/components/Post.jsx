@@ -22,7 +22,7 @@ import AudioPlayer from './AudioPlayer';
 import PrivateAudio from './PrivateAudio';
 import PrivateMedia from './PrivateMedia';
 
-function MediaItem({ item, author, index }) {
+function MediaItem({ item, author, index, postId }) {
   const [failedSrc, setFailedSrc] = useState(null);
   const [videoFailed, setVideoFailed] = useState(false);
   const seed = item.seed || `${author.id}-${index}`;
@@ -86,6 +86,7 @@ function MediaItem({ item, author, index }) {
           src={item.src}
           style={style}
           onError={() => setVideoFailed(true)}
+          postId={postId}
         />
       );
     }
@@ -138,7 +139,7 @@ function Media({ post, author }) {
   if (items.length === 1) {
     return (
       <div className="media">
-        <MediaItem item={items[0]} author={author} index={0} />
+        <MediaItem item={items[0]} author={author} index={0} postId={post.id} />
       </div>
     );
   }
@@ -164,7 +165,7 @@ function Media({ post, author }) {
       <div className="car-track" ref={trackRef} onScroll={onScroll}>
         {items.map((item, itemIndex) => (
           <div className="car-slide" key={itemIndex}>
-            <MediaItem item={item} author={author} index={itemIndex} />
+            <MediaItem item={item} author={author} index={itemIndex} postId={post.id} />
           </div>
         ))}
       </div>

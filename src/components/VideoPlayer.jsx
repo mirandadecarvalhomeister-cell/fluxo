@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useApp } from '../store/AppContext';
 import { Icon } from './Icon';
 
 function clock(value) {
@@ -286,7 +287,8 @@ function primeNext(current) {
 
 // Vídeo do feed: mudo, em loop, só toca com mais de 60% visível e expande
 // para tela cheia sem recriar o elemento de vídeo.
-export function FeedVideo({ src, style, onError }) {
+export function FeedVideo({ src, style, onError, postId }) {
+  const { actions } = useApp();
   const videoRef = useRef(null);
   const player = usePlayer(videoRef);
   const [expanded, setExpanded] = useState(false);
@@ -375,6 +377,10 @@ export function FeedVideo({ src, style, onError }) {
         if (!expanded) {
           event.preventDefault();
           event.stopPropagation();
+          if (postId) {
+            actions.openClips(postId);
+            return;
+          }
           player.enableSound();
           setExpanded(true);
           return;

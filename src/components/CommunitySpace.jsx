@@ -358,7 +358,16 @@ function CommunityChat({ posts, canPost, community }) {
                         alt="Mídia da comunidade"
                       />
                     ) : item.kind === 'video' ? (
-                      <video key={index} src={item.src} controls preload="metadata" />
+                      <video
+                        key={index}
+                        src={item.src}
+                        controls
+                        preload="metadata"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          actions.openClips(post.id);
+                        }}
+                      />
                     ) : (
                       <img key={index} src={item.src} alt="Foto da comunidade" loading="lazy" />
                     )
@@ -863,7 +872,15 @@ export default function CommunitySpace({ community, onAdmin }) {
                           alt={g.title || 'Mídia da comunidade'}
                         />
                       ) : g.kind === 'video' ? (
-                        <video src={g.src} controls preload="metadata" />
+                        <video
+                          src={g.src}
+                          controls
+                          preload="metadata"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            actions.openClips(g.post_id);
+                          }}
+                        />
                       ) : g.kind === 'audio' ? (
                         g.storageBucket === 'community-private' && g.storagePath ? (
                           <PrivateAudio
