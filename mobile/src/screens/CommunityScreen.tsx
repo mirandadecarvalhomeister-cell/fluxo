@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -12,6 +12,18 @@ import { compactNumber, timeAgo } from '../lib/format';
 import { firstMedia, isVideoPost } from '../lib/media';
 import { fetchCommunities, fetchCommunityPosts, setCommunityMembership } from '../lib/api';
 import type { Community, Post } from '../types';
+import {
+  CommunityGallery, CommunityAnnouncements, CommunityEvents, CommunityClassifieds,
+} from '../components/CommunitySections';
+
+type Tab = 'posts' | 'gallery' | 'announcements' | 'events' | 'classifieds';
+const TABS: Array<[Tab, string]> = [
+  ['posts', 'Publicações'],
+  ['gallery', 'Galeria'],
+  ['announcements', 'Comunicados'],
+  ['events', 'Eventos'],
+  ['classifieds', 'Classificados'],
+];
 
 const PAGE_SIZE = 12;
 
@@ -24,6 +36,7 @@ export default function CommunityScreen({ communityId }: { communityId: string }
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<Tab>('posts');
   const busyRef = useRef(false);
 
   const load = useCallback(async (offset: number, reset: boolean) => {
@@ -90,6 +103,17 @@ export default function CommunityScreen({ communityId }: { communityId: string }
           <PrimaryButton title={community.joined ? 'Sair da comunidade' : 'Entrar na comunidade'} onPress={toggleJoin} />
         )}
       </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs}>
+        {TABS.map(([key, label]) => (
+          <Pressable
+            key={key}
+            onPress={() => setTab(key)}
+            style={[styles.tab, tab === key && styles.tabOn]}
+          >
+            <Text style={[styles.tabText, tab === key && styles.tabTextOn]}>{label}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
     </View>
   ) : null;
 
@@ -98,6 +122,24 @@ export default function CommunityScreen({ communityId }: { communityId: string }
       <StackHeader title={community?.name || 'Comunidade'} />
       {loading && !community ? (
         <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>
+      ) : tab !== 'posts' ? (
+        <ScrollView contentContainerStyle={{ paddingBottom: 30 }}>
+          {header}
+          {tab === 'gallery' ? <CommunityGallery posts={posts} /> : null}
+          {tab === 'announcements' ? (
+            <CommunityAnnouncements
+              communityId={communityId}
+              owner={profile?.id === community?.ownerId}
+              uid={profile?.id || ''}
+            />
+          ) : null}
+          {tab === 'events' ? (
+            <CommunityEvents communityId={communityId} owner={false} uid={profile?.id || ''} />
+          ) : null}
+          {tab === 'classifieds' ? (
+            <CommunityClassifieds communityId={communityId} owner={false} uid={profile?.id || ''} />
+          ) : null}
+        </ScrollView>
       ) : (
         <FlatList
           data={posts}
@@ -155,4 +197,9 @@ const styles = StyleSheet.create({
   postText: { color: colors.text, fontSize: 14, lineHeight: 19 },
   media: { width: '100%', aspectRatio: 16 / 10, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.surfaceAlt },
   playMark: { position: 'absolute', right: 8, bottom: 8, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
+  tabs: { flexGrow: 0, marginTop: 14, paddingHorizontal: spacing.lg },
+  tab: { paddingHorizontal: 14, paddingVertical: 9, marginRight: 6, borderRadius: 999, backgroundColor: colors.surfaceAlt },
+  tabOn: { backgroundColor: colors.primary },
+  tabText: { color: colors.muted, fontSize: 12, fontWeight: '700' },
+  tabTextOn: { color: '#fff' },
 });

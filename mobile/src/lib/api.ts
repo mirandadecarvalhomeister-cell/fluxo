@@ -213,6 +213,123 @@ export async function setCommunityMembership(communityId: string, uidValue: stri
   }
 }
 
+// --- Comunidades: comunicados, eventos e classificados ---------------------
+
+export type CommunityAnnouncement = {
+  id: string; community_id: string; author_id: string; title: string;
+  body: string; image_url: string | null; priority: number; pinned: boolean;
+  created_at: string;
+};
+
+export async function fetchCommunityAnnouncements(communityId: string): Promise<CommunityAnnouncement[]> {
+  const { data, error } = await supabase
+    .from('community_announcements')
+    .select('*')
+    .eq('community_id', communityId)
+    .order('pinned', { ascending: false })
+    .order('priority', { ascending: false })
+    .order('created_at', { ascending: false });
+  fail(error, 'Não foi possível carregar os comunicados.');
+  return (data || []) as CommunityAnnouncement[];
+}
+
+export async function publishCommunityAnnouncement(
+  communityId: string,
+  uidValue: string,
+  fields: { title: string; body: string; priority?: number; pinned?: boolean; imageUrl?: string | null }
+) {
+  const { error } = await supabase.from('community_announcements').insert({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    community_id: communityId,
+    author_id: uidValue,
+    title: fields.title,
+    body: fields.body,
+    priority: fields.priority || 0,
+    pinned: !!fields.pinned,
+    image_url: fields.imageUrl || null,
+  });
+  fail(error, 'Não foi possível publicar o comunicado.');
+}
+
+export async function markCommunityAnnouncementRead(id: string, uidValue: string) {
+  await supabase.from('community_announcement_reads').upsert(
+    { announcement_id: id, user_id: uidValue },
+    { onConflict: 'announcement_id,user_id', ignoreDuplicates: true }
+  );
+}
+
+export type CommunityEvent = {
+  id: string; community_id: string; created_by: string; title: string;
+  description: string; starts_at: string; ends_at: string | null;
+  location: string; image_url: string | null; created_at: string;
+};
+
+export async function fetchCommunityEvents(communityId: string): Promise<CommunityEvent[]> {
+  const { data, error } = await supabase
+    .from('community_events')
+    .select('*')
+    .eq('community_id', communityId)
+    .order('starts_at', { ascending: true });
+  fail(error, 'Não foi possível carregar os eventos.');
+  return (data || []) as CommunityEvent[];
+}
+
+export async function createCommunityEvent(
+  communityId: string, uidValue: string, title: string, startsAt: string, location: string
+) {
+  const { error } = await supabase.from('community_events').insert({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    community_id: communityId,
+    created_by: uidValue,
+    title,
+    description: '',
+    starts_at: startsAt,
+    location: location || null,
+  });
+  fail(error, 'Não foi possível criar o evento.');
+}
+
+export async function setCommunityEventRsvp(eventId: string, uidValue: string, going: boolean) {
+  if (going) {
+    const { error } = await supabase.from('community_event_rsvps').upsert({
+      event_id: eventId, user_id: uidValue,
+    });
+    fail(error, 'Não foi possível confirmar presença.');
+  } else {
+    const { error } = await supabase.from('community_event_rsvps')
+      .delete().eq('event_id', eventId).eq('user_id', uidValue);
+    fail(error, 'Não foi possível cancelar a presença.');
+  }
+}
+
+export type CommunityClassified = {
+  id: string; community_id: string; author_id: string; category: string;
+  title: string; description: string; price: string; contact: string;
+  images: unknown; status: string; created_at: string;
+};
+
+export async function fetchCommunityClassifieds(communityId: string): Promise<CommunityClassified[]> {
+  const { data, error } = await supabase
+    .from('community_classifieds')
+    .select('*')
+    .eq('community_id', communityId)
+    .order('created_at', { ascending: false });
+  fail(error, 'Não foi possível carregar os classificados.');
+  return (data || []) as CommunityClassified[];
+}
+
+export async function setCommunityClassifiedStatus(id: string, status: string) {
+  const { error } = await supabase.from('community_classifieds').update({ status }).eq('id', id);
+  fail(error, 'Não foi possível atualizar o anúncio.');
+}
+
+export async function reportCommunityClassified(id: string, uidValue: string, reason: string) {
+  const { error } = await supabase.from('community_classified_reports').upsert({
+    id: `${id}:${uidValue}`, classified_id: id, reporter_id: uidValue, reason: reason || '',
+  }, { onConflict: 'id', ignoreDuplicates: true });
+  fail(error, 'Não foi possível enviar a denúncia.');
+}
+
 export async function fetchUserPosts(authorId: string, uidValue: string, offset = 0): Promise<FeedPage> {
   const { data, error } = await supabase
     .from('posts')
