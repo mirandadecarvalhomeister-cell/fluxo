@@ -2057,3 +2057,12 @@ html,body{max-width:100%;overflow-x:clip}
 .private-media .ic{width:24px;height:24px}
 .private-media button{border:0;background:transparent;color:var(--accent);font:700 11px var(--f-body)}
 
+/* Esqueletos de carregamento. */
+.skeleton{display:block;background:linear-gradient(90deg,color-mix(in srgb,var(--fg) 7%,transparent) 25%,color-mix(in srgb,var(--fg) 14%,transparent) 50%,color-mix(in srgb,var(--fg) 7%,transparent) 75%);background-size:200% 100%;animation:skeleton-shine 1.5s ease-in-out infinite;flex:none}
+@keyframes skeleton-shine{from{background-position:200% 0}to{background-position:-200% 0}}
+.post-skeleton{display:grid;gap:10px;padding:14px}
+.skeleton-head{display:flex;align-items:center;gap:10px}
+.skeleton-lines{display:grid;gap:6px;flex:1}
+.skeleton-actions{display:flex;gap:14px;padding-top:4px}
+@media (prefers-reduced-motion:reduce){.skeleton{animation:none}}
+

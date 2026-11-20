@@ -541,8 +541,10 @@ function SpontaneousTopics({ topics }) {
   );
 }
 
+import { ListSkeleton } from './Skeleton';
+
 export default function Feed() {
-  const { data, ui } = useApp();
+  const { data, ui, ready } = useApp();
   const prefs = feedPrefs(ui.settings);
   const followedTerms = interestTerms(data.me, data.comms);
   const commById = new Map((data.comms || []).map((item) => [item.id, item]));
@@ -588,6 +590,9 @@ export default function Feed() {
       {prefs.mode !== 'communities' ? (
         <SpontaneousTopics topics={spontaneous} />
       ) : null}
+      {!ready ? (
+        <ListSkeleton count={3} />
+      ) : (
       <div className="posts">
         {list.length ? (
           list.map((post) => <Post key={post.id} post={post} />)
@@ -604,6 +609,7 @@ export default function Feed() {
           />
         )}
       </div>
+      )}
     </>
   );
 }

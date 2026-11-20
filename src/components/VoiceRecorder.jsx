@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import AudioPlayer, { formatAudioTime } from './AudioPlayer';
 import { stopAllPlayback } from '../lib/audioPlayback';
+import { friendlyError } from '../lib/errors';
 import {
   voiceReducer,
   initialVoiceState,
@@ -385,7 +386,7 @@ export default function VoiceRecorder({
       if (!mountedRef.current) return;
       dispatch({
         type: E.UPLOAD_FAIL,
-        error: error?.message || 'Falha no envio. Tente novamente.',
+        error: friendlyError(error, 'Falha no envio. Tente novamente.'),
       });
       notify('Falha no envio do áudio. Tente novamente.');
     } finally {

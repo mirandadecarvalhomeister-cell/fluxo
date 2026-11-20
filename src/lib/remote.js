@@ -374,6 +374,19 @@ export async function loadWorkspace(user, localPostIds = [], localChanIds = []) 
   };
 }
 
+export async function setProfileTheme(uid, theme) {
+  if (!enabled() || !uid || !['light', 'dark'].includes(theme)) return;
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ theme })
+      .eq('user_id', uid);
+    if (error) warn(error);
+  } catch (error) {
+    warn(error);
+  }
+}
+
 export async function saveFeedPreferences(uid, prefs) {
   if (!enabled() || !uid) return;
   try {

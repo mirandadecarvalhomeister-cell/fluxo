@@ -886,11 +886,13 @@ export function AppProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    // Login, cadastro e recuperação de senha usam sempre o modo claro,
-    // independentemente do tema salvo na conta.
-    document.documentElement.dataset.theme = data ? ui.theme : 'light';
+    // O tema acompanha a preferência salva (localStorage e, quando logado,
+    // também no perfil do Supabase) — inclusive nas telas de autenticação.
+    document.documentElement.dataset.theme = ui.theme;
     lsSet(THEME_KEY, ui.theme);
-  }, [ui.theme, data]);
+    const uid = sessionRef.current?.id;
+    if (uid) remote.setProfileTheme(uid, ui.theme);
+  }, [ui.theme]);
 
   useEffect(() => {
     lsSet(SETTINGS_KEY, JSON.stringify(ui.settings));
@@ -1024,6 +1026,10 @@ export function AppProvider({ children }) {
         myLive: null,
         modal: null,
         typing: {},
+        theme:
+          workspace?.profile?.theme === 'light' || workspace?.profile?.theme === 'dark'
+            ? workspace.profile.theme
+            : u.theme,
         settings: workspace?.feedPrefs
           ? {
               ...u.settings,
