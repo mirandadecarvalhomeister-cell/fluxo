@@ -2170,6 +2170,9 @@ html,body{max-width:100%;overflow-x:clip}
 .composer-modal-placeholder{display:grid;justify-items:center;gap:8px;padding:36px 16px;border:1px dashed var(--line);border-radius:16px;background:var(--surface2);text-align:center;color:var(--muted)}
 .composer-modal-placeholder-ic{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:24px}
 .composer-modal-placeholder p{margin:0;font-size:13px}
+.composer-in-modal{padding:0;margin:0;border:0;border-radius:0;background:transparent;box-shadow:none;display:grid;gap:12px}
+.composer-in-modal > .row > .av{display:none}
+.composer-in-modal .fmt-hint{margin:0}
 @media (max-width:560px){
   .composer-trigger{padding:12px;gap:9px}
   .composer-trigger-field{font-size:12.5px;padding:10px 12px}

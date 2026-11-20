@@ -1,6 +1,7 @@
 import { useApp } from '../store/AppContext';
 import { Avatar } from './Avatar';
 import { Verified } from './Brand';
+import { Composer } from './Feed';
 
 /**
  * Card de criação de publicação. Nesta etapa contém apenas a estrutura inicial:
@@ -25,10 +26,7 @@ export default function PostComposerModal() {
 
       <div className="composer-modal-body">
         <h2>Criar publicação</h2>
-        <div className="composer-modal-placeholder">
-          <span className="composer-modal-placeholder-ic" aria-hidden="true">✦</span>
-          <p>O editor completo será adicionado aqui.</p>
-        </div>
+        <Composer inModal />
       </div>
     </div>
   );

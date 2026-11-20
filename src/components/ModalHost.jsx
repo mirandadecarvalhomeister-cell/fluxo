@@ -2505,6 +2505,7 @@ export default function ModalHost() {
     content = <ProfileEditModal />;
   } else if (modal.type === 'composer') {
     content = <PostComposerModal />;
+    wide = true;
   } else if (modal.type === 'post') {
     const post = data.posts.find((p) => p.id === modal.id);
     detailPost = post || null;

@@ -33,7 +33,7 @@ import MentionField from './MentionField';
 import Post from './Post';
 import PostComposerTrigger from './PostComposerTrigger';
 
-function Composer() {
+export function Composer({ inModal = false }) {
   const { data, ui, actions } = useApp();
   const draft = ui.draft;
   const media = draft.media || [];
@@ -58,10 +58,11 @@ function Composer() {
 
   return (
     <form
-      className="card composer"
+      className={inModal ? 'composer composer-in-modal' : 'card composer'}
       onSubmit={(event) => {
         event.preventDefault();
         actions.publish(draft.text);
+        if (inModal) actions.closeModal();
       }}
     >
       <div className="row" style={{ alignItems: 'flex-start' }}>
