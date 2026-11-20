@@ -107,6 +107,41 @@
 
 /* Camada 3D dos jogos (Three.js), atrás da interface. */
 .game-3d-bg{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:.55}
+
+/* Tela inicial no padrão Quiz BOOM!. */
+.enigmas-home{max-width:760px;width:100%}
+.enigmas-intro{display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%;padding:8px 0}
+.enigmas-intro-copy{text-align:left;display:grid;gap:8px}
+.enigmas-eyebrow{display:inline-flex;align-items:center;gap:6px;font:800 11px var(--f-body);letter-spacing:.16em;color:var(--en-cyan)}
+.enigmas-eyebrow .ic{width:14px;height:14px}
+.enigmas-intro h1{margin:0;text-align:left;font-size:clamp(2rem,6vw,3rem)}
+.enigmas-intro p{margin:0;max-width:480px;color:var(--en-muted);font-size:13px;line-height:1.55}
+.enigmas-intro-mark{position:relative;flex:none;width:132px;height:132px;border-radius:30px;display:grid;place-items:center;background:radial-gradient(circle,rgba(154,92,255,.28),rgba(5,4,11,.9));border:1px solid rgba(34,230,255,.4);box-shadow:0 0 38px -8px rgba(34,230,255,.55)}
+.enigmas-intro-mark .enigmas-mark-svg{width:86%;height:86%}
+.enigmas-intro-spark{position:absolute;top:-8px;right:-6px;font-size:24px;color:var(--en-cyan);filter:drop-shadow(0 0 10px var(--en-cyan))}
+.enigmas-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%}
+.enigmas-mode{display:flex;align-items:center;gap:9px;padding:11px;border-radius:13px;border:1px solid var(--en-line);background:rgba(13,10,28,.75);text-align:left}
+.enigmas-mode.on{border-color:rgba(34,230,255,.5);background:rgba(34,230,255,.07)}
+.enigmas-mode-emoji{font-size:20px;line-height:1}
+.enigmas-mode-body{display:grid;gap:2px;min-width:0}
+.enigmas-mode-body b{font-size:12px;color:var(--en-fg)}
+.enigmas-mode-body small{font-size:10px;color:var(--en-muted);line-height:1.3}
+.enigmas-setup{display:grid;gap:12px;width:100%}
+.enigmas-progress-card{display:grid;gap:9px;padding:14px;border-radius:15px;border:1px solid var(--en-line);background:rgba(13,10,28,.85);text-align:left}
+.enigmas-progress-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px}
+.enigmas-progress-head b{color:var(--en-fg)}
+.enigmas-progress-head span{color:var(--en-cyan);font-size:11px;font-weight:700}
+.enigmas-progress-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;font-size:11px;color:var(--en-muted)}
+.enigmas-progress-stats span{display:grid;gap:2px;text-align:center;padding:6px 2px;border-radius:9px;background:rgba(154,92,255,.08)}
+.enigmas-progress-stats b{font-size:9px;letter-spacing:.08em;text-transform:uppercase;opacity:.75}
+@media (max-width:640px){
+  .enigmas-intro{flex-direction:column-reverse;text-align:center;gap:10px}
+  .enigmas-intro-copy{text-align:center;justify-items:center}
+  .enigmas-intro h1{text-align:center}
+  .enigmas-intro-mark{width:96px;height:96px;border-radius:24px}
+  .enigmas-modes{grid-template-columns:1fr}
+  .enigmas-progress-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 .game-3d-bg canvas{display:block;width:100%!important;height:100%!important}
 .quiz,.enigmas-game{position:relative;isolation:isolate}
 

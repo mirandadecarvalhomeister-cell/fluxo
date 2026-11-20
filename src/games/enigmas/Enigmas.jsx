@@ -85,8 +85,9 @@ export default function Enigmas() {
   const puzzle = levelAt(level - 1);
 
   function persist(next) {
-    setSave(next);
-    writeSave(next);
+    const normalized = { ...next, runId: next.runId || String(Date.now()) };
+    setSave(normalized);
+    writeSave(normalized);
   }
 
   function beginLevel(n, current = save) {
@@ -116,12 +117,19 @@ export default function Enigmas() {
   }
 
   function continueGame() {
-    if (!save) return;
-    if (save.finished) {
+    // Relê o progresso do armazenamento: o estado em memória pode estar
+    // desatualizado se a aba foi recarregada ou o jogo reaberto.
+    const stored = readSave() || save;
+    if (!stored) {
+      actions.notify?.('Nenhuma partida salva. Comece um novo jogo.');
+      return;
+    }
+    setSave(stored);
+    if (stored.finished) {
       setScreen('complete');
       return;
     }
-    beginLevel(save.level);
+    beginLevel(stored.level, stored);
   }
 
   function answer() {
@@ -141,6 +149,7 @@ export default function Enigmas() {
       hints: save?.hints || 0,
       attempts: (save?.attempts || 0) + 1,
       finished: level >= TOTAL_LEVELS,
+      runId: save?.runId || String(Date.now()),
     };
     persist(next);
     const reached = Math.min(level + 1, TOTAL_LEVELS);
@@ -248,46 +257,93 @@ export default function Enigmas() {
 
       {screen === 'home' ? (
         <section className="enigmas-home enigmas-fade">
-          <div className="enigmas-logo" aria-hidden="true">
-            <EnigmaMark />
+          <div className="enigmas-intro">
+            <div className="enigmas-intro-copy">
+              <span className="enigmas-eyebrow"><Icon name="spark" /> DESAFIO DE LÓGICA</span>
+              <h1>NÍVEL ZERO</h1>
+              <p>
+                100 enigmas em sequência, sem voltar e sem pular. Cada resposta
+                certa desbloqueia o próximo nível — cada dica custa pontos.
+                Até onde você chega?
+              </p>
+            </div>
+            <div className="enigmas-intro-mark" aria-hidden="true">
+              <EnigmaMark />
+              <span className="enigmas-intro-spark">✦</span>
+            </div>
           </div>
-          <h1>NÍVEL ZERO</h1>
-          <p className="enigmas-tagline">Você consegue resolver todos os enigmas?</p>
-          <div className="enigmas-home-actions">
-            <button
-              className="btn enigmas-btn primary"
-              type="button"
-              disabled={!save}
-              onClick={continueGame}
-            >
-              <Icon name="play" /> CONTINUAR
-            </button>
-            <button className="btn enigmas-btn ghost" type="button" onClick={newGame}>
-              <Icon name="plus" /> NOVO JOGO
-            </button>
-          </div>
-          {save ? (
-            <div className="enigmas-progress">
-              <div className="enigmas-progress-bar">
-                <span style={{ width: `${Math.round(((save.level - 1) / TOTAL_LEVELS) * 100)}%` }} />
-              </div>
-              <span>
-                Nível {save.level} de {TOTAL_LEVELS} · {save.score} pontos · {save.hints} dicas
+
+          <div className="enigmas-modes" role="group" aria-label="Regras do NÍVEL ZERO">
+            <div className="enigmas-mode on">
+              <span className="enigmas-mode-emoji">🧩</span>
+              <span className="enigmas-mode-body">
+                <b>100 enigmas</b>
+                <small>Progressão sequencial obrigatória</small>
               </span>
             </div>
-          ) : (
-            <p className="enigmas-hint-text">Nenhuma partida salva. Comece um novo jogo.</p>
-          )}
-          {save ? (
+            <div className="enigmas-mode">
+              <span className="enigmas-mode-emoji">💡</span>
+              <span className="enigmas-mode-body">
+                <b>3 dicas por nível</b>
+                <small>Cada dica reduz 20 pontos</small>
+              </span>
+            </div>
+            <div className="enigmas-mode">
+              <span className="enigmas-mode-emoji">🏆</span>
+              <span className="enigmas-mode-body">
+                <b>Ranking global</b>
+                <small>Compita por quem vai mais longe</small>
+              </span>
+            </div>
+          </div>
+
+          <div className="enigmas-setup">
+            <div className="enigmas-progress-card">
+              <div className="enigmas-progress-head">
+                <b>Seu progresso</b>
+                <span>
+                  {save
+                    ? `${Math.round(((save.level - 1) / TOTAL_LEVELS) * 100)}% concluído`
+                    : 'Nenhuma partida salva'}
+                </span>
+              </div>
+              <div className="enigmas-progress-bar">
+                <span style={{ width: `${save ? Math.round(((save.level - 1) / TOTAL_LEVELS) * 100) : 0}%` }} />
+              </div>
+              <div className="enigmas-progress-stats">
+                <span><b>Nível</b> {save?.level || 1}/{TOTAL_LEVELS}</span>
+                <span><b>Pontos</b> {save?.score || 0}</span>
+                <span><b>Dicas</b> {save?.hints || 0}</span>
+                <span><b>Tentativas</b> {save?.attempts || 0}</span>
+              </div>
+            </div>
             <div className="enigmas-home-actions">
-              <button className="btn enigmas-btn ghost" type="button" onClick={shareToFeed}>
-                <Icon name="share" /> COMPARTILHAR
+              <button
+                className="btn enigmas-btn primary"
+                type="button"
+                disabled={!save}
+                onClick={continueGame}
+              >
+                <Icon name="play" /> CONTINUAR
               </button>
-              <button className="btn enigmas-btn ghost" type="button" onClick={copyInvite}>
-                <Icon name="link" /> COPIAR LINK
+              <button className="btn enigmas-btn ghost" type="button" onClick={newGame}>
+                <Icon name="plus" /> NOVO JOGO
               </button>
             </div>
-          ) : null}
+            {save ? (
+              <div className="enigmas-home-actions">
+                <button className="btn enigmas-btn ghost" type="button" onClick={shareToFeed}>
+                  <Icon name="share" /> COMPARTILHAR
+                </button>
+                <button className="btn enigmas-btn ghost" type="button" onClick={copyInvite}>
+                  <Icon name="link" /> COPIAR LINK
+                </button>
+              </div>
+            ) : (
+              <p className="enigmas-hint-text">Comece um novo jogo para salvar seu progresso.</p>
+            )}
+          </div>
+
           {rank.length ? (
             <div className="enigmas-rank">
               <b>RANKING GLOBAL · ATÉ ONDE VOCÊ CHEGOU</b>
