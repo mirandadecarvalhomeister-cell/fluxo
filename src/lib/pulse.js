@@ -25,7 +25,10 @@ const WEIGHTS = {
   vote: 2,
   reaction: 1,
   like: 0.8,
+  save: 1.4,
+  share: 1.8,
   view: 0,
+  dwell: 0,
 };
 
 const STAGE_META = {
@@ -58,13 +61,28 @@ function uniqueRows(rows) {
 }
 
 function interactionWeights(post) {
-  const rows = safeRows(post).filter((row) => row?.kind !== 'view');
-  return rows.map((row) => ({
+  const rows = safeRows(post).filter(
+    (row) => row?.kind !== 'view' && row?.kind !== 'dwell'
+  );
+  const base = rows.map((row) => ({
     row,
     weight:
       WEIGHTS[row.kind] ??
       (row.kind === 'like' || row.kind === 'reaction' ? WEIGHTS.reaction : 1),
   }));
+  // Tempo de visualização: até ~20s contam progressivamente, com teto para
+  // evitar que uma única sessão domine o ranking. Conta uma vez por pessoa.
+  const seenDwell = new Set();
+  safeRows(post)
+    .filter((row) => row?.kind === 'dwell' && !seenDwell.has(row.by || row.id))
+    .forEach((row) => {
+      seenDwell.add(row.by || row.id);
+      const seconds = Math.max(0, Number(row.text) || 0);
+      if (seconds > 0) {
+        base.push({ row, weight: Math.min(1.4, (seconds / 20) * 0.9) });
+      }
+    });
+  return base;
 }
 
 function repeatPenalty(post) {

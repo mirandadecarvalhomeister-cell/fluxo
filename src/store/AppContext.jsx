@@ -2863,6 +2863,13 @@ export function AppProvider({ children }) {
     saveInteraction(postId, 'view');
   }
 
+  // Tempo de visualização real (em segundos), usado como sinal de ranking.
+  function recordDwell(postId, seconds) {
+    const value = Math.max(0, Math.floor(Number(seconds) || 0));
+    if (!postId || value < 2) return;
+    saveInteraction(postId, 'dwell', { text: String(Math.min(value, 600)) });
+  }
+
   function votePost(postId, optionId) {
     const post = dataRef.current?.posts.find((p) => p.id === postId);
     const interactive = normalizeInteractive(post?.interactive);
@@ -3131,6 +3138,7 @@ export function AppProvider({ children }) {
       posts: cur.posts.map((p) => (p.id === id ? { ...p, saved } : p)),
     }));
     if (sessionRef.current?.id) remote.setSave(id, sessionRef.current.id, saved);
+    if (saved) saveInteraction(id, 'save');
     toast(saved ? 'Publicação salva' : 'Removida dos salvos');
   }
 
@@ -3160,9 +3168,10 @@ export function AppProvider({ children }) {
       url,
       image: preview?.src || null,
     });
-    if (result === 'copied') toast('Link da publicação copiado');
-    else if (result === 'shared') toast('Publicação compartilhada');
-    else if (result === 'error') toast('Não foi possível compartilhar.');
+    if (result === 'copied' || result === 'shared') {
+      saveInteraction(id, 'share');
+      toast(result === 'copied' ? 'Link da publicação copiado' : 'Publicação compartilhada');
+    } else if (result === 'error') toast('Não foi possível compartilhar.');
   }
 
   function openSharePost(id) {
@@ -5357,6 +5366,7 @@ export function AppProvider({ children }) {
     sendChatBlob,
     sendChatAudio,
     viewPost,
+    recordDwell,
     likeMessage,
     editMessage,
     deleteMessage,

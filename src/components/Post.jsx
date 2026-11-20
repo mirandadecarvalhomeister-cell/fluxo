@@ -357,20 +357,30 @@ export default function Post({ post, detail = false }) {
       return undefined;
     }
     let timer = null;
+    let visibleSince = null;
+    const stopDwell = () => {
+      if (visibleSince) {
+        actions.recordDwell?.(post.id, (Date.now() - visibleSince) / 1000);
+        visibleSince = null;
+      }
+    };
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.intersectionRatio >= 0.5) {
+            if (!visibleSince) visibleSince = Date.now();
             if (!timer) {
               timer = window.setTimeout(() => {
                 timer = null;
                 actions.viewPost(post.id);
-                observer.disconnect();
               }, 1000);
             }
-          } else if (timer) {
-            clearTimeout(timer);
-            timer = null;
+          } else {
+            stopDwell();
+            if (timer) {
+              clearTimeout(timer);
+              timer = null;
+            }
           }
         });
       },
@@ -378,6 +388,7 @@ export default function Post({ post, detail = false }) {
     );
     observer.observe(element);
     return () => {
+      stopDwell();
       if (timer) clearTimeout(timer);
       observer.disconnect();
     };

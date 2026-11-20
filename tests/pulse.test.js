@@ -26,6 +26,33 @@ const answer = (by, text) => ({
 });
 const comment = (by, text) => ({ id: `${by}:c`, by, text, ts: now - 15 * 60_000 });
 
+test('salvamentos e compartilhamentos entram na qualidade', () => {
+  const base = {
+    id: 'base', by: 'u0', ts: now - HOUR, text: 'Conteúdo útil sobre fotografia',
+    media: [], likes: 0, interactions: [], comments: [],
+  };
+  const engajado = {
+    ...base,
+    interactions: [
+      { id: 's1', by: 'u1', kind: 'save', ts: now - 1000 },
+      { id: 'c1', by: 'u2', kind: 'share', ts: now - 1000 },
+    ],
+  };
+  assert.ok(qualityOf(engajado, now) > qualityOf(base, now));
+});
+
+test('tempo de visualização aumenta a relevância com teto', () => {
+  const base = {
+    id: 'base', by: 'u0', ts: now - HOUR, text: 'Publicação com vídeo',
+    media: [{ kind: 'video', src: 'x' }], likes: 0, interactions: [], comments: [],
+  };
+  const short = { ...base, interactions: [{ id: 'd1', by: 'u1', kind: 'dwell', text: '3', ts: now - 1000 }] };
+  const long = { ...base, interactions: [{ id: 'd2', by: 'u1', kind: 'dwell', text: '40', ts: now - 1000 }] };
+  assert.ok(qualityOf(short, now) > qualityOf(base, now));
+  assert.ok(qualityOf(long, now) > qualityOf(short, now));
+  assert.ok(qualityOf(long, now) <= 1.8);
+});
+
 test('Fluxo prioriza conversa de conexões em vez de curtidas vazias', () => {
   const connected = {
     id: 'a',
