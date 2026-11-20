@@ -29,6 +29,8 @@ export default function ClipsViewer() {
   const [reactionOpen, setReactionOpen] = useState(false);
   const [panel, setPanel] = useState(null);
   const [commentText, setCommentText] = useState('');
+  const [panelDragY, setPanelDragY] = useState(0);
+  const panelDragRef = useRef(null);
 
   const items = useMemo(() => {
     if (!data?.posts) return [];
@@ -131,6 +133,7 @@ export default function ClipsViewer() {
 
   const post = current.post;
   const author = userOf(data, post.by);
+  const followingAuthor = (data?.follows || []).includes(post.by);
   const text = String(post.text || '');
   const shownText = expanded || text.length <= 130 ? text : `${text.slice(0, 130)}…`;
   const played = progress.duration ? (progress.time / progress.duration) * 100 : 0;
@@ -240,7 +243,9 @@ export default function ClipsViewer() {
                   key={emoji}
                   type="button"
                   className={`fx-${fxFor(emoji)}${post.myReaction === emoji ? ' on' : ''}`}
-                  onClick={() => {
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
                     actions.reactPost(post.id, emoji);
                     setReactionOpen(false);
                   }}
@@ -274,9 +279,31 @@ export default function ClipsViewer() {
       </div>
 
       <div className="clips-info">
-        <div className="clips-author">
-          <b>{author.name}</b>
-          {author.handle ? <span>@{author.handle}</span> : null}
+        <div className="clips-author-row">
+          <button
+            type="button"
+            className="clips-author-avatar"
+            onClick={() => { close(); actions.openUser(post.by); }}
+            aria-label={`Ver perfil de ${author.name}`}
+          >
+            <Avatar user={author} size={38} />
+          </button>
+          <div className="clips-author">
+            <button type="button" onClick={() => { close(); actions.openUser(post.by); }}>
+              <b>{author.name}</b>
+            </button>
+            {author.handle ? <span>@{author.handle}</span> : null}
+          </div>
+          {post.by !== 'me' ? (
+            <button
+              type="button"
+              className={`clips-follow${followingAuthor ? ' on' : ''}`}
+              onClick={() => actions.follow(post.by)}
+              aria-label={followingAuthor ? 'Deixar de seguir' : 'Seguir'}
+            >
+              {followingAuthor ? 'Seguindo' : 'Seguir'}
+            </button>
+          ) : null}
         </div>
         {shownText ? <p>{shownText}</p> : null}
         {text.length > 130 ? (
@@ -293,7 +320,30 @@ export default function ClipsViewer() {
 
       {panel ? (
         <aside className="clips-panel" role="dialog" aria-label={panel === 'comments' ? 'Comentários' : 'Compartilhar'}>
-          <div className="clips-panel-head">
+          <div
+            className="clips-panel-head"
+            style={panelDragY ? { transform: `translateY(${panelDragY}px)`, transition: 'none' } : undefined}
+            onPointerDown={(event) => {
+              if (event.target.closest('button, input, a')) return;
+              panelDragRef.current = event.clientY;
+              event.currentTarget.setPointerCapture?.(event.pointerId);
+            }}
+            onPointerMove={(event) => {
+              if (panelDragRef.current === null) return;
+              const dy = event.clientY - panelDragRef.current;
+              if (dy > 0) setPanelDragY(dy);
+            }}
+            onPointerUp={() => {
+              const dy = panelDragY;
+              panelDragRef.current = null;
+              setPanelDragY(0);
+              if (dy > 80) setPanel(null);
+            }}
+            onPointerCancel={() => {
+              panelDragRef.current = null;
+              setPanelDragY(0);
+            }}
+          >
             <button
               type="button"
               className="clips-panel-author"

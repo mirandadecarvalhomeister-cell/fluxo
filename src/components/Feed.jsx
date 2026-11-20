@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   INTERACTIVE_FORMATS,
   MAX_OPTIONS,
@@ -45,6 +45,7 @@ export function Composer({ inModal = false }) {
   const [editing, setEditing] = useState(null);
   const [review, setReview] = useState(false);
   const [draftStatus, setDraftStatus] = useState('');
+  const textRef = useRef(null);
   const editingItem = editing !== null ? media[editing] : null;
 
   useEffect(() => {
@@ -83,6 +84,7 @@ export function Composer({ inModal = false }) {
         <Avatar user={data.me} size={44} />
         <MentionField
           multiline
+          inputRef={textRef}
           id="ctext"
           rows={2}
           maxLength={600}
@@ -94,6 +96,7 @@ export function Composer({ inModal = false }) {
       <RichTextTools
         value={draft.text}
         onChange={(next) => actions.setDraftText(next)}
+        fieldRef={textRef}
       />
 
       <div className="fmt-tabs" role="tablist" aria-label="Formato da publicação">

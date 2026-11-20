@@ -2031,6 +2031,10 @@ html,body{max-width:100%;overflow-x:clip}
 .vr-center{display:flex;align-items:center;justify-content:center;gap:7px;min-width:0;flex:1}
 .vr-center b{font-variant-numeric:tabular-nums;font-size:13px}
 .vr-center small{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vr-lock-hint{position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-size:9px;white-space:nowrap;pointer-events:none;transition:color .12s,border-color .12s,transform .12s}
+.vr-lock-hint .ic{width:12px;height:12px}
+.vr-lock-hint.near{color:var(--accent);border-color:var(--accent);transform:translateX(-50%) scale(1.06)}
+@media (max-width:560px){.vr-lock-hint span{display:none}}
 .vr-waves{display:flex;align-items:center;gap:2px;height:22px;max-width:92px;overflow:hidden}
 .vr-waves i{width:2px;min-width:2px;border-radius:2px;background:var(--accent);transform-origin:center;animation:vr-breathe .65s ease-in-out infinite alternate}
 .vr-trash,.vr-stop,.vr-resume,.vr-send,.vr-mic-active,.vr-lock{width:36px;height:36px;flex:none;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface);color:var(--fg);transition:transform .12s,background .12s,border-color .12s}
@@ -2148,6 +2152,21 @@ html,body{max-width:100%;overflow-x:clip}
 .clips-share-actions button{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface2);color:var(--fg);font:600 13px var(--f-body);text-align:left}
 .clips-share-actions button:hover{border-color:var(--accent);color:var(--accent)}
 .clips-share-actions .ic{width:18px;height:18px}
+.clips-author-row{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.clips-author-avatar{padding:0;border:0;background:transparent;border-radius:50%;flex:none}
+.clips-author{flex:1;min-width:0;display:grid;gap:1px}
+.clips-author button{border:0;background:transparent;color:#fff;text-align:left;padding:0}
+.clips-author b{font-size:14px}
+.clips-author span{font-size:11px;opacity:.75}
+.clips-follow{flex:none;padding:6px 12px;border-radius:999px;border:1px solid #fff;background:#fff;color:#0b0718;font:800 11px var(--f-body)}
+.clips-follow.on{background:transparent;color:#fff}
+.clips-react-wrap{position:relative;display:inline-flex}
+.clips-react-picker{position:absolute;right:0;bottom:calc(100% + 8px);z-index:30;display:flex;gap:2px;padding:6px;border-radius:999px;background:rgba(10,6,26,.92);border:1px solid rgba(255,255,255,.2);box-shadow:var(--shadow)}
+.clips-react-picker button{width:32px;height:32px;min-width:32px;border:0;background:transparent;border-radius:50%;display:grid;place-items:center;padding:0;line-height:1;font-size:21px}
+.clips-react-picker button:hover{background:rgba(255,255,255,.12);transform:scale(1.1)}
+.clips-react-picker .animated-emoji,.clips-react-picker .animated-emoji-fallback{width:24px!important;height:24px!important;font-size:22px!important}
+.clips-panel-head{touch-action:none;cursor:grab}
+.clips-panel-head:active{cursor:grabbing}
 @media (max-width:700px){
   .clips-panel{top:auto;left:0;right:0;bottom:0;width:100%;max-height:62dvh;border-left:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0}
 }

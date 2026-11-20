@@ -35,7 +35,7 @@ export default function VoiceRecorder({
   compact = false,
   onError,
   onActiveChange,
-  label = 'Segure para gravar áudio',
+  label = 'Segure para gravar · ← apagar · ↑ pausar',
   className = '',
 }) {
   const [state, dispatch] = useReducer(voiceReducer, undefined, initialVoiceState);
@@ -463,11 +463,15 @@ export default function VoiceRecorder({
           >
             <Icon name="trash" />
           </button>
+          <span className={`vr-lock-hint${state.lockProgress > 0.4 ? ' near' : ''}`} aria-hidden="true">
+            <Icon name="lock" />
+            <span>↑ para pausar</span>
+          </span>
           <span className="vr-center">
             <span className="vr-rec-dot" />
             <b>{formatAudioTime(state.elapsed)}</b>
             {wavesNode}
-            <small>{state.cancelProgress > 0.65 ? 'Solte para apagar' : 'Solte para enviar'}</small>
+            <small>{state.cancelProgress > 0.65 ? 'Solte na lixeira para apagar' : 'Solte para enviar · ← apagar · ↑ pausar'}</small>
           </span>
           <button
             type="button"
@@ -490,8 +494,9 @@ export default function VoiceRecorder({
             <span className="vr-rec-dot" />
             <b>{formatAudioTime(state.elapsed)}</b>
             {wavesNode}
+            <small>Toque em Pausar para ouvir, apagar ou continuar</small>
           </span>
-          <button type="button" className="vr-stop" onClick={stop} aria-label="Pausar gravação" title="Pausar">
+          <button type="button" className="vr-stop" onClick={stop} aria-label="Pausar gravação" title="Pausar e ouvir">
             <Icon name="stop" />
           </button>
           <button type="button" className="vr-trash" onClick={discard} aria-label="Excluir gravação" title="Excluir">

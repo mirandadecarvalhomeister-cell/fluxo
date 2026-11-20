@@ -401,13 +401,15 @@ function Attachment({ attachment, onOpen, onForward, onOpenArena, sender }) {
 // Texto com emojis animados do Noto inline (links continuam funcionando via TagText).
 function MessageText({ text }) {
   const value = String(text || '');
+  const onlyEmoji = ONLY_EMOJI_RE.test(value.trim());
   const parts = value.split(/(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)/gu);
+  const size = onlyEmoji ? 40 : 21;
   return (
-    <>
+    <span className={onlyEmoji ? 'msg-emoji-only' : undefined}>
       {parts.map((part, i) => hasAnimatedEmoji(part)
-        ? <AnimatedEmoji key={i} emoji={part} size={21} />
+        ? <AnimatedEmoji key={i} emoji={part} size={size} />
         : <TagText key={i} text={part} links />)}
-    </>
+    </span>
   );
 }
 
@@ -596,15 +598,17 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia, onForw
             </i>
           ) : null}
         </div>
-        <button
-          type="button"
-          className="msg-forward"
-          onClick={(event) => { event.stopPropagation(); forwardMessage(); }}
-          aria-label="Encaminhar mensagem"
-          title="Encaminhar"
-        >
-          <Icon name="forward" />
-        </button>
+        {(!message.attachment || message.attachment.kind === 'photo') ? (
+          <button
+            type="button"
+            className="msg-forward"
+            onClick={(event) => { event.stopPropagation(); forwardMessage(); }}
+            aria-label="Encaminhar mensagem"
+            title="Encaminhar"
+          >
+            <Icon name="forward" />
+          </button>
+        ) : null}
       </div>
     </div>
   );

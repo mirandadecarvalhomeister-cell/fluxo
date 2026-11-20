@@ -22,10 +22,12 @@ export default function MentionField({
   value,
   onChange,
   className = '',
+  inputRef,
   ...rest
 }) {
   const { data } = useApp();
-  const fieldRef = useRef(null);
+  const localRef = useRef(null);
+  const fieldRef = inputRef || localRef;
   const [picker, setPicker] = useState(null);
 
   const people = useMemo(() => {

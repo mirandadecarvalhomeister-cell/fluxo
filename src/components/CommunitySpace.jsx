@@ -37,7 +37,7 @@ function personOf(data, id) {
 }
 
 // Barra de digitação da comunidade, no mesmo estilo da aba Mensagens.
-function CommunityChatComposer({ community, canPost, replyTarget, onCancelReply }) {
+function CommunityChatComposer({ community, canPost, replyTarget, onCancelReply, focusRef }) {
   const { ui, actions } = useApp();
   const [text, setText] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -208,7 +208,10 @@ function CommunityChatComposer({ community, canPost, replyTarget, onCancelReply 
           <Icon name="smile" />
         </button>
         <textarea
-          ref={inputRef}
+          ref={(node) => {
+            inputRef.current = node;
+            if (focusRef) focusRef.current = node;
+          }}
           className="comm-chat-input"
           rows={1}
           maxLength={600}
@@ -316,6 +319,16 @@ function CommunityChat({ posts, canPost, community }) {
   const boxRef = useRef(null);
   const prevCount = useRef(posts.length);
   const [replyTarget, setReplyTarget] = useState(null);
+  const composerFocusRef = useRef(null);
+  const replyTo = (target) => {
+    setReplyTarget(target);
+    window.setTimeout(() => {
+      const field = composerFocusRef.current;
+      if (!field) return;
+      field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      field.focus({ preventScroll: true });
+    }, 60);
+  };
   // data.posts vem do mais novo para o mais antigo; no chat vai do mais antigo
   // para o mais novo, como nas conversas.
   const messages = useMemo(() => [...posts].reverse(), [posts]);
@@ -408,7 +421,7 @@ function CommunityChat({ posts, canPost, community }) {
                     ) : null}
                     <button
                       type="button"
-                      onClick={() => setReplyTarget({ postId: post.id, name: person.name })}
+                      onClick={() => replyTo({ postId: post.id, name: person.name })}
                       aria-label="Responder"
                       title="Responder"
                     >
@@ -426,7 +439,7 @@ function CommunityChat({ posts, canPost, community }) {
                             <button
                               type="button"
                               onClick={() =>
-                                setReplyTarget({
+                                replyTo({
                                   postId: post.id,
                                   commentId: comment.id,
                                   name: commentAuthor.name,
@@ -458,6 +471,7 @@ function CommunityChat({ posts, canPost, community }) {
         canPost={canPost}
         replyTarget={replyTarget}
         onCancelReply={() => setReplyTarget(null)}
+        focusRef={composerFocusRef}
       />
     </div>
   );
