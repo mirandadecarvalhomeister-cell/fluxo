@@ -107,7 +107,7 @@ export default function VoiceRecorderSheet({ onSend, disabled = false, onError }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recorder, warn]);
 
-  const stopCurrent = useCallback(async (kind: 'release' | 'stop') => {
+  const stopCurrent = useCallback(async (kind: 'release' | 'stop', autoSend = false) => {
     pressedRef.current = false;
     clearTimer();
     if (recorder.isRecording) {
@@ -131,14 +131,29 @@ export default function VoiceRecorderSheet({ onSend, disabled = false, onError }
       dispatch({ type: E.CANCEL });
       return;
     }
+    dispatch({ type: kind === 'stop' ? E.STOP : E.RELEASE });
+    dispatch({ type: E.SET_DURATION, duration: elapsed });
+    if (autoSend) {
+      setBusy(true);
+      try {
+        await onSend(uri, { duration: elapsed, waves: [...waveRef.current] });
+        resetArtifacts();
+        sessionRef.current += 1;
+        dispatch({ type: E.RESET });
+      } catch (error: any) {
+        warn(error?.message || 'Não foi possível enviar o áudio.');
+        dispatch({ type: E.CANCEL });
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     uriRef.current = uri;
     setPreviewUri(uri);
     setReviewReady(true);
-    dispatch({ type: kind === 'stop' ? E.STOP : E.RELEASE });
-    dispatch({ type: E.SET_DURATION, duration: elapsed });
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch?.(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clearTimer, recorder, resetArtifacts, warn]);
+  }, [clearTimer, onSend, recorder, resetArtifacts, warn]);
 
   const discard = useCallback(() => {
     discardRef.current = true;
@@ -191,7 +206,7 @@ export default function VoiceRecorderSheet({ onSend, disabled = false, onError }
     },
     onPanResponderRelease: () => {
       const status = stateRef.current.status;
-      if (status === S.RECORDING) void stopCurrent('release');
+      if (status === S.RECORDING) void stopCurrent('release', true);
       else if (status === S.CANCEL_PENDING) discard();
       // LOCKED_RECORDING: soltar não encerra.
     },

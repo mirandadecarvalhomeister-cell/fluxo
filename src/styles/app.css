@@ -2007,6 +2007,57 @@ html,body{max-width:100%;overflow-x:clip}
   .vr-mic-wrap,.vr-cancel-target,.vr-lock-target{transition:none}
 }
 
+/* Gravador integrado à barra de digitação (fluxo v2). */
+.voice-recorder{position:relative;display:flex;align-items:center;gap:6px;flex:none;min-width:36px}
+.voice-recorder .mic-btn{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.voice-recorder.active{position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:3px 6px;background:var(--surface2);border-radius:22px;box-shadow:0 0 0 1px color-mix(in srgb,var(--hot) 22%,transparent)}
+.msg-composer.recording > :not(.voice-recorder),.comm-chat-bar.recording > :not(.voice-recorder){display:none!important}
+.msg-composer:has(.voice-recorder.active) > :not(.voice-recorder),.comm-chat-bar:has(.voice-recorder.active) > :not(.voice-recorder){display:none}
+.vr-center{display:flex;align-items:center;justify-content:center;gap:7px;min-width:0;flex:1}
+.vr-center b{font-variant-numeric:tabular-nums;font-size:13px}
+.vr-center small{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vr-waves{display:flex;align-items:center;gap:2px;height:22px;max-width:92px;overflow:hidden}
+.vr-waves i{width:2px;min-width:2px;border-radius:2px;background:var(--accent);transform-origin:center;animation:vr-breathe .65s ease-in-out infinite alternate}
+.vr-trash,.vr-stop,.vr-resume,.vr-send,.vr-mic-active,.vr-lock{width:36px;height:36px;flex:none;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface);color:var(--fg);transition:transform .12s,background .12s,border-color .12s}
+.vr-trash{color:var(--hot);background:color-mix(in srgb,var(--hot) 12%,var(--surface));border-color:color-mix(in srgb,var(--hot) 38%,var(--line))}
+.vr-trash.hot{transform:scale(1.14);background:var(--hot);color:#fff;box-shadow:0 0 0 5px color-mix(in srgb,var(--hot) 20%,transparent)}
+.vr-stop{background:var(--accent);border-color:transparent;color:#fff}
+.vr-send{background:var(--accent);border-color:transparent;color:#fff}
+.vr-resume{background:var(--accent-soft);color:var(--accent)}
+.vr-mic-active{background:var(--hot);border-color:transparent;color:#fff;animation:vr-pulse 1.3s ease-in-out infinite}
+.vr-mic-active.cancel{background:#e11d48}
+.vr-lock{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.vr-lock .ic,.vr-trash .ic,.vr-stop .ic,.vr-resume .ic,.vr-send .ic,.vr-mic-active .ic{width:17px;height:17px}
+.vr-preview-player{flex:1;min-width:0;max-width:none;padding:0;border:0;background:transparent}
+.vr-preview-player .audio-player-play{width:30px;height:30px}
+.vr-preview-player .audio-player-meta{gap:3px;font-size:9.5px}
+.vr-preview-player .audio-player-speed{min-width:30px;padding:2px 3px}
+.vr-spinner{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:vr-spin .7s linear infinite}
+@keyframes vr-pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--hot) 35%,transparent)}50%{box-shadow:0 0 0 7px transparent}}
+@media (max-width:560px){
+  .vr-waves{max-width:52px}
+  .vr-center small{display:none}
+  .voice-recorder.active{padding:3px 4px;gap:4px}
+  .vr-trash,.vr-stop,.vr-resume,.vr-send,.vr-mic-active,.vr-lock{width:33px;height:33px}
+}
+@media (prefers-reduced-motion:reduce){
+  .vr-waves i,.vr-mic-active,.vr-spinner{animation:none}
+}
+
+/* Reações do chat da comunidade (mesmo acabamento do feed). */
+.comm-reactions{position:relative;display:inline-flex}
+.comm-reactions-wrap{position:relative;display:inline-flex;align-items:center}
+.comm-react-btn,.comm-react-more{display:inline-flex;align-items:center;gap:4px;height:30px;border:0;background:transparent;color:var(--muted);font:600 11px var(--f-body);padding:0 4px;cursor:pointer;border-radius:8px}
+.comm-react-btn:hover,.comm-react-more:hover,.comm-react-btn.on{color:var(--hot)}
+.comm-react-btn .ic,.comm-react-more .ic{width:14px;height:14px}
+.comm-react-more{width:20px;opacity:.55}
+.comm-react-picker{position:absolute;left:0;bottom:calc(100% + 6px);z-index:12;display:flex;align-items:center;gap:2px;padding:5px 6px;border-radius:999px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+.comm-react-picker button{width:30px;height:30px;border:0;background:transparent;border-radius:50%;display:grid;place-items:center;font-size:19px;cursor:pointer;line-height:1}
+.comm-react-picker button:hover{background:var(--surface2);transform:scale(1.12)}
+.comm-react-picker button.on{background:var(--accent-soft)}
+.comm-react-custom{color:var(--muted)}
+.comm-react-custom .ic{width:14px;height:14px}
+
 /* Envio múltiplo de fotos/vídeos no chat direto. */
 .msg-caption{margin:0 0 4px;font-size:13px;line-height:1.35;overflow-wrap:anywhere}
 .msg-pending{display:grid;gap:8px;padding:8px;border-radius:16px;background:var(--surface2);border:1px solid var(--line)}

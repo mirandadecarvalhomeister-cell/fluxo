@@ -7,6 +7,8 @@ import { MAX_OPTIONS } from '../lib/interactive';
 import { Avatar, LiveAvatar } from './Avatar';
 import EmojiPicker from './EmojiPicker';
 import EmojiText from './EmojiText';
+import AnimatedEmoji from './AnimatedEmoji';
+import { REACTIONS, fxFor } from '../lib/reactionFx';
 import Empty from './Empty';
 import { Icon } from './Icon';
 import { Verified } from './Brand';
@@ -38,6 +40,7 @@ function CommunityChatComposer({ community, canPost, replyTarget, onCancelReply 
   const { ui, actions } = useApp();
   const [text, setText] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [voiceActive, setVoiceActive] = useState(false);
   const fileRef = useRef(null);
   const inputRef = useRef(null);
   const media = ui.draft?.media || [];
@@ -193,7 +196,7 @@ function CommunityChatComposer({ community, canPost, replyTarget, onCancelReply 
           ))}
         </div>
       ) : null}
-      <div className="comm-chat-bar">
+      <div className={`comm-chat-bar${voiceActive ? ' recording' : ''}`}>
         <button
           className={`icon-btn ${pickerOpen ? 'on' : ''}`}
           type="button"
@@ -202,15 +205,6 @@ function CommunityChatComposer({ community, canPost, replyTarget, onCancelReply 
           onClick={() => setPickerOpen((open) => !open)}
         >
           <Icon name="smile" />
-        </button>
-        <button
-          className="icon-btn"
-          type="button"
-          aria-label="Anexar fotos ou vídeos"
-          title="Anexar"
-          onClick={() => fileRef.current?.click()}
-        >
-          <Icon name="paperclip" />
         </button>
         <textarea
           ref={inputRef}
@@ -232,15 +226,86 @@ function CommunityChatComposer({ community, canPost, replyTarget, onCancelReply 
           <button className="icon-btn send" type="submit" aria-label="Enviar" title="Enviar">
             <Icon name="send" />
           </button>
-        ) : (
-          <VoiceRecorder
-            compact
-            onSend={(blob, meta) => actions.sendCommunityAudio(community.id, blob, meta)}
-            onError={(message) => actions.notify?.(message)}
-          />
-        )}
+        ) : null}
+        <VoiceRecorder
+          compact
+          onSend={(blob, meta) => actions.sendCommunityAudio(community.id, blob, meta)}
+          onError={(message) => actions.notify?.(message)}
+          onActiveChange={setVoiceActive}
+        />
+        <button
+          className="icon-btn"
+          type="button"
+          aria-label="Anexar fotos ou vídeos"
+          title="Anexar fotos ou vídeos"
+          onClick={() => fileRef.current?.click()}
+        >
+          <Icon name="paperclip" />
+        </button>
       </div>
     </form>
+  );
+}
+
+// Reações do chat da comunidade com o mesmo conjunto e animações do feed.
+function CommunityReactions({ post }) {
+  const { ui, actions } = useApp();
+  const [open, setOpen] = useState(false);
+  const choices = ui.settings?.reactions?.length ? ui.settings.reactions : REACTIONS;
+  const total = post.likes || 0;
+
+  const react = (emoji) => {
+    actions.reactPost(post.id, emoji);
+    setOpen(false);
+  };
+
+  return (
+    <span className="comm-reactions">
+      <span className="comm-reactions-wrap" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+        <button
+          type="button"
+          className={`comm-react-btn${post.myReaction ? ' on' : ''}`}
+          onClick={() => react(post.myReaction || '❤️')}
+          aria-label={post.myReaction ? 'Remover reação' : 'Reagir'}
+          title="Reagir"
+        >
+          {post.myReaction ? (
+            <AnimatedEmoji emoji={post.myReaction} size={17} />
+          ) : (
+            <Icon name="heart" />
+          )}
+          <span>{total}</span>
+        </button>
+        <button
+          type="button"
+          className="comm-react-more"
+          onClick={() => setOpen((value) => !value)}
+          aria-label="Escolher reação"
+          title="Mais reações"
+          aria-expanded={open}
+        >
+          <Icon name="plus" />
+        </button>
+        {open ? (
+          <span className="comm-react-picker" role="menu" aria-label="Escolher reação">
+            {choices.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                className={`fx-${fxFor(emoji)}${post.myReaction === emoji ? ' on' : ''}`}
+                onClick={() => react(emoji)}
+                aria-label={`Reagir com ${emoji}`}
+              >
+                <AnimatedEmoji emoji={emoji} size={22} />
+              </button>
+            ))}
+            <button type="button" className="comm-react-custom" onClick={() => { setOpen(false); actions.openReactions?.(); }} aria-label="Personalizar reações">
+              <Icon name="settings" />
+            </button>
+          </span>
+        ) : null}
+      </span>
+    </span>
   );
 }
 
@@ -320,16 +385,7 @@ function CommunityChat({ posts, canPost, community }) {
                   )}
                   {interactive ? <Interactive post={post} /> : null}
                   <div className="comm-chat-actions">
-                    <button
-                      type="button"
-                      className={post.myReaction ? 'on' : ''}
-                      onClick={() => actions.reactPost(post.id)}
-                      aria-label="Reagir com coração"
-                      title="Reagir"
-                    >
-                      <Icon name="heart" />
-                      <span>{post.reactionCounts?.['❤️'] || post.likes || 0}</span>
-                    </button>
+                    <CommunityReactions post={post} />
                     <button
                       type="button"
                       onClick={() => setReplyTarget({ postId: post.id, name: person.name })}

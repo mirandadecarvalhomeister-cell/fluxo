@@ -1248,6 +1248,7 @@ export default function Messages() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [menuDragY, setMenuDragY] = useState(0);
   const [pending, setPending] = useState([]);
+  const [voiceActive, setVoiceActive] = useState(false);
   const pendingRef = useRef([]);
   pendingRef.current = pending;
   const boxRef = useRef(null);
@@ -2001,22 +2002,7 @@ export default function Messages() {
                   </div>
                 ) : null}
 
-                <div className="msg-composer">
-                    <button
-                      className="icon-btn msg-composer-btn"
-                      type="button"
-                      onClick={() => {
-                        if (attachOpen) closeLayer(() => setAttachOpen(false));
-                        else {
-                          setAttachOpen(true);
-                          setPickerOpen(false);
-                        }
-                      }}
-                      aria-label="Anexar"
-                      title="Anexar"
-                    >
-                      <Icon name="paperclip" />
-                    </button>
+                <div className={`msg-composer${voiceActive ? ' recording' : ''}`}>
                     <button
                       className={`icon-btn msg-composer-btn ${pickerOpen ? 'on' : ''}`}
                       type="button"
@@ -2070,9 +2056,29 @@ export default function Messages() {
                       onSelect={saveCaret}
                       onBlur={saveCaret}
                     />
+                    <VoiceRecorder
+                      onSend={(blob, meta) => actions.sendChatAudio(blob, meta)}
+                      onError={(message) => actions.notify(message)}
+                      onActiveChange={setVoiceActive}
+                    />
+                    <button
+                      className={`icon-btn msg-composer-btn${attachOpen ? ' on' : ''}`}
+                      type="button"
+                      onClick={() => {
+                        if (attachOpen) closeLayer(() => setAttachOpen(false));
+                        else {
+                          setAttachOpen(true);
+                          setPickerOpen(false);
+                        }
+                      }}
+                      aria-label="Anexar arquivos"
+                      title="Anexar arquivos"
+                    >
+                      <Icon name="paperclip" />
+                    </button>
                 </div>
 
-                {text.trim() ? (
+                {text.trim() && !voiceActive ? (
                   <button
                     className="btn primary send-btn"
                     type="submit"
@@ -2081,12 +2087,7 @@ export default function Messages() {
                   >
                     <Icon name="send" />
                   </button>
-                ) : (
-                  <VoiceRecorder
-                    onSend={(blob, meta) => actions.sendChatAudio(blob, meta)}
-                    onError={(message) => actions.notify(message)}
-                  />
-                )}
+                ) : null}
               </form>
             </>
           ) : (

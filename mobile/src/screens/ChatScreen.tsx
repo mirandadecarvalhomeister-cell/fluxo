@@ -390,9 +390,6 @@ export default function ChatScreen({ userId }: { userId: string }) {
             <Pressable onPress={() => setShowEmoji((v) => !v)} style={styles.toolBtn} hitSlop={6}>
               <Ionicons name={showEmoji ? 'happy' : 'happy-outline'} size={22} color={colors.muted} />
             </Pressable>
-            <Pressable onPress={() => setShowAttach((v) => !v)} style={styles.toolBtn} hitSlop={6} accessibilityLabel="Anexar arquivo">
-              <Ionicons name={showAttach ? 'close' : 'attach-outline'} size={22} color={showAttach ? colors.primary : colors.muted} />
-            </Pressable>
             <TextInput
               value={text}
               onChangeText={setText}
@@ -414,6 +411,9 @@ export default function ChatScreen({ userId }: { userId: string }) {
                 onError={(message) => actions.toast(message)}
               />
             )}
+            <Pressable onPress={() => setShowAttach((v) => !v)} style={styles.toolBtn} hitSlop={6} accessibilityLabel="Anexar arquivo">
+              <Ionicons name={showAttach ? 'close' : 'attach-outline'} size={22} color={showAttach ? colors.primary : colors.muted} />
+            </Pressable>
           </View>
           {showEmoji ? (
             <View style={styles.emojiBar}>

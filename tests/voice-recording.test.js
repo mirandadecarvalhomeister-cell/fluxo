@@ -62,7 +62,7 @@ test('6. soltar o dedo com cadeado continua gravando', () => {
   assert.equal(state.status, S.LOCKED_RECORDING);
 });
 
-test('7. definir stop na gravação bloqueada leva à REVIEW', () => {
+test('7. parar a gravação bloqueada pausa e abre a prévia', () => {
   const state = run([
     press(),
     move(0, -LOCK_THRESHOLD - 6),
@@ -70,22 +70,50 @@ test('7. definir stop na gravação bloqueada leva à REVIEW', () => {
     { type: E.TICK, elapsed: 12 },
     { type: E.STOP },
   ]);
-  assert.equal(state.status, S.REVIEW);
+  assert.equal(state.status, S.PAUSED);
   assert.equal(state.duration, 12);
 });
 
-test('8. soltar a gravação comum vai para REVIEW (nunca envia sozinha)', () => {
+test('8. soltar a gravação comum envia imediatamente', () => {
   const state = run([
     press(),
     { type: E.TICK, elapsed: 5 },
     release(),
   ]);
-  assert.equal(state.status, S.REVIEW);
-  assert.notEqual(state.status, S.UPLOADING);
+  assert.equal(state.status, S.UPLOADING);
 });
 
-test('9. enviar depende de ação explícita na REVIEW', () => {
-  const reviewed = run([press(), release()]);
+test('8b. a prévia só existe após pausar a gravação com cadeado', () => {
+  const held = run([press(), release()]);
+  assert.equal(voiceSelectors.isReviewing(held), false);
+  const paused = run([
+    press(),
+    move(0, -LOCK_THRESHOLD - 6),
+    release(),
+    { type: E.STOP },
+  ]);
+  assert.equal(voiceSelectors.isReviewing(paused), true);
+  assert.equal(voiceSelectors.canSend(paused), true);
+});
+
+test('8c. retomar a gravação pausada volta ao cadeado', () => {
+  const paused = run([
+    press(),
+    move(0, -LOCK_THRESHOLD - 6),
+    release(),
+    { type: E.STOP },
+  ]);
+  const resumed = voiceReducer(paused, { type: E.RESUME });
+  assert.equal(resumed.status, S.LOCKED_RECORDING);
+});
+
+test('9. enviar depende de ação explícita na prévia pausada', () => {
+  const reviewed = run([
+    press(),
+    move(0, -LOCK_THRESHOLD - 6),
+    release(),
+    { type: E.STOP },
+  ]);
   assert.equal(voiceSelectors.canSend(reviewed), true);
   const uploading = voiceReducer(reviewed, { type: E.SEND });
   assert.equal(uploading.status, S.UPLOADING);
@@ -93,7 +121,7 @@ test('9. enviar depende de ação explícita na REVIEW', () => {
 });
 
 test('10. upload bem-sucedido chega a SENT', () => {
-  const state = run([press(), release(), { type: E.SEND }, { type: E.UPLOAD_OK }]);
+  const state = run([press(), release(), { type: E.UPLOAD_OK }]);
   assert.equal(state.status, S.SENT);
 });
 
@@ -103,7 +131,7 @@ test('11. falha de upload é recuperável', () => {
   assert.equal(state.status, S.ERROR);
   assert.equal(state.error, 'sem rede');
   state = voiceReducer(state, { type: E.RETRY });
-  assert.equal(state.status, S.REVIEW);
+  assert.equal(state.status, S.PAUSED);
   assert.equal(state.error, null);
 });
 
@@ -177,6 +205,16 @@ test('20. ciclo completo de gravação bloqueada', () => {
     { type: E.TICK, elapsed: 30 },
     { type: E.STOP },
     { type: E.SEND },
+    { type: E.UPLOAD_OK },
+  ]);
+  assert.equal(state.status, S.SENT);
+});
+
+test('21. soltar e enviar conclui o ciclo sem prévia', () => {
+  const state = run([
+    press(),
+    { type: E.TICK, elapsed: 4 },
+    release(),
     { type: E.UPLOAD_OK },
   ]);
   assert.equal(state.status, S.SENT);

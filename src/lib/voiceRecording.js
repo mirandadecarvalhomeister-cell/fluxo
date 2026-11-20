@@ -21,6 +21,7 @@ export const VOICE_STATE = Object.freeze({
   RECORDING: 'RECORDING',
   CANCEL_PENDING: 'CANCEL_PENDING',
   LOCKED_RECORDING: 'LOCKED_RECORDING',
+  PAUSED: 'PAUSED',
   REVIEW: 'REVIEW',
   UPLOADING: 'UPLOADING',
   SENT: 'SENT',
@@ -33,6 +34,7 @@ export const VOICE_EVENT = Object.freeze({
   RELEASE: 'RELEASE',
   CANCEL: 'CANCEL',
   STOP: 'STOP',
+  RESUME: 'RESUME',
   SEND: 'SEND',
   RETRY: 'RETRY',
   RECORD_STARTED: 'RECORD_STARTED',
@@ -142,7 +144,7 @@ export function voiceReducer(state, event) {
     }
 
     case VOICE_EVENT.SET_DURATION: {
-      if (!isLive(status) && status !== VOICE_STATE.REVIEW) return state;
+      if (!isLive(status) && status !== VOICE_STATE.REVIEW && status !== VOICE_STATE.PAUSED) return state;
       const seconds = Math.max(0, Math.floor(Number(event.duration) || 0));
       return { ...state, elapsed: seconds, duration: seconds };
     }
@@ -181,10 +183,11 @@ export function voiceReducer(state, event) {
         return { ...initialVoiceState(), session: session + 1 };
       }
       if (status === VOICE_STATE.RECORDING) {
-        // Soltar NÃO envia: vai para revisão (envio explícito obrigatório).
+        // Segurar e soltar: envio imediato (sem prévia). A prévia fica só
+        // para o fluxo com cadeado + pausa.
         return {
           ...state,
-          status: VOICE_STATE.REVIEW,
+          status: VOICE_STATE.UPLOADING,
           duration: state.elapsed,
           dragX: 0,
           dragY: 0,
@@ -203,9 +206,10 @@ export function voiceReducer(state, event) {
 
     case VOICE_EVENT.STOP:
       if (!isLive(status)) return state;
+      // Pausa a gravação e abre a prévia dentro da própria barra.
       return {
         ...state,
-        status: VOICE_STATE.REVIEW,
+        status: VOICE_STATE.PAUSED,
         duration: state.elapsed,
         dragX: 0,
         dragY: 0,
@@ -213,9 +217,14 @@ export function voiceReducer(state, event) {
         lockProgress: 0,
       };
 
+    case VOICE_EVENT.RESUME:
+      // Volta da prévia para a gravação livre (cadeado ativo).
+      if (status !== VOICE_STATE.PAUSED) return state;
+      return { ...state, status: VOICE_STATE.LOCKED_RECORDING, error: null };
+
     case VOICE_EVENT.SEND:
-      // Único caminho para UPLOADING. Garante que áudio descartado nunca sobe.
-      if (status !== VOICE_STATE.REVIEW) return state;
+      // Garante que áudio descartado nunca sobe.
+      if (status !== VOICE_STATE.REVIEW && status !== VOICE_STATE.PAUSED) return state;
       return { ...state, status: VOICE_STATE.UPLOADING, error: null };
 
     case VOICE_EVENT.UPLOAD_OK:
@@ -232,11 +241,10 @@ export function voiceReducer(state, event) {
 
     case VOICE_EVENT.RETRY:
       if (status !== VOICE_STATE.ERROR) return state;
-      // Volta para REVIEW para que o usuário possa ouvir antes de reenviar,
-      // ou direto para UPLOADING quando a falha foi de gravação.
+      // Volta para a prévia (pausada) para ouvir/reescrever antes de reenviar.
       return {
         ...state,
-        status: state.duration ? VOICE_STATE.REVIEW : VOICE_STATE.RECORDING,
+        status: state.duration ? VOICE_STATE.PAUSED : VOICE_STATE.RECORDING,
         error: null,
       };
 
@@ -250,9 +258,11 @@ export const voiceSelectors = {
   isRecording: (state) => isLive(state.status),
   isLocked: (state) => state.status === VOICE_STATE.LOCKED_RECORDING,
   isCanceling: (state) => state.status === VOICE_STATE.CANCEL_PENDING,
-  isReviewing: (state) => state.status === VOICE_STATE.REVIEW,
+  isReviewing: (state) =>
+    state.status === VOICE_STATE.REVIEW || state.status === VOICE_STATE.PAUSED,
   isUploading: (state) => state.status === VOICE_STATE.UPLOADING,
-  canSend: (state) => state.status === VOICE_STATE.REVIEW,
+  canSend: (state) =>
+    state.status === VOICE_STATE.REVIEW || state.status === VOICE_STATE.PAUSED,
   canStop: (state) => isLive(state.status),
 };
 
