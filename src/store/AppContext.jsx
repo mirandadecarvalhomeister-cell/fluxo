@@ -2267,6 +2267,10 @@ export function AppProvider({ children }) {
       return;
     }
     const selected = list.slice(0, room);
+    const draftCommunityId = uiRef.current.draft?.communityId;
+    const privateCommunity = !!dataRef.current?.comms?.find(
+      (community) => community.id === draftCommunityId
+    )?.private;
     let kept = 0;
     let cloudFailed = 0;
     try {
@@ -2295,13 +2299,26 @@ export function AppProvider({ children }) {
             : kind === 'audio'
               ? await fileToRawDataURL(file)
               : URL.createObjectURL(file);
+        let storagePath = null;
+        let storageBucket = null;
         if (isSupabaseEnabled && sessionRef.current?.id) {
-          const uploaded = await remote.uploadMedia(file, sessionRef.current.id);
-          if (uploaded) src = uploaded;
-          else cloudFailed += 1;
+          const uploaded = privateCommunity
+            ? await remote.uploadPrivateMedia(file, draftCommunityId, sessionRef.current.id)
+            : await remote.uploadMedia(file, sessionRef.current.id);
+          if (uploaded?.private) {
+            storagePath = uploaded.path;
+            storageBucket = uploaded.bucket;
+          } else if (uploaded) {
+            src = uploaded;
+          } else {
+            cloudFailed += 1;
+          }
         }
         setUi((u) => {
-          const nextMedia = [...(u.draft.media || []), { kind, src, name: file.name }];
+          const nextMedia = [
+            ...(u.draft.media || []),
+            { kind, src, name: file.name, ...(storagePath ? { storagePath, storageBucket } : {}) },
+          ];
           return {
             ...u,
             draft: {
@@ -2605,9 +2622,18 @@ export function AppProvider({ children }) {
   function publish(text, communityIdOverride = null) {
     const draft = uiRef.current.draft;
     const trimmed = text.trim();
-    const media = draft.media || [];
     const format = draft.format || 'classic';
     const communityId = communityIdOverride || draft.communityId || null;
+    const privateCommunity = !!dataRef.current?.comms?.find(
+      (community) => community.id === communityId
+    )?.private;
+    // Mídia privada não persiste data URL/object URL no banco: só a referência
+    // ao Storage, resolvida em URL assinada na leitura.
+    const media = (draft.media || []).map((item) =>
+      privateCommunity && item.storageBucket === 'community-private'
+        ? { ...item, src: '' }
+        : item
+    );
     const scheduled = draft.schedule?.mode === 'scheduled';
     if (scheduled && !isSchedulable(format)) {
       toast('Publicações programadas são para enquetes, perguntas, votações e desafios.');

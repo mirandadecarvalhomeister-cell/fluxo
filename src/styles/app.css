@@ -2053,4 +2053,7 @@ html,body{max-width:100%;overflow-x:clip}
 .private-audio span{flex:1}
 .private-audio button{border:0;background:transparent;color:var(--accent);font:700 11px var(--f-body);cursor:pointer;padding:0}
 .media-audio-player.private-audio{padding:0;background:transparent;max-width:none}
+.private-media{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:110px;padding:10px;border-radius:11px;background:var(--surface2);color:var(--muted);font-size:12px;text-align:center}
+.private-media .ic{width:24px;height:24px}
+.private-media button{border:0;background:transparent;color:var(--accent);font:700 11px var(--f-body)}
 

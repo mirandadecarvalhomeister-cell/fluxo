@@ -2066,6 +2066,28 @@ export async function uploadCommunityAudio(blob, communityId, uid, mime, isPriva
   }
 }
 
+/** Upload genérico de mídia para o bucket privado da comunidade. */
+export async function uploadPrivateMedia(file, communityId, uid) {
+  if (!enabled() || !file || !communityId || !uid) return null;
+  try {
+    const ext = (file.name || 'arquivo').split('.').pop()?.toLowerCase() || 'bin';
+    const path = `${communityId}/${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+    const { error } = await supabase.storage.from('community-private').upload(path, file, {
+      cacheControl: '3600',
+      contentType: file.type || 'application/octet-stream',
+      upsert: false,
+    });
+    if (error) {
+      warn(error);
+      return null;
+    }
+    return { path, bucket: 'community-private', private: true };
+  } catch (error) {
+    warn(error);
+    return null;
+  }
+}
+
 /** URL assinada de curta duração para mídia de comunidade privada. */
 export async function createSignedMediaUrl(bucket, path, expiresIn = 3600) {
   if (!enabled() || !bucket || !path) return null;

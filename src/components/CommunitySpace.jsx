@@ -14,6 +14,7 @@ import Post from './Post';
 import Interactive from './Interactive';
 import AudioPlayer from './AudioPlayer';
 import PrivateAudio from './PrivateAudio';
+import PrivateMedia from './PrivateMedia';
 import VoiceRecorder from './VoiceRecorder';
 
 const NAV = [
@@ -292,7 +293,15 @@ function CommunityChat({ posts, canPost, community }) {
                 <div className="comm-chat-bubble">
                   {post.text ? <p><EmojiText text={post.text} size={19} /></p> : null}
                   {items.map((item, index) =>
-                    item.kind === 'video' ? (
+                    item.storageBucket === 'community-private' && item.storagePath ? (
+                      <PrivateMedia
+                        key={index}
+                        path={item.storagePath}
+                        bucket={item.storageBucket}
+                        kind={item.kind === 'video' ? 'video' : 'photo'}
+                        alt="Mídia da comunidade"
+                      />
+                    ) : item.kind === 'video' ? (
                       <video key={index} src={item.src} controls preload="metadata" />
                     ) : (
                       <img key={index} src={item.src} alt="Foto da comunidade" loading="lazy" />
@@ -630,7 +639,15 @@ export default function CommunitySpace({ community, onAdmin }) {
                     .filter((g) => galleryFilter === 'todos' || g.kind === galleryFilter)
                     .map((g) => (
                     <div key={g.id} className="comm-gallery-item">
-                      {g.kind === 'video' ? (
+                      {g.storageBucket === 'community-private' && g.storagePath &&
+                      ['photo', 'video'].includes(g.kind) ? (
+                        <PrivateMedia
+                          path={g.storagePath}
+                          bucket={g.storageBucket}
+                          kind={g.kind === 'video' ? 'video' : 'photo'}
+                          alt={g.title || 'Mídia da comunidade'}
+                        />
+                      ) : g.kind === 'video' ? (
                         <video src={g.src} controls preload="metadata" />
                       ) : g.kind === 'audio' ? (
                         g.storageBucket === 'community-private' && g.storagePath ? (

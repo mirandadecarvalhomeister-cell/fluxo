@@ -20,6 +20,7 @@ import { EditWrap } from './MediaEditor';
 import { FeedVideo } from './VideoPlayer';
 import AudioPlayer from './AudioPlayer';
 import PrivateAudio from './PrivateAudio';
+import PrivateMedia from './PrivateMedia';
 
 function MediaItem({ item, author, index }) {
   const [failedSrc, setFailedSrc] = useState(null);
@@ -29,6 +30,18 @@ function MediaItem({ item, author, index }) {
   const picture = item.src && failedSrc !== item.src ? item.src : fallback;
   const edit = item.edit && hasEdits(item.edit) ? item.edit : null;
   const style = mediaDisplayStyle(edit);
+
+  if (item.storageBucket === 'community-private' && item.storagePath) {
+    return (
+      <PrivateMedia
+        path={item.storagePath}
+        bucket={item.storageBucket}
+        kind={item.kind === 'video' ? 'video' : 'photo'}
+        alt={`Mídia publicada por ${author.name}`}
+        style={style}
+      />
+    );
+  }
 
   if (item.kind === 'audio') {
     const isPrivate = item.storageBucket === 'community-private' && item.storagePath;
