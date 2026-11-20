@@ -2010,6 +2010,7 @@ export default function Messages() {
                   </div>
                 ) : null}
 
+                <div className="msg-compose-row">
                 <div className={`msg-composer${voiceActive ? ' recording' : ''}`}>
                     <button
                       className={`icon-btn msg-composer-btn ${pickerOpen ? 'on' : ''}`}
@@ -2064,11 +2065,6 @@ export default function Messages() {
                       onSelect={saveCaret}
                       onBlur={saveCaret}
                     />
-                    <VoiceRecorder
-                      onSend={(blob, meta) => actions.sendChatAudio(blob, meta)}
-                      onError={(message) => actions.notify(message)}
-                      onActiveChange={setVoiceActive}
-                    />
                     <button
                       className={`icon-btn msg-composer-btn${attachOpen ? ' on' : ''}`}
                       type="button"
@@ -2086,6 +2082,16 @@ export default function Messages() {
                     </button>
                 </div>
 
+                <div className="msg-voice-slot">
+                  {!text.trim() ? (
+                    <VoiceRecorder
+                      onSend={(blob, meta) => actions.sendChatAudio(blob, meta)}
+                      onError={(message) => actions.notify(message)}
+                      onActiveChange={setVoiceActive}
+                    />
+                  ) : null}
+                </div>
+
                 {text.trim() && !voiceActive ? (
                   <button
                     className="btn primary send-btn"
@@ -2096,6 +2102,7 @@ export default function Messages() {
                     <Icon name="send" />
                   </button>
                 ) : null}
+                </div>
               </form>
             </>
           ) : (

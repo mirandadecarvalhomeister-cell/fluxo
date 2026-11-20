@@ -199,6 +199,7 @@ function CommunityChatComposer({ community, canPost, replyTarget, onCancelReply,
           ))}
         </div>
       ) : null}
+      <div className="comm-compose-row">
       <div className={`comm-chat-bar${voiceActive ? ' recording' : ''}`}>
         <button
           className={`icon-btn ${pickerOpen ? 'on' : ''}`}
@@ -233,21 +234,26 @@ function CommunityChatComposer({ community, canPost, replyTarget, onCancelReply,
             <Icon name="send" />
           </button>
         ) : null}
-        <VoiceRecorder
-          compact
-          onSend={(blob, meta) => actions.sendCommunityAudio(community.id, blob, meta)}
-          onError={(message) => actions.notify?.(message)}
-          onActiveChange={setVoiceActive}
-        />
-        <button
-          className="icon-btn"
-          type="button"
-          aria-label="Anexar fotos ou vídeos"
-          title="Anexar fotos ou vídeos"
-          onClick={() => fileRef.current?.click()}
-        >
-          <Icon name="paperclip" />
-        </button>
+      </div>
+      <div className="comm-voice-slot">
+        {!text.trim() && !media.length && !isPoll ? (
+          <VoiceRecorder
+            compact
+            onSend={(blob, meta) => actions.sendCommunityAudio(community.id, blob, meta)}
+            onError={(message) => actions.notify?.(message)}
+            onActiveChange={setVoiceActive}
+          />
+        ) : null}
+      </div>
+      <button
+        className="icon-btn comm-attach"
+        type="button"
+        aria-label="Anexar fotos ou vídeos"
+        title="Anexar fotos ou vídeos"
+        onClick={() => fileRef.current?.click()}
+      >
+        <Icon name="paperclip" />
+      </button>
       </div>
     </form>
   );

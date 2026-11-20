@@ -132,8 +132,10 @@ export default function ClipsViewer() {
   if (!state || !current) return null;
 
   const post = current.post;
-  const author = userOf(data, post.by);
-  const followingAuthor = (data?.follows || []).includes(post.by);
+  const authorId = post.authorId || post.author_id || post.by;
+  const author = userOf(data, authorId);
+  const authorName = post.authorName || author.name;
+  const followingAuthor = (data?.follows || []).includes(authorId);
   const text = String(post.text || '');
   const shownText = expanded || text.length <= 130 ? text : `${text.slice(0, 130)}…`;
   const played = progress.duration ? (progress.time / progress.duration) * 100 : 0;
@@ -191,32 +193,43 @@ export default function ClipsViewer() {
       </div>
 
       {items.length > 1 ? (
-        <div className="clips-nav" aria-hidden="true">
+        <div className="clips-nav">
           <button
             type="button"
             disabled={active === 0}
-            onClick={() => actions.setClipIndex(active - 1)}
+            onClick={() => {
+              const next = Math.max(0, active - 1);
+              setActive(next);
+              actions.setClipIndex(next);
+            }}
             aria-label="Vídeo anterior"
+            title="Vídeo anterior"
           >
-            <Icon name="back" />
+            <Icon name="back" className="nav-up" />
           </button>
           <span>{active + 1} / {items.length}</span>
           <button
             type="button"
             disabled={active === items.length - 1}
-            onClick={() => actions.setClipIndex(active + 1)}
+            onClick={() => {
+              const next = Math.min(items.length - 1, active + 1);
+              setActive(next);
+              actions.setClipIndex(next);
+            }}
             aria-label="Próximo vídeo"
+            title="Próximo vídeo"
           >
-            <Icon name="back" className="flip" />
+            <Icon name="back" className="nav-down" />
           </button>
         </div>
       ) : null}
 
       <div className="clips-rail">
-        <button type="button" onClick={() => actions.openUser(post.by)} aria-label={`Perfil de ${author.name}`}>
-          <Avatar user={author} size={42} />
-        </button>
-        <span className="clips-react-wrap">
+        <span
+          className="clips-react-wrap"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+        >
           <button
             type="button"
             className={post.myReaction ? 'on' : ''}
@@ -224,8 +237,6 @@ export default function ClipsViewer() {
               if (post.myReaction) actions.reactPost(post.id, post.myReaction);
               else setReactionOpen((value) => !value);
             }}
-            onMouseEnter={() => setReactionOpen(true)}
-            onMouseLeave={() => setReactionOpen(false)}
             aria-label={post.myReaction ? 'Remover reação' : 'Reagir ao vídeo'}
             aria-expanded={reactionOpen}
           >
@@ -289,21 +300,23 @@ export default function ClipsViewer() {
             <Avatar user={author} size={38} />
           </button>
           <div className="clips-author">
-            <button type="button" onClick={() => { close(); actions.openUser(post.by); }}>
-              <b>{author.name}</b>
-            </button>
+            <span className="clips-author-line">
+              <button type="button" onClick={() => { close(); actions.openUser(authorId); }}>
+                <b>{authorName}</b>
+              </button>
+              {authorId !== 'me' ? (
+                <button
+                  type="button"
+                  className={`clips-follow${followingAuthor ? ' on' : ''}`}
+                  onClick={() => actions.follow(authorId)}
+                  aria-label={followingAuthor ? 'Deixar de seguir' : 'Seguir'}
+                >
+                  {followingAuthor ? 'Seguindo' : 'Seguir'}
+                </button>
+              ) : null}
+            </span>
             {author.handle ? <span>@{author.handle}</span> : null}
           </div>
-          {post.by !== 'me' ? (
-            <button
-              type="button"
-              className={`clips-follow${followingAuthor ? ' on' : ''}`}
-              onClick={() => actions.follow(post.by)}
-              aria-label={followingAuthor ? 'Deixar de seguir' : 'Seguir'}
-            >
-              {followingAuthor ? 'Seguindo' : 'Seguir'}
-            </button>
-          ) : null}
         </div>
         {shownText ? <p>{shownText}</p> : null}
         {text.length > 130 ? (

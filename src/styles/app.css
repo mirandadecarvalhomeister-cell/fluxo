@@ -2107,7 +2107,8 @@ html,body{max-width:100%;overflow-x:clip}
 .clips-nav{position:absolute;right:14px;top:50%;z-index:5;transform:translateY(-50%);display:grid;gap:8px;justify-items:center}
 .clips-nav button{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.38);color:#fff;backdrop-filter:blur(6px)}
 .clips-nav button:disabled{opacity:.25;cursor:default}
-.clips-nav button .ic.flip{transform:rotate(180deg)}
+.clips-nav button .ic.nav-up{transform:rotate(90deg)}
+.clips-nav button .ic.nav-down{transform:rotate(-90deg)}
 .clips-nav span{font-size:10px;font-variant-numeric:tabular-nums;opacity:.7}
 .clips-rail{position:absolute;right:12px;bottom:96px;z-index:5;display:grid;gap:16px;justify-items:center}
 .clips-rail button{display:grid;gap:3px;justify-items:center;border:0;background:transparent;color:#fff;font:700 11px var(--f-body);text-shadow:0 1px 4px rgba(0,0,0,.6)}
@@ -2267,7 +2268,8 @@ html,body{max-width:100%;overflow-x:clip}
 @media (max-width:560px){
   .clips-rail{bottom:104px;gap:12px}
   .clips-info{right:64px;bottom:44px}
-  .clips-nav{display:none}
+  .clips-nav{right:6px;gap:5px}
+  .clips-nav button{width:32px;height:32px}
 }
 
 /* Envio múltiplo de fotos/vídeos no chat direto. */
@@ -2350,4 +2352,11 @@ html,body{max-width:100%;overflow-x:clip}
 .comm-classified-actions{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
 .comm-classified-actions .icon-btn{width:32px;height:32px}
 .comm-classified-actions .ic{width:15px;height:15px}
+.msg-compose-row,.comm-compose-row{position:relative;display:flex;align-items:flex-end;gap:8px;flex:1;min-width:0}
+.msg-voice-slot,.comm-voice-slot{display:flex;align-items:flex-end;flex:none}
+.comm-compose-row .comm-chat-bar{flex:1;min-width:0}
+.msg-compose-row:has(.voice-recorder.active) > .msg-composer,
+.msg-compose-row:has(.voice-recorder.active) > .send-btn,
+.comm-compose-row:has(.voice-recorder.active) > .comm-chat-bar,
+.comm-compose-row:has(.voice-recorder.active) > .comm-attach{display:none}
 
