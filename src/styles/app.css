@@ -2061,6 +2061,13 @@ html,body{max-width:100%;overflow-x:clip}
 .feed-suggest-cats{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 .feed-suggest-cats button{padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface2);color:var(--muted);font:600 11px var(--f-body)}
 .feed-suggest-cats button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.pgformat{position:absolute;left:6px;top:6px;z-index:2;display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:999px;background:rgba(10,6,26,.72);color:#fff;font:700 10px var(--f-body);backdrop-filter:blur(4px)}
+.pgformat .ic{width:12px;height:12px}
+.sheet .post-detail-controls{position:absolute;right:54px;top:10px;z-index:3}
+.sheet .post-detail-controls .post-menu{margin-left:0}
+.sheet .post-detail-controls .post-menu > summary{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface2);color:var(--fg)}
+.sheet .post-detail-controls .post-menu > summary:hover{background:var(--surface);color:var(--accent)}
+.sheet .post-detail-controls .menu-pop{right:0}
 
 /* Envio múltiplo de fotos/vídeos no chat direto. */
 .msg-caption{margin:0 0 4px;font-size:13px;line-height:1.35;overflow-wrap:anywhere}

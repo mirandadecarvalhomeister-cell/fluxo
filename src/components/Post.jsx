@@ -206,7 +206,7 @@ function Media({ post, author }) {
   );
 }
 
-function PostMenu({ post, onEdit, onShare }) {
+export function PostMenu({ post, onEdit, onShare }) {
   const { data, actions } = useApp();
   const ref = useRef(null);
   const following = data.follows.includes(post.by);
@@ -467,11 +467,13 @@ export default function Post({ post, detail = false }) {
             {following ? 'Seguindo' : 'Seguir'}
           </button>
         ) : null}
-        <PostMenu
-          post={post}
-          onEdit={() => actions.openEditPost(post.id)}
-          onShare={() => actions.openSharePost(post.id)}
-        />
+        {!detail ? (
+          <PostMenu
+            post={post}
+            onEdit={() => actions.openEditPost(post.id)}
+            onShare={() => actions.openSharePost(post.id)}
+          />
+        ) : null}
       </header>
 
       {post.communityId ? (

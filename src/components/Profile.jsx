@@ -55,6 +55,18 @@ export function PostThumb({ post }) {
         </span>
       ) : null}
       {media.length > 1 ? <span className="pgcount">{media.length}</span> : null}
+      {post.interactive?.format && post.interactive.format !== 'classic' ? (
+        <span className="pgformat">
+          <Icon name={post.interactive.format === 'challenge' ? 'flash' : post.interactive.format === 'question' ? 'comment' : 'chart'} />
+          {post.interactive.format === 'challenge'
+            ? 'Desafio'
+            : post.interactive.format === 'question'
+              ? 'Pergunta'
+              : post.interactive.format === 'imageVote'
+                ? 'Votação'
+                : 'Enquete'}
+        </span>
+      ) : null}
       <span className="pgov">
         <span>
           <Icon name="heart" /> {fmt(post.likes)}
@@ -172,6 +184,14 @@ export default function Profile() {
   const mine = data.posts
     .filter((p) => p.by === 'me' && p.kind !== 'story')
     .sort((a, b) => b.ts - a.ts);
+  const formatOf = (post) => post.interactive?.format || 'classic';
+  const hasPhotoOrVideo = (post) =>
+    ['photo', 'video'].includes(post.kind) ||
+    mediaOf(post).some((item) => ['photo', 'video'].includes(item.kind));
+  const photos = mine.filter(hasPhotoOrVideo);
+  const polls = mine.filter((post) => ['poll', 'imageVote'].includes(formatOf(post)));
+  const challenges = mine.filter((post) => formatOf(post) === 'challenge');
+  const questions = mine.filter((post) => formatOf(post) === 'question');
   const saved = data.posts
     .filter((p) => p.saved && p.kind !== 'story')
     .sort((a, b) => b.ts - a.ts);
@@ -200,16 +220,16 @@ export default function Profile() {
       </Empty>
     );
   } else if (tab === 'posts') {
-    body = mine.length ? (
+    body = photos.length ? (
       <div className="postgrid">
-        {mine.map((post) => (
+        {photos.map((post) => (
           <PostThumb key={post.id} post={post} />
         ))}
       </div>
     ) : (
       <Empty
-        title="Nenhuma publicação ainda"
-        text="Conte o que está rolando por aí. A primeira publicação aparece aqui."
+        title="Nenhuma foto ou vídeo ainda"
+        text="Suas fotos e vídeos publicados aparecem aqui."
       >
         <button
           className="btn primary"
@@ -221,6 +241,33 @@ export default function Profile() {
           Criar publicação
         </button>
       </Empty>
+    );
+  } else if (['polls', 'challenges', 'questions'].includes(tab)) {
+    const config = {
+      polls: {
+        list: polls,
+        title: 'Nenhuma enquete ainda',
+        text: 'As enquetes e votações que você publicou aparecem aqui.',
+      },
+      challenges: {
+        list: challenges,
+        title: 'Nenhum desafio ainda',
+        text: 'Os desafios que você propôs aparecem aqui.',
+      },
+      questions: {
+        list: questions,
+        title: 'Nenhuma pergunta ainda',
+        text: 'As perguntas que você publicou aparecem aqui.',
+      },
+    }[tab];
+    body = config.list.length ? (
+      <div className="postgrid">
+        {config.list.map((post) => (
+          <PostThumb key={post.id} post={post} />
+        ))}
+      </div>
+    ) : (
+      <Empty title={config.title} text={config.text} />
     );
   } else {
     body = (
@@ -527,6 +574,24 @@ export default function Profile() {
               onClick={() => actions.setProfTab('posts')}
             >
               Publicações
+            </button>
+            <button
+              className={tab === 'polls' ? 'on' : ''}
+              onClick={() => actions.setProfTab('polls')}
+            >
+              Enquetes
+            </button>
+            <button
+              className={tab === 'challenges' ? 'on' : ''}
+              onClick={() => actions.setProfTab('challenges')}
+            >
+              Desafios
+            </button>
+            <button
+              className={tab === 'questions' ? 'on' : ''}
+              onClick={() => actions.setProfTab('questions')}
+            >
+              Perguntas
             </button>
             <button
               className={tab === 'saved' ? 'on' : ''}

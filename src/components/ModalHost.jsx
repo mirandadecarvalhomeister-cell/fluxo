@@ -19,7 +19,7 @@ import { Avatar } from './Avatar';
 import { Verified } from './Brand';
 import { Icon } from './Icon';
 import MediaEditor, { EditOverlay } from './MediaEditor';
-import Post from './Post';
+import Post, { PostMenu } from './Post';
 import { PostThumb } from './Profile';
 import SearchModal from './SearchModal';
 import CommunitySpace from './CommunitySpace';
@@ -2497,11 +2497,13 @@ export default function ModalHost() {
 
   let content = null;
   let wide = false;
+  let detailPost = null;
 
   if (modal.type === 'profile') {
     content = <ProfileEditModal />;
   } else if (modal.type === 'post') {
     const post = data.posts.find((p) => p.id === modal.id);
+    detailPost = post || null;
     content = post ? (
       <Post post={post} detail />
     ) : (
@@ -2568,6 +2570,15 @@ export default function ModalHost() {
         aria-label={MODAL_LABELS[modal.type] || 'Janela'}
         ref={sheetRef}
       >
+        {modal.type === 'post' && detailPost ? (
+          <div className="post-detail-controls">
+            <PostMenu
+              post={detailPost}
+              onEdit={() => actions.openEditPost(detailPost.id)}
+              onShare={() => actions.openSharePost(detailPost.id)}
+            />
+          </div>
+        ) : null}
         {modal.type !== 'search' ? (
           <button
             className="icon-btn x"
