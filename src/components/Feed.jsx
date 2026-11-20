@@ -32,6 +32,7 @@ import MediaEditor, { EditOverlay } from './MediaEditor';
 import MentionField from './MentionField';
 import Post from './Post';
 import PostComposerTrigger from './PostComposerTrigger';
+import RichTextTools from './RichTextTools';
 
 export function Composer({ inModal = false }) {
   const { data, ui, actions } = useApp();
@@ -77,6 +78,10 @@ export function Composer({ inModal = false }) {
           onChange={(next) => actions.setDraftText(next)}
         />
       </div>
+      <RichTextTools
+        value={draft.text}
+        onChange={(next) => actions.setDraftText(next)}
+      />
 
       <div className="fmt-tabs" role="tablist" aria-label="Formato da publicação">
         {INTERACTIVE_FORMATS.map((item) => (

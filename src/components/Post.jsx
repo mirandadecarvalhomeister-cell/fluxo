@@ -9,6 +9,7 @@ import { ago, fmt, fmtDur } from '../lib/utils';
 import { fxFor, REACTIONS as REACTIONS_PADRAO } from '../lib/reactionFx';
 import AnimatedEmoji from './AnimatedEmoji';
 import EmojiText from './EmojiText';
+import RichText from './RichText';
 import { useApp } from '../store/AppContext';
 import { LiveAvatar } from './Avatar';
 import { Verified } from './Brand';
@@ -473,7 +474,7 @@ export default function Post({ post, detail = false }) {
       {post.text ? (
         <div className="txt-wrap">
           <p className={`txt${longText && !expanded ? ' clamped' : ''}`}>
-            <EmojiText text={post.text} size={20} />
+            <RichText text={post.text} />
           </p>
           {longText ? (
             <button
