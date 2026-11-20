@@ -19,13 +19,6 @@ export const INTERACTIVE_FORMATS = [
     hint: 'Escolha entre 2 e 6 alternativas e veja os votos em tempo real.',
   },
   {
-    id: 'question',
-    label: 'Pergunta',
-    short: 'Pergunta',
-    icon: 'comment',
-    hint: 'Faça uma pergunta aberta e receba respostas da comunidade.',
-  },
-  {
     id: 'imageVote',
     label: 'Votação com imagens',
     short: 'Votação',
@@ -82,7 +75,7 @@ export const SCHEDULE_UNITS = [
   { id: 'hours', label: 'horas', factor: 60 },
 ];
 export const RESULT_RELEASE_OPTIONS = [0, 5, 15, 30, 60];
-export const SCHEDULABLE_FORMATS = ['poll', 'question', 'imageVote', 'challenge'];
+export const SCHEDULABLE_FORMATS = ['poll', 'imageVote', 'challenge'];
 
 export const DEFAULT_SCHEDULE = {
   mode: 'now',
@@ -258,6 +251,16 @@ export function livePollStatus(poll, now = Date.now()) {
 
 
 export function formatMeta(format) {
+  // Formato legado: publicações antigas ainda podem existir no banco.
+  if (format === 'question') {
+    return {
+      id: 'question',
+      label: 'Pergunta (antiga)',
+      short: 'Pergunta',
+      icon: 'comment',
+      hint: 'Publicação criada antes da remoção do formato Pergunta.',
+    };
+  }
   return (
     INTERACTIVE_FORMATS.find((item) => item.id === format) ||
     INTERACTIVE_FORMATS[0]

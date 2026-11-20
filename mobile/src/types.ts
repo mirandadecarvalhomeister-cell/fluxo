@@ -28,6 +28,7 @@ export type InteractiveOption = {
 };
 
 export type Interactive = {
+  // 'question' permanece apenas para renderizar publicações antigas.
   format: 'poll' | 'question' | 'imageVote' | 'challenge' | 'reactions';
   options: InteractiveOption[];
   reactions: string[];

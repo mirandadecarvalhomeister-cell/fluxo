@@ -127,15 +127,6 @@ function CommunityChatComposer({ community, canPost, replyTarget, onCancelReply 
         >
           <Icon name="chart" /> Enquete
         </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={format === 'question'}
-          className={format === 'question' ? 'on' : ''}
-          onClick={() => actions.setDraftFormat('question')}
-        >
-          <Icon name="spark" /> Pergunta
-        </button>
       </div>
       {isPoll ? (
         <div className="comm-post-options">
@@ -858,7 +849,7 @@ export default function CommunitySpace({ community, onAdmin }) {
 
           {tab === 'enquetes' ? (
             <div className="comm-section">
-              <h2 className="h2">Enquetes e perguntas</h2>
+              <h2 className="h2">Enquetes</h2>
               {posts.filter(
                 (p) =>
                   p.interactive?.format === 'poll' ||

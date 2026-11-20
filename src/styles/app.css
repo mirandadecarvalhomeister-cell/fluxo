@@ -798,7 +798,6 @@ body.lock{overflow:hidden}
 .fmt-tabs button{--tone:var(--accent);display:flex;align-items:center;gap:8px;min-width:0;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--surface2);font-size:12.5px;font-weight:700;color:var(--muted);white-space:nowrap;transition:.15s}
 .fmt-tabs button[data-format="classic"]{--tone:var(--accent)}
 .fmt-tabs button[data-format="poll"]{--tone:var(--sun)}
-.fmt-tabs button[data-format="question"]{--tone:var(--ok)}
 .fmt-tabs button[data-format="imageVote"]{--tone:var(--hot)}
 .fmt-tabs button[data-format="challenge"]{--tone:var(--sky)}
 .fmt-tabs button[data-format="reactions"]{--tone:var(--teal)}

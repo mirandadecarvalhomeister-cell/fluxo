@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  INTERACTIVE_FORMATS,
   MAX_SCHEDULE_MINUTES,
+  SCHEDULABLE_FORMATS,
   livePollStatus,
   normalizeInteractive,
   resultsReleased,
@@ -10,6 +12,11 @@ import {
   scheduleOf,
   schedulePhase,
 } from '../src/lib/interactive.js';
+
+test('o formato Pergunta não é mais oferecido nem agendável', () => {
+  assert.equal(INTERACTIVE_FORMATS.some((item) => item.id === 'question'), false);
+  assert.equal(SCHEDULABLE_FORMATS.includes('question'), false);
+});
 
 test('publicação programada calcula prazo e liberação dos resultados', () => {
   const now = Date.UTC(2026, 0, 1, 12, 0, 0);

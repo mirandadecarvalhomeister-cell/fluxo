@@ -27,7 +27,7 @@ import { MAX_VIDEO_SECONDS } from '../lib/media';
 import { MAX_OPTIONS, MIN_OPTIONS } from '../lib/interactive';
 import { createLiveChannel } from '../lib/api';
 
-type Fmt = 'classic' | 'poll' | 'question' | 'imageVote' | 'challenge';
+type Fmt = 'classic' | 'poll' | 'imageVote' | 'challenge';
 type Step = 'capture' | 'gallery' | 'customize';
 type Panel = 'live' | 'poll' | 'clips' | 'vote' | null;
 type Asset = { uri: string; kind: 'photo' | 'video'; duration?: number; mimeType?: string; fileName?: string | null };
@@ -48,7 +48,6 @@ const emptyOptions = () => [{ id: 'opt-1', label: '' }, { id: 'opt-2', label: ''
 const CAPTURE_TYPES: { id: Fmt | 'clips' | 'live'; label: string; icon: any }[] = [
   { id: 'classic', label: 'Publicação', icon: 'image-outline' },
   { id: 'poll', label: 'Enquete', icon: 'stats-chart-outline' },
-  { id: 'question', label: 'Pergunta', icon: 'help-circle-outline' },
   { id: 'imageVote', label: 'Votação', icon: 'images-outline' },
   { id: 'challenge', label: 'Desafio', icon: 'flash-outline' },
   { id: 'clips', label: 'Clips', icon: 'videocam-outline' },

@@ -4,13 +4,13 @@ import { uid } from './format';
 export const INTERACTIVE_FORMATS = [
   { id: 'classic', label: 'Publicação', hint: 'Texto, foto ou vídeo.' },
   { id: 'poll', label: 'Enquete', hint: 'Duas a seis alternativas.' },
-  { id: 'question', label: 'Pergunta', hint: 'Pergunta aberta para respostas.' },
   { id: 'imageVote', label: 'Votação', hint: 'Compare imagens e descubra a favorita.' },
   { id: 'challenge', label: 'Desafio', hint: 'Proponha um desafio para a galera.' },
   { id: 'reactions', label: 'Reações', hint: 'Reações personalizadas na publicação.' },
 ] as const;
 
-export type InteractiveFormat = (typeof INTERACTIVE_FORMATS)[number]['id'];
+// 'question' não é mais criável, mas continua no tipo para renderizar posts antigos.
+export type InteractiveFormat = (typeof INTERACTIVE_FORMATS)[number]['id'] | 'question';
 
 export const DEFAULT_REACTIONS = ['❤️', '🔥', '👏', '😂', '😮', '🎉', '💜'];
 export const REACTION_CHOICES = ['❤️', '🔥', '👏', '😂', '😮', '😢', '🎉', '💜', '🤯', '🙌', '😍', '🤔', '💡', '👀', '🚀', '🍿'];

@@ -39,7 +39,6 @@ export const FEED_FORMATS = [
   { id: 'video', label: 'Vídeos' },
   { id: 'text', label: 'Textos' },
   { id: 'poll', label: 'Enquetes' },
-  { id: 'question', label: 'Perguntas' },
   { id: 'imageVote', label: 'Votações' },
   { id: 'challenge', label: 'Desafios' },
 ];

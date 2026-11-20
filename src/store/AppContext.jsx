@@ -2704,7 +2704,7 @@ export function AppProvider({ children }) {
     );
     const scheduled = draft.schedule?.mode === 'scheduled';
     if (scheduled && !isSchedulable(format)) {
-      toast('Publicações programadas são para enquetes, perguntas, votações e desafios.');
+      toast('Publicações programadas são para enquetes, votações e desafios.');
       return;
     }
     const schedule = scheduled ? scheduleFromDraft(draft.schedule) : null;

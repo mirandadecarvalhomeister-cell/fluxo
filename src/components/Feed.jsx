@@ -49,9 +49,7 @@ function Composer() {
   const placeholder =
     format === 'poll'
       ? `Faça uma pergunta para a galera votar, ${first}…`
-      : format === 'question'
-        ? `Qual pergunta você quer fazer, ${first}?`
-        : format === 'imageVote'
+      : format === 'imageVote'
           ? 'Qual é a melhor? Descreva a votação…'
           : format === 'challenge'
             ? `Qual desafio você propõe, ${first}?`
