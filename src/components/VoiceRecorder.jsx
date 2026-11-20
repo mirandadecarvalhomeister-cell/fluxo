@@ -434,21 +434,29 @@ export default function VoiceRecorder({
 
   return (
     <div className={`voice-recorder${active ? ' active' : ''}${compact ? ' compact' : ''} ${className}`.trim()}>
-      {!active ? (
+      {/* O mesmo botão permanece montado durante a gravação: trocar o nó
+          quebraria a captura do ponteiro e os gestos de arrastar. */}
+      {!locked && !paused && !uploading && !errored ? (
         <button
           type="button"
-          className={`icon-btn mic-btn${disabled ? ' disabled' : ''}`}
+          className={`icon-btn mic-btn${disabled ? ' disabled' : ''}${held ? ' held' : ''}${
+            state.cancelProgress > 0.65 ? ' cancel' : ''
+          }`}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerCancel}
           onLostPointerCapture={() => { if (stateRef.current.status === S.RECORDING) onPointerUp(); }}
           onContextMenu={(event) => event.preventDefault()}
-          aria-label={label}
-          title={label}
+          aria-label={
+            held
+              ? 'Gravando: solte para enviar, arraste à esquerda para apagar ou para cima para pausar'
+              : label
+          }
+          title={held ? 'Solte para enviar · ← apagar · ↑ pausar' : label}
           disabled={disabled}
         >
-          <Icon name="mic" />
+          <Icon name={held ? 'radio' : 'mic'} />
         </button>
       ) : null}
 
@@ -458,7 +466,7 @@ export default function VoiceRecorder({
             type="button"
             className={`vr-trash${state.cancelProgress > 0.65 ? ' hot' : ''}`}
             onClick={discard}
-            aria-label="Cancelar gravação"
+            aria-label="Cancelar e apagar gravação"
             title="Arraste para a lixeira para apagar"
           >
             <Icon name="trash" />
@@ -471,19 +479,12 @@ export default function VoiceRecorder({
             <span className="vr-rec-dot" />
             <b>{formatAudioTime(state.elapsed)}</b>
             {wavesNode}
-            <small>{state.cancelProgress > 0.65 ? 'Solte na lixeira para apagar' : 'Solte para enviar · ← apagar · ↑ pausar'}</small>
+            <small>
+              {state.cancelProgress > 0.65
+                ? 'Solte na lixeira para apagar'
+                : 'Solte para enviar · ← apagar · ↑ pausar'}
+            </small>
           </span>
-          <button
-            type="button"
-            className={`vr-mic-active${state.cancelProgress > 0.65 ? ' cancel' : ''}`}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerCancel}
-            aria-label="Gravando — solte para enviar"
-          >
-            <Icon name="mic" />
-          </button>
         </>
       ) : null}
 
