@@ -1,40 +1,27 @@
 import { Fragment } from 'react';
+import { parseRichText } from '../lib/richText';
 import EmojiText from './EmojiText';
 
-const INLINE = /(\*\*[^*]+\*\*|\*[^*]+\*|#[\p{L}\d_]+|@[\p{L}\d_.]+|https?:\/\/[^\s]+)/gu;
-
-/**
- * Renderizador seguro de formatação simples. Nunca usa HTML arbitrário:
- * tudo é convertido em elementos React, com escape automático do React.
- * Marcadores: **negrito**, *itálico*, #hashtag, @mencao e URLs.
- */
-function renderInline(text, keyPrefix) {
-  const parts = String(text || '').split(INLINE).filter((part) => part !== '');
-  return parts.map((part, index) => {
+function renderTokens(tokens, keyPrefix) {
+  return tokens.map((token, index) => {
     const key = `${keyPrefix}-${index}`;
-    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
-      return <strong key={key}>{renderInline(part.slice(2, -2), key)}</strong>;
-    }
-    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
-      return <em key={key}>{renderInline(part.slice(1, -1), key)}</em>;
-    }
-    if (part.startsWith('#') || part.startsWith('@')) {
-      return <span className="rich-tag" key={key}>{part}</span>;
-    }
-    if (/^https?:\/\//i.test(part)) {
+    if (token.type === 'bold') return <strong key={key}>{renderTokens(token.children, key)}</strong>;
+    if (token.type === 'italic') return <em key={key}>{renderTokens(token.children, key)}</em>;
+    if (token.type === 'tag') return <span className="rich-tag" key={key}>{token.value}</span>;
+    if (token.type === 'link') {
       return (
-        <a key={key} href={part} target="_blank" rel="noopener noreferrer">
-          {part}
+        <a key={key} href={token.value} target="_blank" rel="noopener noreferrer">
+          {token.value}
         </a>
       );
     }
-    return <EmojiText key={key} text={part} />;
+    return <EmojiText key={key} text={token.value} />;
   });
 }
 
 /** Texto de publicação com formatação, listas, links, menções e emojis. */
 export default function RichText({ text, className = '' }) {
-  const lines = String(text || '').split('\n');
+  const lines = parseRichText(text);
   const nodes = [];
   let list = null;
 
@@ -44,18 +31,19 @@ export default function RichText({ text, className = '' }) {
     list = null;
   };
 
-  lines.forEach((line, index) => {
-    const match = line.match(/^\s*-\s+(.*)$/);
-    if (match) {
+  lines.forEach((line) => {
+    if (line.list) {
       if (!list) list = [];
-      list.push(<li key={`li-${index}`}>{renderInline(match[1], `li-${index}`)}</li>);
+      list.push(
+        <li key={`li-${line.index}`}>{renderTokens(line.tokens, `li-${line.index}`)}</li>
+      );
       return;
     }
     flushList();
     nodes.push(
-      <Fragment key={`line-${index}`}>
-        {renderInline(line, `line-${index}`)}
-        {index < lines.length - 1 ? <br /> : null}
+      <Fragment key={`line-${line.index}`}>
+        {renderTokens(line.tokens, `line-${line.index}`)}
+        {line.index < lines.length - 1 ? <br /> : null}
       </Fragment>
     );
   });
