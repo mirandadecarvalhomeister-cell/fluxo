@@ -31,6 +31,7 @@ import { Icon } from './Icon';
 import MediaEditor, { EditOverlay } from './MediaEditor';
 import MentionField from './MentionField';
 import Post from './Post';
+import PostComposerTrigger from './PostComposerTrigger';
 
 function Composer() {
   const { data, ui, actions } = useApp();
@@ -603,7 +604,7 @@ export default function Feed() {
 
   return (
     <>
-      <Composer />
+      <PostComposerTrigger />
       <FeedControls prefs={prefs} suggestions={suggestions} />
       {prefs.mode !== 'communities' ? (
         <SpontaneousTopics topics={spontaneous} />

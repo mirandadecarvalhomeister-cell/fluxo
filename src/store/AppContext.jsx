@@ -5376,6 +5376,7 @@ export function AppProvider({ children }) {
     shareChannel,
     openSettings: () => setUi((u) => ({ ...u, modal: { type: 'settings' } })),
     openNotifications: () => setUi((u) => ({ ...u, modal: { type: 'notifications' } })),
+    openComposer: () => setUi((u) => ({ ...u, modal: { type: 'composer' } })),
     markNotifsSeen,
     markCommunityNotificationsRead,
     loadMoreFeed,

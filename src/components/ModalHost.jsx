@@ -20,6 +20,7 @@ import { Verified } from './Brand';
 import { Icon } from './Icon';
 import MediaEditor, { EditOverlay } from './MediaEditor';
 import Post, { PostMenu } from './Post';
+import PostComposerModal from './PostComposerModal';
 import { PostThumb } from './Profile';
 import SearchModal from './SearchModal';
 import CommunitySpace from './CommunitySpace';
@@ -2323,6 +2324,7 @@ const MODAL_LABELS = {
   profile: 'Editar perfil',
   reactions: 'Personalizar reações',
   post: 'Publicação',
+  composer: 'Criar publicação',
   comm: 'Comunidade',
   newcomm: 'Criar comunidade',
   newchan: 'Criar canal',
@@ -2501,6 +2503,8 @@ export default function ModalHost() {
 
   if (modal.type === 'profile') {
     content = <ProfileEditModal />;
+  } else if (modal.type === 'composer') {
+    content = <PostComposerModal />;
   } else if (modal.type === 'post') {
     const post = data.posts.find((p) => p.id === modal.id);
     detailPost = post || null;
