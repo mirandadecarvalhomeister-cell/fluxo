@@ -313,7 +313,20 @@ export default function ClipsViewer() {
                 <button
                   type="button"
                   className={`clips-follow${followingAuthor ? ' on' : ''}`}
-                  onClick={() => actions.follow(authorId)}
+                  onClick={() => {
+                    if (followingAuthor) {
+                      actions.requestConfirm?.({
+                        title: 'Deixar de seguir?',
+                        text: `Você não verá mais as publicações de ${authorName} no seu feed.`,
+                        confirmLabel: 'Deixar de seguir',
+                        cancelLabel: 'Cancelar',
+                        tone: 'hot',
+                        action: () => actions.follow(authorId),
+                      });
+                    } else {
+                      actions.follow(authorId);
+                    }
+                  }}
                   aria-label={followingAuthor ? 'Deixar de seguir' : 'Seguir'}
                 >
                   {followingAuthor ? 'Seguindo' : 'Seguir'}

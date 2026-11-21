@@ -2169,7 +2169,8 @@ html,body{max-width:100%;overflow-x:clip}
 .clips-author button{border:0;background:transparent;color:#fff;text-align:left;padding:0}
 .clips-author b{font-size:14px}
 .clips-author span{font-size:11px;opacity:.75}
-.clips-follow{flex:none;padding:6px 12px;border-radius:999px;border:1px solid #fff;background:#fff;color:#0b0718;font:800 11px var(--f-body)}
+.clips-author-line{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
+.clips-follow{flex:none;margin-left:4px;padding:6px 12px;border-radius:999px;border:1px solid #fff;background:#fff;color:#0b0718;font:800 11px var(--f-body)}
 .clips-follow.on{background:transparent;color:#fff}
 .clips-react-wrap{position:relative;display:inline-flex}
 .clips-react-picker{position:absolute;right:0;bottom:calc(100% + 8px);z-index:30;display:flex;gap:2px;padding:6px;border-radius:999px;background:rgba(10,6,26,.92);border:1px solid rgba(255,255,255,.2);box-shadow:var(--shadow)}
