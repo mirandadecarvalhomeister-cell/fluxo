@@ -62,7 +62,18 @@ test('6. soltar o dedo com cadeado continua gravando', () => {
   assert.equal(state.status, S.LOCKED_RECORDING);
 });
 
-test('7. parar a gravação bloqueada pausa e abre a prévia', () => {
+test('7. pausar a gravação bloqueada preserva o estado', () => {
+  const state = run([
+    press(),
+    move(0, -LOCK_THRESHOLD - 6),
+    release(),
+    { type: E.TICK, elapsed: 12 },
+    { type: E.PAUSE },
+  ]);
+  assert.equal(state.status, S.PAUSED);
+});
+
+test('7b. finalizar abre a prévia', () => {
   const state = run([
     press(),
     move(0, -LOCK_THRESHOLD - 6),
@@ -70,7 +81,7 @@ test('7. parar a gravação bloqueada pausa e abre a prévia', () => {
     { type: E.TICK, elapsed: 12 },
     { type: E.STOP },
   ]);
-  assert.equal(state.status, S.PAUSED);
+  assert.equal(state.status, S.REVIEW);
   assert.equal(state.duration, 12);
 });
 
@@ -83,17 +94,17 @@ test('8. soltar a gravação comum envia imediatamente', () => {
   assert.equal(state.status, S.UPLOADING);
 });
 
-test('8b. a prévia só existe após pausar a gravação com cadeado', () => {
+test('8b. a prévia só existe após finalizar a gravação com cadeado', () => {
   const held = run([press(), release()]);
   assert.equal(voiceSelectors.isReviewing(held), false);
-  const paused = run([
+  const reviewed = run([
     press(),
     move(0, -LOCK_THRESHOLD - 6),
     release(),
     { type: E.STOP },
   ]);
-  assert.equal(voiceSelectors.isReviewing(paused), true);
-  assert.equal(voiceSelectors.canSend(paused), true);
+  assert.equal(voiceSelectors.isReviewing(reviewed), true);
+  assert.equal(voiceSelectors.canSend(reviewed), true);
 });
 
 test('8c. retomar a gravação pausada volta ao cadeado', () => {
@@ -101,7 +112,7 @@ test('8c. retomar a gravação pausada volta ao cadeado', () => {
     press(),
     move(0, -LOCK_THRESHOLD - 6),
     release(),
-    { type: E.STOP },
+    { type: E.PAUSE },
   ]);
   const resumed = voiceReducer(paused, { type: E.RESUME });
   assert.equal(resumed.status, S.LOCKED_RECORDING);
@@ -126,12 +137,13 @@ test('10. upload bem-sucedido chega a SENT', () => {
 });
 
 test('11. falha de upload é recuperável', () => {
-  let state = run([press(), { type: E.TICK, elapsed: 3 }, release(), { type: E.SEND }]);
+  let state = run([press(), { type: E.TICK, elapsed: 3 }, release()]);
+  state = voiceReducer(state, { type: E.SEND });
   state = voiceReducer(state, { type: E.UPLOAD_FAIL, error: 'sem rede' });
   assert.equal(state.status, S.ERROR);
   assert.equal(state.error, 'sem rede');
   state = voiceReducer(state, { type: E.RETRY });
-  assert.equal(state.status, S.PAUSED);
+  assert.equal(state.status, S.REVIEW);
   assert.equal(state.error, null);
 });
 

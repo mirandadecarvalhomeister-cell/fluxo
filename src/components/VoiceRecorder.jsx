@@ -14,20 +14,19 @@ import {
   MAX_DURATION_MS,
 } from '../lib/voiceRecording';
 
-const WAVE_BARS = 28;
-const gestureScale = () => (typeof window !== 'undefined' && window.innerWidth < 600 ? 0.8 : 1);
-
-function vibrate(pattern) {
+const WAVE_BARS = 30;
+const scale = () => (typeof window !== 'undefined' && window.innerWidth < 600 ? 0.85 : 1);
+const buzz = (pattern) => {
   try { navigator.vibrate?.(pattern); } catch { /* sem vibração */ }
-}
+};
 
 /**
- * Gravador gestual integro à barra de digitação.
- * - Segurar e soltar: envio imediato, sem prévia.
- * - Arrastar à esquerda: lixeira (no lugar do botão de emojis) cancela.
- * - Arrastar para cima: cadeado; soltar o dedo mantém a gravação.
- * - Parar com cadeado: pausa e mostra prévia dentro da barra, com reproduzir,
- *   apagar, retomar a gravação ou enviar.
+ * Gravador profissional com gestos (padrão WhatsApp):
+ * - Pressionar e soltar → envio imediato.
+ * - Arrastar à esquerda → lixeira, soltar cancela e apaga.
+ * - Arrastar para cima → cadeado, soltar mantém a gravação.
+ * - Pausar/retomar usa MediaRecorder.pause()/resume() nativo, sem perder o áudio.
+ * - Cancelar disponível a qualquer momento (gesto, lixeira ou interrupção).
  */
 export default function VoiceRecorder({
   onSend,
@@ -35,7 +34,7 @@ export default function VoiceRecorder({
   compact = false,
   onError,
   onActiveChange,
-  label = 'Segure para gravar · ← apagar · ↑ pausar',
+  label = 'Segure para gravar',
   className = '',
 }) {
   const [state, dispatch] = useReducer(voiceReducer, undefined, initialVoiceState);
@@ -49,21 +48,22 @@ export default function VoiceRecorder({
   const streamRef = useRef(null);
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
-  const audioCtxRef = useRef(null);
+  const ctxRef = useRef(null);
   const analyserRef = useRef(null);
-  const sampleTimerRef = useRef(null);
-  const timerRef = useRef(null);
+  const sampleRef = useRef(null);
+  const clockRef = useRef(null);
   const waveRef = useRef([]);
-  const startedAtRef = useRef(0);
+  const elapsedRef = useRef(0);
+  const startedRef = useRef(0);
   const sessionRef = useRef(0);
-  const dragOriginRef = useRef(null);
+  const originRef = useRef(null);
   const discardRef = useRef(false);
   const pressedRef = useRef(false);
   const sendLockRef = useRef(false);
   const autoSendRef = useRef(false);
-  const pauseForReviewRef = useRef(false);
-  const hapticRef = useRef({ cancel: false, lock: false });
-  const previewUrlRef = useRef('');
+  const finishForReviewRef = useRef(false);
+  const buzzRef = useRef({ cancel: false, lock: false });
+  const urlRef = useRef('');
   const blobRef = useRef(null);
   const mountedRef = useRef(true);
 
@@ -74,26 +74,26 @@ export default function VoiceRecorder({
     streamRef.current = null;
   }, []);
 
-  const stopSampling = useCallback(() => {
-    if (sampleTimerRef.current) clearInterval(sampleTimerRef.current);
-    if (timerRef.current) clearInterval(timerRef.current);
-    sampleTimerRef.current = null;
-    timerRef.current = null;
-    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-      audioCtxRef.current.close().catch(() => {});
+  const stopSamplers = useCallback(() => {
+    if (sampleRef.current) clearInterval(sampleRef.current);
+    if (clockRef.current) clearInterval(clockRef.current);
+    sampleRef.current = null;
+    clockRef.current = null;
+    if (ctxRef.current && ctxRef.current.state !== 'closed') {
+      ctxRef.current.close().catch(() => {});
     }
-    audioCtxRef.current = null;
+    ctxRef.current = null;
     analyserRef.current = null;
   }, []);
 
   const clearPreview = useCallback(() => {
-    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-    previewUrlRef.current = '';
+    if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    urlRef.current = '';
     setPreviewUrl('');
   }, []);
 
-  const resetArtifacts = useCallback(() => {
-    stopSampling();
+  const resetAll = useCallback(() => {
+    stopSamplers();
     stopStream();
     clearPreview();
     chunksRef.current = [];
@@ -101,32 +101,57 @@ export default function VoiceRecorder({
     setWaves([]);
     blobRef.current = null;
     setBlobReady(false);
-    startedAtRef.current = 0;
+    elapsedRef.current = 0;
+    startedRef.current = 0;
     autoSendRef.current = false;
-    pauseForReviewRef.current = false;
-    hapticRef.current = { cancel: false, lock: false };
-  }, [clearPreview, stopSampling, stopStream]);
+    finishForReviewRef.current = false;
+    buzzRef.current = { cancel: false, lock: false };
+  }, [clearPreview, stopSamplers, stopStream]);
 
-  const discard = useCallback(() => {
-    discardRef.current = true;
-    pressedRef.current = false;
-    sendLockRef.current = false;
-    autoSendRef.current = false;
-    pauseForReviewRef.current = false;
-    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
-    else resetArtifacts();
-    sessionRef.current += 1;
-    dispatch({ type: E.CANCEL });
-    vibrate(20);
-  }, [resetArtifacts]);
+  const finishBlob = useCallback((keepForReview) => {
+    const recorder = recorderRef.current;
+    if (!recorder) return;
+    recorder.onstop = () => {
+      recorderRef.current = null;
+      if (!keepForReview) {
+        stopStream();
+        stopSamplers();
+      }
+      const stale = sessionRef.current !== recorder.__session;
+      const discarded = discardRef.current;
+      const duration = Math.round(elapsedRef.current / 1000);
+      if (stale || discarded) {
+        if (!keepForReview) resetAll();
+        return;
+      }
+      const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+      if (!blob.size) {
+        notify('Não foi possível capturar o áudio. Tente novamente.');
+        sessionRef.current += 1;
+        dispatch({ type: E.CANCEL });
+        return;
+      }
+      blobRef.current = blob;
+      const url = URL.createObjectURL(blob);
+      urlRef.current = url;
+      setPreviewUrl(url);
+      setBlobReady(true);
+      dispatch({ type: E.SET_DURATION, duration });
+      if (autoSendRef.current) {
+        autoSendRef.current = false;
+        void sendNow();
+      }
+    };
+    if (recorder.state === 'recording') recorder.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notify, resetAll, stopSamplers, stopStream]);
 
-  const uploadBlob = useCallback(async () => {
-    if (sendLockRef.current) return;
-    if (!blobRef.current || typeof onSend !== 'function') return;
+  const sendNow = useCallback(async () => {
+    if (sendLockRef.current || !blobRef.current || typeof onSend !== 'function') return;
     sendLockRef.current = true;
     const blob = blobRef.current;
     const meta = {
-      duration: Math.max(1, Math.round(stateRef.current.duration || 0)),
+      duration: Math.max(1, Math.round(stateRef.current.duration || elapsedRef.current / 1000 || 0)),
       waves: [...waveRef.current],
       mime: blob.type || 'audio/webm',
     };
@@ -136,20 +161,28 @@ export default function VoiceRecorder({
       dispatch({ type: E.UPLOAD_OK });
       window.setTimeout(() => {
         if (!mountedRef.current) return;
-        resetArtifacts();
+        resetAll();
         sessionRef.current += 1;
         dispatch({ type: E.RESET });
-      }, 300);
+      }, 250);
     } catch (error) {
       if (!mountedRef.current) return;
-      dispatch({ type: E.UPLOAD_FAIL, error: friendlyError(error, 'Falha no envio do áudio.') });
-      notify(friendlyError(error, 'Falha no envio do áudio. Tente novamente.'));
+      const message = friendlyError(error, 'Falha no envio do áudio.');
+      dispatch({ type: E.UPLOAD_FAIL, error: message });
+      notify(message);
     } finally {
       sendLockRef.current = false;
     }
-  }, [notify, onSend, resetArtifacts]);
+  }, [notify, onSend, resetAll]);
 
-  const beginRecording = useCallback(async (session, resume = false) => {
+  const start = useCallback(async (session, resume = false) => {
+    let recorder = recorderRef.current;
+    if (resume && recorder?.state === 'paused') {
+      recorder.resume();
+      dispatch({ type: E.RESUME, session });
+      startedRef.current = Date.now() - elapsedRef.current * 1000;
+      return;
+    }
     let stream = streamRef.current;
     if (!resume) {
       if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
@@ -159,7 +192,7 @@ export default function VoiceRecorder({
       }
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true },
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         });
       } catch {
         dispatch({ type: E.RECORD_FAILED, session, error: 'Permissão negada.' });
@@ -177,7 +210,6 @@ export default function VoiceRecorder({
     const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'].find(
       (type) => MediaRecorder.isTypeSupported?.(type)
     );
-    let recorder;
     try {
       recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
     } catch {
@@ -186,257 +218,246 @@ export default function VoiceRecorder({
       notify('Não foi possível iniciar a gravação.');
       return;
     }
+    recorder.__session = session;
     recorderRef.current = recorder;
-    if (!resume) {
-      chunksRef.current = [];
-      waveRef.current = [];
-      setWaves([]);
-      startedAtRef.current = Date.now();
-      clearPreview();
-      setBlobReady(false);
-    }
+    chunksRef.current = [];
+    waveRef.current = [];
+    setWaves([]);
+    elapsedRef.current = 0;
+    startedRef.current = Date.now();
     discardRef.current = false;
+    clearPreview();
+    setBlobReady(false);
 
     recorder.ondataavailable = (event) => {
       if (event.data?.size) chunksRef.current.push(event.data);
     };
     recorder.onstop = () => {
       recorderRef.current = null;
-      const keepForReview = pauseForReviewRef.current;
-      if (!keepForReview) {
-        stopStream();
-        stopSampling();
-      }
-      const stale = sessionRef.current !== session;
+      stopStream();
+      stopSamplers();
+      const stale = sessionRef.current !== recorder.__session;
       const discarded = discardRef.current;
-      const elapsed = Math.max(0, Date.now() - startedAtRef.current);
       if (stale || discarded) {
-        if (!keepForReview) {
-          chunksRef.current = [];
-          waveRef.current = [];
-          setWaves([]);
-        }
+        resetAll();
         return;
       }
-      if (elapsed < MIN_DURATION_MS && !keepForReview && !chunksRef.current.length) {
-        chunksRef.current = [];
+      const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+      if (!blob.size || elapsedRef.current < MIN_DURATION_MS) {
         notify('Segure um pouco mais para gravar um áudio.');
         sessionRef.current += 1;
         dispatch({ type: E.CANCEL });
         return;
       }
-      const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-      if (!blob.size) return;
       blobRef.current = blob;
       const url = URL.createObjectURL(blob);
-      previewUrlRef.current = url;
+      urlRef.current = url;
       setPreviewUrl(url);
       setBlobReady(true);
-      dispatch({ type: E.SET_DURATION, duration: Math.round(elapsed / 1000) });
-      if (autoSendRef.current) {
+      dispatch({ type: E.SET_DURATION, duration: Math.round(elapsedRef.current / 1000) });
+      if (finishForReviewRef.current) {
+        finishForReviewRef.current = false;
+        dispatch({ type: E.STOP });
+      } else if (autoSendRef.current) {
         autoSendRef.current = false;
-        void uploadBlob();
+        void sendNow();
       }
     };
 
     try {
-      recorder.start(250);
+      recorder.start(200);
     } catch {
       stopStream();
       dispatch({ type: E.RECORD_FAILED, session, error: 'Falha ao iniciar.' });
       notify('Falha ao iniciar a gravação.');
       return;
     }
-    dispatch({ type: resume ? E.RESUME : E.RECORD_STARTED, session });
-    if (!resume) {
-      timerRef.current = setInterval(() => {
-        const elapsed = Date.now() - startedAtRef.current;
-        dispatch({ type: E.TICK, elapsed: Math.floor(elapsed / 1000) });
-        if (elapsed >= MAX_DURATION_MS && recorder.state === 'recording') recorder.stop();
-      }, 250);
-    }
+    dispatch({ type: E.RECORD_STARTED, session });
+    clockRef.current = setInterval(() => {
+      if (recorderRef.current?.state !== 'recording') return;
+      const elapsed = Date.now() - startedRef.current;
+      elapsedRef.current = elapsed;
+      dispatch({ type: E.TICK, elapsed: Math.floor(elapsed / 1000) });
+      if (elapsed >= MAX_DURATION_MS) finish(false);
+    }, 200);
 
     if (!analyserRef.current && typeof window !== 'undefined') {
       try {
         const AudioCtor = window.AudioContext || window.webkitAudioContext;
-        if (AudioCtor) {
-          const context = new AudioCtor();
-          const source = context.createMediaStreamSource(stream);
-          const analyser = context.createAnalyser();
-          analyser.fftSize = 512;
-          source.connect(analyser);
-          audioCtxRef.current = context;
-          analyserRef.current = analyser;
-          const buffer = new Uint8Array(analyser.frequencyBinCount);
-          sampleTimerRef.current = setInterval(() => {
-            analyser.getByteTimeDomainData(buffer);
-            let sum = 0;
-            for (let i = 0; i < buffer.length; i += 1) {
-              const value = (buffer[i] - 128) / 128;
-              sum += value * value;
-            }
-            const rms = Math.sqrt(sum / buffer.length);
-            const amplitude = Math.max(0.14, Math.min(1, rms * 4.2));
-            waveRef.current = [...waveRef.current, amplitude].slice(-96);
-            setWaves([...waveRef.current]);
-          }, 90);
-        }
+        if (!AudioCtor) return;
+        const context = new AudioCtor();
+        const source = context.createMediaStreamSource(stream);
+        const analyser = context.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+        ctxRef.current = context;
+        analyserRef.current = analyser;
+        const buffer = new Uint8Array(analyser.frequencyBinCount);
+        sampleRef.current = setInterval(() => {
+          analyser.getByteTimeDomainData(buffer);
+          let sum = 0;
+          for (let i = 0; i < buffer.length; i += 1) {
+            const value = (buffer[i] - 128) / 128;
+            sum += value * value;
+          }
+          const rms = Math.sqrt(sum / buffer.length);
+          const amplitude = Math.max(0.14, Math.min(1, rms * 4.5));
+          waveRef.current = [...waveRef.current, amplitude].slice(-120);
+          setWaves([...waveRef.current]);
+        }, 80);
       } catch { /* ondas decorativas */ }
     }
-  }, [clearPreview, notify, stopSampling, stopStream, uploadBlob]);
+  }, [clearPreview, finish, notify, resetAll, sendNow, stopSamplers, stopStream]);
+
+  const finish = useCallback((forReview) => {
+    if (forReview) finishForReviewRef.current = true;
+    else autoSendRef.current = true;
+    pressedRef.current = false;
+    const recorder = recorderRef.current;
+    if (recorder?.state === 'recording' || recorder?.state === 'paused') {
+      finishBlob(forReview);
+    }
+  }, [finishBlob]);
+
+  const cancel = useCallback(() => {
+    discardRef.current = true;
+    pressedRef.current = false;
+    autoSendRef.current = false;
+    finishForReviewRef.current = false;
+    const recorder = recorderRef.current;
+    if (recorder?.state === 'recording' || recorder?.state === 'paused') {
+      recorder.onstop = () => { recorderRef.current = null; resetAll(); };
+      recorder.stop();
+    } else {
+      resetAll();
+    }
+    sessionRef.current += 1;
+    dispatch({ type: E.CANCEL });
+    buzz(20);
+  }, [resetAll]);
+
+  const pause = useCallback(() => {
+    if (recorderRef.current?.state === 'recording') {
+      recorderRef.current.pause();
+      dispatch({ type: E.PAUSE });
+      buzz(12);
+    }
+  }, []);
 
   const onPointerDown = (event) => {
     if (disabled || (event.pointerType === 'mouse' && event.button !== 0)) return;
-    if (stateRef.current.status !== S.IDLE && stateRef.current.status !== S.SENT && stateRef.current.status !== S.ERROR) return;
+    if (![S.IDLE, S.SENT, S.ERROR].includes(stateRef.current.status)) return;
     event.preventDefault();
     try { event.currentTarget.setPointerCapture?.(event.pointerId); } catch { /* ignore */ }
-    dragOriginRef.current = { x: event.clientX, y: event.clientY };
-    hapticRef.current = { cancel: false, lock: false };
+    originRef.current = { x: event.clientX, y: event.clientY };
+    buzzRef.current = { cancel: false, lock: false };
     pressedRef.current = true;
-    const nextSession = stateRef.current.session + 1;
-    sessionRef.current = nextSession;
+    const session = stateRef.current.session + 1;
+    sessionRef.current = session;
     stopAllPlayback();
     dispatch({ type: E.PRESS });
-    void beginRecording(nextSession);
+    void start(session);
   };
 
   const onPointerMove = (event) => {
-    const origin = dragOriginRef.current;
+    const origin = originRef.current;
     if (!origin) return;
     const status = stateRef.current.status;
-    if (status !== S.RECORDING && status !== S.CANCEL_PENDING) return;
-    const scale = gestureScale();
-    const dx = Math.round((event.clientX - origin.x) / scale);
-    const dy = Math.round((event.clientY - origin.y) / scale);
-    const cancel = -dx >= CANCEL_THRESHOLD;
-    const lock = -dy >= LOCK_THRESHOLD && !cancel;
-    if (cancel && !hapticRef.current.cancel) { hapticRef.current.cancel = true; vibrate(18); }
-    if (lock && !hapticRef.current.lock) { hapticRef.current.lock = true; vibrate([12, 30, 18]); }
-    if (!cancel) hapticRef.current.cancel = false;
-    if (!lock) hapticRef.current.lock = false;
+    if (![S.RECORDING, S.CANCEL_PENDING].includes(status)) return;
+    const s = scale();
+    const dx = Math.round((event.clientX - origin.x) / s);
+    const dy = Math.round((event.clientY - origin.y) / s);
+    const cancelGesture = -dx >= CANCEL_THRESHOLD;
+    const lockGesture = -dy >= LOCK_THRESHOLD && !cancelGesture;
+    if (cancelGesture && !buzzRef.current.cancel) { buzzRef.current.cancel = true; buzz(18); }
+    if (lockGesture && !buzzRef.current.lock) { buzzRef.current.lock = true; buzz([12, 30, 18]); }
+    if (!cancelGesture) buzzRef.current.cancel = false;
+    if (!lockGesture) buzzRef.current.lock = false;
     dispatch({ type: E.MOVE, dx, dy });
   };
 
   const onPointerUp = () => {
     const status = stateRef.current.status;
-    dragOriginRef.current = null;
+    originRef.current = null;
     if (status === S.RECORDING) {
-      pressedRef.current = false;
-      autoSendRef.current = true;
       dispatch({ type: E.RELEASE });
-      if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
+      finish(false);
     } else if (status === S.CANCEL_PENDING) {
-      discard();
+      cancel();
     }
-    // LOCKED_RECORDING: soltar não encerra.
   };
 
-  const onPointerCancel = () => {
-    dragOriginRef.current = null;
-    if (stateRef.current.status === S.RECORDING || stateRef.current.status === S.CANCEL_PENDING) discard();
-  };
-
-  const stop = () => {
-    pressedRef.current = false;
-    pauseForReviewRef.current = true;
+  const done = () => {
     dispatch({ type: E.STOP });
-    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
-    else if (blobRef.current) setBlobReady(true);
+    finish(true);
   };
 
   const resume = () => {
     if (stateRef.current.status !== S.PAUSED) return;
-    pauseForReviewRef.current = false;
-    autoSendRef.current = false;
-    clearPreview();
-    setBlobReady(false);
-    const nextSession = stateRef.current.session + 1;
-    sessionRef.current = nextSession;
-    void beginRecording(nextSession, true);
+    finishForReviewRef.current = false;
+    void start(stateRef.current.session, true);
   };
 
   const retry = () => {
     if (stateRef.current.status !== S.ERROR) return;
     if (!blobRef.current) { reRecord(); return; }
     dispatch({ type: E.RETRY });
-    void uploadBlob();
+    void sendNow();
   };
 
   const reRecord = () => {
-    resetArtifacts();
+    resetAll();
     sessionRef.current += 1;
     dispatch({ type: E.RESET });
   };
 
-  const send = () => {
-    if (stateRef.current.status !== S.PAUSED && stateRef.current.status !== S.REVIEW) return;
-    if (!blobRef.current) return;
-    dispatch({ type: E.SEND });
-    void uploadBlob();
-  };
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      discardRef.current = true;
-      if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
-      resetArtifacts();
-    };
-  }, [resetArtifacts]);
-
+  // Interrupções: só cancela gravação presa; PAUSADO/REVIEW preservam o áudio.
   useEffect(() => {
     const onInterrupt = () => {
       const status = stateRef.current.status;
-      if (status === S.RECORDING || status === S.CANCEL_PENDING) discard();
-      else if (status === S.LOCKED_RECORDING) stop();
+      if ([S.RECORDING, S.CANCEL_PENDING].includes(status)) cancel();
+      else if (status === S.LOCKED_RECORDING) pause();
     };
-    const onPageHide = () => {
-      const status = stateRef.current.status;
-      if (status === S.RECORDING || status === S.CANCEL_PENDING) discard();
-      else if (status === S.LOCKED_RECORDING) stop();
-    };
-    document.addEventListener('visibilitychange', onInterrupt);
-    window.addEventListener('blur', onInterrupt);
-    window.addEventListener('pagehide', onPageHide);
-    return () => {
-      document.removeEventListener('visibilitychange', onInterrupt);
-      window.removeEventListener('blur', onInterrupt);
-      window.removeEventListener('pagehide', onPageHide);
-    };
+    window.addEventListener('pagehide', onInterrupt);
+    return () => window.removeEventListener('pagehide', onInterrupt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [discard]);
+  }, [cancel, pause]);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+    discardRef.current = true;
+    const recorder = recorderRef.current;
+    if (recorder?.state === 'recording' || recorder?.state === 'paused') {
+      recorder.onstop = () => { recorderRef.current = null; };
+      recorder.stop();
+    }
+    resetAll();
+  }, [resetAll]);
 
   const status = state.status;
   const held = status === S.RECORDING || status === S.CANCEL_PENDING;
   const locked = status === S.LOCKED_RECORDING;
-  const paused = status === S.PAUSED || status === S.REVIEW;
+  const paused = status === S.PAUSED;
+  const reviewing = status === S.REVIEW;
   const uploading = status === S.UPLOADING;
   const errored = status === S.ERROR;
-  const active = held || locked || paused || uploading || errored;
+  const active = held || locked || paused || reviewing || uploading || errored;
 
-  useEffect(() => {
-    onActiveChange?.(active);
-  }, [active, onActiveChange]);
+  useEffect(() => { onActiveChange?.(active); }, [active, onActiveChange]);
 
-  const waveBars = Array.from({ length: WAVE_BARS }, (_, i) => {
+  const bars = Array.from({ length: WAVE_BARS }, (_, i) => {
     if (waves.length) return waves[Math.floor((i / WAVE_BARS) * waves.length)] || 0.16;
-    return 0.18 + ((i * 7) % 5) * 0.07;
+    return 0.2 + ((i * 5) % 4) * 0.1;
   });
-
-  const wavesNode = (
+  const waveNode = (
     <span className="vr-waves" aria-hidden="true">
-      {waveBars.map((bar, i) => (
-        <i key={i} style={{ height: `${Math.round(bar * 100)}%` }} />
-      ))}
+      {bars.map((bar, i) => <i key={i} style={{ height: `${Math.round(bar * 100)}%` }} />)}
     </span>
   );
 
   return (
     <div className={`voice-recorder${active ? ' active' : ''}${compact ? ' compact' : ''} ${className}`.trim()}>
-      {/* O mesmo botão permanece montado durante a gravação: trocar o nó
-          quebraria a captura do ponteiro e os gestos de arrastar. */}
-      {!locked && !paused && !uploading && !errored ? (
+      {!locked && !paused && !reviewing && !uploading && !errored ? (
         <button
           type="button"
           className={`icon-btn mic-btn${disabled ? ' disabled' : ''}${held ? ' held' : ''}${
@@ -445,15 +466,15 @@ export default function VoiceRecorder({
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          onPointerCancel={onPointerCancel}
+          onPointerCancel={cancel}
           onLostPointerCapture={() => { if (stateRef.current.status === S.RECORDING) onPointerUp(); }}
           onContextMenu={(event) => event.preventDefault()}
           aria-label={
             held
-              ? 'Gravando: solte para enviar, arraste à esquerda para apagar ou para cima para pausar'
+              ? 'Gravando: solte para enviar, arraste à esquerda para apagar ou para cima para bloquear'
               : label
           }
-          title={held ? 'Solte para enviar · ← apagar · ↑ pausar' : label}
+          title={held ? 'Solte para enviar · ← apagar · ↑ bloquear' : label}
           disabled={disabled}
         >
           <Icon name={held ? 'radio' : 'mic'} />
@@ -465,7 +486,7 @@ export default function VoiceRecorder({
           <button
             type="button"
             className={`vr-trash${state.cancelProgress > 0.65 ? ' hot' : ''}`}
-            onClick={discard}
+            onClick={cancel}
             aria-label="Cancelar e apagar gravação"
             title="Arraste para a lixeira para apagar"
           >
@@ -473,40 +494,48 @@ export default function VoiceRecorder({
           </button>
           <span className={`vr-lock-hint${state.lockProgress > 0.4 ? ' near' : ''}`} aria-hidden="true">
             <Icon name="lock" />
-            <span>↑ para pausar</span>
+            <span>↑ para bloquear</span>
           </span>
           <span className="vr-center">
             <span className="vr-rec-dot" />
             <b>{formatAudioTime(state.elapsed)}</b>
-            {wavesNode}
+            {waveNode}
             <small>
               {state.cancelProgress > 0.65
                 ? 'Solte na lixeira para apagar'
-                : 'Solte para enviar · ← apagar · ↑ pausar'}
+                : 'Solte para enviar · ← apagar · ↑ bloquear'}
             </small>
           </span>
         </>
       ) : null}
 
-      {locked ? (
+      {locked || paused ? (
         <>
-          <span className="vr-lock" title="Gravação bloqueada"><Icon name="lock" /></span>
-          <span className="vr-center">
-            <span className="vr-rec-dot" />
-            <b>{formatAudioTime(state.elapsed)}</b>
-            {wavesNode}
-            <small>Toque em Pausar para ouvir, apagar ou continuar</small>
+          <span className="vr-lock" title={paused ? 'Gravação pausada' : 'Gravação bloqueada'}>
+            <Icon name={paused ? 'pause' : 'lock'} />
           </span>
-          <button type="button" className="vr-stop" onClick={stop} aria-label="Pausar gravação" title="Pausar e ouvir">
-            <Icon name="stop" />
+          <span className="vr-center">
+            <span className={`vr-rec-dot${paused ? ' paused' : ''}`} />
+            <b>{formatAudioTime(state.elapsed)}</b>
+            {waveNode}
+            <small>{paused ? 'Pausada — tome a decisão abaixo' : 'Gravando — mãos livres'}</small>
+          </span>
+          <button
+            type="button"
+            className="vr-stop"
+            onClick={paused ? done : pause}
+            aria-label={paused ? 'Finalizar e ouvir' : 'Pausar gravação'}
+            title={paused ? 'Finalizar e ouvir' : 'Pausar gravação'}
+          >
+            <Icon name={paused ? 'check' : 'pause'} />
           </button>
-          <button type="button" className="vr-trash" onClick={discard} aria-label="Excluir gravação" title="Excluir">
+          <button type="button" className="vr-trash" onClick={cancel} aria-label="Excluir gravação" title="Excluir">
             <Icon name="trash" />
           </button>
         </>
       ) : null}
 
-      {paused && blobReady && previewUrl ? (
+      {reviewing && blobReady && previewUrl ? (
         <>
           <AudioPlayer
             src={previewUrl}
@@ -514,19 +543,19 @@ export default function VoiceRecorder({
             waves={waveRef.current}
             className="vr-preview-player"
           />
-          <button type="button" className="vr-trash" onClick={discard} aria-label="Apagar áudio" title="Apagar">
+          <button type="button" className="vr-trash" onClick={cancel} aria-label="Apagar áudio" title="Apagar">
             <Icon name="trash" />
           </button>
           <button type="button" className="vr-resume" onClick={resume} aria-label="Continuar gravação" title="Continuar gravação">
             <Icon name="mic" />
           </button>
-          <button type="button" className="vr-send" onClick={send} aria-label="Enviar áudio" title="Enviar">
+          <button type="button" className="vr-send" onClick={() => { dispatch({ type: E.SEND }); void sendNow(); }} aria-label="Enviar áudio" title="Enviar">
             <Icon name="send" />
           </button>
         </>
       ) : null}
 
-      {paused && !blobReady ? <span className="vr-center muted sm">Processando áudio…</span> : null}
+      {reviewing && !blobReady ? <span className="vr-center muted sm">Processando áudio…</span> : null}
       {uploading ? <span className="vr-center"><span className="vr-spinner" /> Enviando áudio…</span> : null}
       {errored ? (
         <>

@@ -2036,6 +2036,7 @@ html,body{max-width:100%;overflow-x:clip}
 .vr-lock-hint{position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-size:9px;white-space:nowrap;pointer-events:none;transition:color .12s,border-color .12s,transform .12s}
 .vr-lock-hint .ic{width:12px;height:12px}
 .vr-lock-hint.near{color:var(--accent);border-color:var(--accent);transform:translateX(-50%) scale(1.06)}
+.vr-rec-dot.paused{background:var(--muted);animation:none}
 .voice-recorder .mic-btn.held{background:var(--hot);color:#fff;border-color:transparent;animation:vr-pulse 1.3s ease-in-out infinite}
 .voice-recorder .mic-btn.cancel{background:#e11d48;animation:none}
 @media (prefers-reduced-motion:reduce){.voice-recorder .mic-btn.held{animation:none}}

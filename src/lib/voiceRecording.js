@@ -33,6 +33,7 @@ export const VOICE_EVENT = Object.freeze({
   MOVE: 'MOVE',
   RELEASE: 'RELEASE',
   CANCEL: 'CANCEL',
+  PAUSE: 'PAUSE',
   STOP: 'STOP',
   RESUME: 'RESUME',
   SEND: 'SEND',
@@ -204,12 +205,17 @@ export function voiceReducer(state, event) {
       if (status === VOICE_STATE.IDLE || status === VOICE_STATE.UPLOADING) return state;
       return { ...initialVoiceState(), session: session + 1 };
 
-    case VOICE_EVENT.STOP:
+    case VOICE_EVENT.PAUSE:
+      // Pausa nativa do MediaRecorder: mantém o mesmo blob e permite retomar.
       if (!isLive(status)) return state;
-      // Pausa a gravação e abre a prévia dentro da própria barra.
+      return { ...state, status: VOICE_STATE.PAUSED, dragX: 0, dragY: 0, cancelProgress: 0, lockProgress: 0 };
+
+    case VOICE_EVENT.STOP:
+      if (!isLive(status) && status !== VOICE_STATE.PAUSED) return state;
+      // Encerra e abre a prévia dentro da própria barra.
       return {
         ...state,
-        status: VOICE_STATE.PAUSED,
+        status: VOICE_STATE.REVIEW,
         duration: state.elapsed,
         dragX: 0,
         dragY: 0,
@@ -218,7 +224,6 @@ export function voiceReducer(state, event) {
       };
 
     case VOICE_EVENT.RESUME:
-      // Volta da prévia para a gravação livre (cadeado ativo).
       if (status !== VOICE_STATE.PAUSED) return state;
       return { ...state, status: VOICE_STATE.LOCKED_RECORDING, error: null };
 
@@ -244,7 +249,7 @@ export function voiceReducer(state, event) {
       // Volta para a prévia (pausada) para ouvir/reescrever antes de reenviar.
       return {
         ...state,
-        status: state.duration ? VOICE_STATE.PAUSED : VOICE_STATE.RECORDING,
+        status: state.duration ? VOICE_STATE.REVIEW : VOICE_STATE.RECORDING,
         error: null,
       };
 
@@ -260,10 +265,11 @@ export const voiceSelectors = {
   isCanceling: (state) => state.status === VOICE_STATE.CANCEL_PENDING,
   isReviewing: (state) =>
     state.status === VOICE_STATE.REVIEW || state.status === VOICE_STATE.PAUSED,
+  isPaused: (state) => state.status === VOICE_STATE.PAUSED,
   isUploading: (state) => state.status === VOICE_STATE.UPLOADING,
   canSend: (state) =>
     state.status === VOICE_STATE.REVIEW || state.status === VOICE_STATE.PAUSED,
-  canStop: (state) => isLive(state.status),
+  canStop: (state) => isLive(state.status) || state.status === VOICE_STATE.PAUSED,
 };
 
 /**
