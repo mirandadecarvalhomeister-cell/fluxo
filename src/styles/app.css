@@ -370,6 +370,7 @@ video.media-video{display:block;width:auto;height:auto;max-width:100%;max-height
 
 /* modal */
 #modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;animation:modal-fade-in .18s ease-out}
+#modal.modal-over-clips{z-index:100}
 @keyframes modal-fade-in{from{opacity:0}to{opacity:1}}
 #modal .sheet{animation:modal-sheet-in .22s cubic-bezier(.2,.7,.3,1)}
 @keyframes modal-sheet-in{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}

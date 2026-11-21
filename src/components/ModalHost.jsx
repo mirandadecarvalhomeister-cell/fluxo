@@ -2566,7 +2566,7 @@ export default function ModalHost() {
   }
 
   return (
-    <div id="modal">
+    <div id="modal" className={ui.clips ? 'modal-over-clips' : undefined}>
       <div className="scrim" onClick={actions.closeModal} />
       <div
         className={`sheet ${wide ? 'wide' : ''}${modal.type === 'composer' ? ' sheet-composer' : ''}`}

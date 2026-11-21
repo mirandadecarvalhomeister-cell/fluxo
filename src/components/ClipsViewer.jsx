@@ -466,7 +466,10 @@ export default function ClipsViewer() {
               </button>
               <button
                 type="button"
-                onClick={() => { close(); actions.openSharePost(post.id); }}
+                onClick={() => {
+                  setPanel(null);
+                  actions.openSharePost(post.id);
+                }}
               >
                 <Icon name="chat" /> Enviar para uma conversa
               </button>
