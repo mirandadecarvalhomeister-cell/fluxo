@@ -199,7 +199,7 @@ function CommunityChatComposer({ community, canPost, replyTarget, onCancelReply,
           ))}
         </div>
       ) : null}
-      <div className="comm-compose-row">
+      <div className={`comm-compose-row${voiceActive ? ' recording' : ''}`}>
       <div className={`comm-chat-bar${voiceActive ? ' recording' : ''}`}>
         <button
           className={`icon-btn ${pickerOpen ? 'on' : ''}`}

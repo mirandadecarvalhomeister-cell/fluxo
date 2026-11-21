@@ -426,6 +426,7 @@ export default function VoiceRecorder({
   useEffect(() => () => {
     mountedRef.current = false;
     discardRef.current = true;
+    onActiveChange?.(false);
     const recorder = recorderRef.current;
     if (recorder?.state === 'recording' || recorder?.state === 'paused') {
       recorder.onstop = () => { recorderRef.current = null; };

@@ -2010,7 +2010,7 @@ export default function Messages() {
                   </div>
                 ) : null}
 
-                <div className="msg-compose-row">
+                <div className={`msg-compose-row${voiceActive ? ' recording' : ''}`}>
                 <div className={`msg-composer${voiceActive ? ' recording' : ''}`}>
                     <button
                       className={`icon-btn msg-composer-btn ${pickerOpen ? 'on' : ''}`}

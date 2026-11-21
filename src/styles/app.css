@@ -2029,7 +2029,7 @@ html,body{max-width:100%;overflow-x:clip}
 .voice-recorder .mic-btn{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .voice-recorder.active{position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:3px 6px;background:var(--surface2);border-radius:22px;box-shadow:0 0 0 1px color-mix(in srgb,var(--hot) 22%,transparent)}
 .msg-composer.recording > :not(.voice-recorder),.comm-chat-bar.recording > :not(.voice-recorder){display:none!important}
-.msg-composer:has(.voice-recorder.active) > :not(.voice-recorder),.comm-chat-bar:has(.voice-recorder.active) > :not(.voice-recorder){display:none}
+
 .vr-center{display:flex;align-items:center;justify-content:center;gap:7px;min-width:0;flex:1}
 .vr-center b{font-variant-numeric:tabular-nums;font-size:13px}
 .vr-center small{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -2364,8 +2364,12 @@ html,body{max-width:100%;overflow-x:clip}
 .msg-compose-row,.comm-compose-row{position:relative;display:flex;align-items:flex-end;gap:8px;flex:1;min-width:0}
 .msg-voice-slot,.comm-voice-slot{display:flex;align-items:flex-end;flex:none}
 .comm-compose-row .comm-chat-bar{flex:1;min-width:0}
-.msg-compose-row:has(.voice-recorder.active) > .msg-composer,
-.msg-compose-row:has(.voice-recorder.active) > .send-btn,
-.comm-compose-row:has(.voice-recorder.active) > .comm-chat-bar,
-.comm-compose-row:has(.voice-recorder.active) > .comm-attach{display:none}
+.msg-compose-row.recording > .msg-composer,
+.msg-compose-row.recording > .send-btn,
+.comm-compose-row.recording > .comm-chat-bar,
+.comm-compose-row.recording > .comm-attach{display:none}
+.msg-compose-row.recording > .msg-voice-slot,
+.comm-compose-row.recording > .comm-voice-slot{flex:1;width:100%}
+.msg-compose-row.recording .voice-recorder.active,
+.comm-compose-row.recording .voice-recorder.active{width:100%}
 
