@@ -1,4 +1,4 @@
-const CACHE = 'fluxo-v7';
+const CACHE = 'fluxo-v8';
 const CORE = [
   '/',
   '/manifest.webmanifest',
@@ -62,22 +62,21 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (isAsset(url)) {
+    // Network-first: sempre busca a versão mais recente no servidor e só
+    // usa o cache quando estiver offline. Isso evita JS antigo preso no PWA.
     event.respondWith(
-      caches.match(request).then((cached) => {
-        const network = fetch(request)
-          .then((response) => {
-            if (response.ok) {
-              const copy = response.clone();
-              caches
-                .open(CACHE)
-                .then((cache) => cache.put(request, copy))
-                .catch(() => undefined);
-            }
-            return response;
-          })
-          .catch(() => cached);
-        return cached || network;
-      })
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches
+              .open(CACHE)
+              .then((cache) => cache.put(request, copy))
+              .catch(() => undefined);
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
   }
 });
