@@ -345,6 +345,7 @@ export default function VoiceRecorder({
   }, []);
 
   const onPointerDown = (event) => {
+    event.stopPropagation();
     if (disabled || (event.pointerType === 'mouse' && event.button !== 0)) return;
     if (![S.IDLE, S.SENT, S.ERROR].includes(stateRef.current.status)) return;
     event.preventDefault();
@@ -360,6 +361,7 @@ export default function VoiceRecorder({
   };
 
   const onPointerMove = (event) => {
+    event.stopPropagation();
     const origin = originRef.current;
     if (!origin) return;
     const status = stateRef.current.status;
@@ -376,7 +378,8 @@ export default function VoiceRecorder({
     dispatch({ type: E.MOVE, dx, dy });
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (event) => {
+    event?.stopPropagation();
     const status = stateRef.current.status;
     originRef.current = null;
     if (status === S.RECORDING) {
@@ -467,7 +470,7 @@ export default function VoiceRecorder({
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          onPointerCancel={cancel}
+          onPointerCancel={(event) => { event.stopPropagation(); cancel(); }}
           onLostPointerCapture={() => { if (stateRef.current.status === S.RECORDING) onPointerUp(); }}
           onContextMenu={(event) => event.preventDefault()}
           aria-label={
