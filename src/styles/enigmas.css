@@ -17,7 +17,7 @@
 }
 .enigmas-game *{box-sizing:border-box}
 .enigmas-entry{border-color:rgba(154,92,255,.45)!important;box-shadow:0 0 30px -18px rgba(154,92,255,.9)!important}
-.enigmas-entry h3,.defesa-entry h3{color:#eafcff!important;text-shadow:0 0 16px rgba(34,230,255,.55);letter-spacing:.06em;-webkit-text-fill-color:#eafcff!important;background:none!important}
+.enigmas-entry h3,.defesa-entry h3{color:var(--accent)!important;text-shadow:none;letter-spacing:.04em;-webkit-text-fill-color:var(--accent)!important;background:none!important;font-family:var(--f-display);font-weight:800;font-size:1.5rem}
 .enigmas-entry-progress{display:block;margin-top:6px;font:700 11px var(--f-body);color:var(--en-cyan)}
 .enigmas-top{display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--en-line)}
 .enigmas-back{color:var(--en-cyan);width:36px;height:36px}
@@ -167,5 +167,5 @@
 .defesa-hp i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--d-purple),var(--d-cyan));transition:width .2s}
 .defesa-stage{position:relative;flex:1;min-height:420px;border-radius:14px;overflow:hidden;border:1px solid #23305a;background:#03040d;touch-action:manipulation}
 .defesa-stage canvas{display:block;width:100%;height:100%}
-.defesa-entry h3{color:#eafcff;text-shadow:0 0 16px rgba(34,230,255,.5)}
+
 @media (max-width:760px){.defesa-game{min-height:calc(100dvh - 16px);padding:10px}.defesa-stage{min-height:56dvh}.defesa-home{padding:18px 6px}}
