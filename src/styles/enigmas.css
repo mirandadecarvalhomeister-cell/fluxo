@@ -17,10 +17,8 @@
 }
 .enigmas-game *{box-sizing:border-box}
 .enigmas-entry{border-color:rgba(154,92,255,.45)!important;box-shadow:0 0 30px -18px rgba(154,92,255,.9)!important}
-.enigmas-entry h3{color:#eafcff;text-shadow:0 0 16px rgba(34,230,255,.55);letter-spacing:.06em}
-@supports ((-webkit-background-clip:text) or (background-clip:text)){
-  .enigmas-entry h3{background:linear-gradient(95deg,var(--en-cyan),var(--en-purple));-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none}
-}
+.enigmas-entry h3,.defesa-entry h3{color:#eafcff!important;text-shadow:0 0 16px rgba(34,230,255,.55);letter-spacing:.06em;-webkit-text-fill-color:#eafcff!important;background:none!important}
+.enigmas-entry-progress{display:block;margin-top:6px;font:700 11px var(--f-body);color:var(--en-cyan)}
 .enigmas-top{display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--en-line)}
 .enigmas-back{color:var(--en-cyan);width:36px;height:36px}
 .enigmas-back:hover{background:rgba(34,230,255,.12)}

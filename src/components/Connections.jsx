@@ -7,6 +7,7 @@ import { useNow } from '../lib/useNow';
 import { isLiveKitEnabled } from '../lib/livekit';
 import { userOf } from '../lib/selectors';
 import { useApp } from '../store/AppContext';
+import { readEnigmaProgress } from '../lib/enigmaProgress';
 import { Avatar, LiveAvatar } from './Avatar';
 import AnimatedEmoji from './AnimatedEmoji';
 import { Verified } from './Brand';
@@ -768,6 +769,7 @@ function Room({ channel }) {
 export default function Connections() {
   const { data, ui, actions } = useApp();
   const [section, setSection] = useState('ao-vivo');
+  const enigmaProgress = readEnigmaProgress();
   const currentRoom = ui.room ? data.chans.find((c) => c.id === ui.room) : null;
   const missingRoom = Boolean(ui.room && !currentRoom);
   const actionsRef = useRef(actions);
@@ -908,16 +910,21 @@ export default function Connections() {
           <section className="card arena-entry enigmas-entry">
             <div className="arena-entry-copy">
               <span className="pill acc">
-                <Icon name="spark" /> Raciocínio
+                <Icon name="spark" /> NÍVEL ZERO · Raciocínio
               </span>
               <h3>NÍVEL ZERO</h3>
               <p className="muted sm">
                 100 charadas de lógica e raciocínio. Avance apenas acertando,
                 com dicas, ranking global e progresso salvo.
               </p>
+              {enigmaProgress ? (
+                <span className="enigmas-entry-progress">
+                  Progresso salvo: nível {enigmaProgress.level} · {enigmaProgress.score} pontos
+                </span>
+              ) : null}
             </div>
-            <button type="button" className="btn primary" onClick={actions.openEnigmas}>
-              <Icon name="play" /> Jogar agora
+            <button type="button" className="btn primary" onClick={() => actions.openEnigmas(!!enigmaProgress)}>
+              <Icon name="play" /> {enigmaProgress ? 'Continuar jogo' : 'Jogar agora'}
             </button>
           </section>
 

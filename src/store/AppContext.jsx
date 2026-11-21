@@ -3590,9 +3590,10 @@ export function AppProvider({ children }) {
     if (location.hash !== '#conexoes') location.hash = '#conexoes';
   }
 
-  function openEnigmas() {
+  function openEnigmas(autoContinue = false) {
     setUi((u) => ({
       ...u,
+      enigmasAutoContinue: !!autoContinue,
       route: 'conexoes',
       room: null,
       arenaCode: null,
@@ -5553,6 +5554,7 @@ export function AppProvider({ children }) {
     openQuizChallenge,
     closeQuiz,
     openEnigmas,
+    clearEnigmasAutoContinue: () => setUi((u) => ({ ...u, enigmasAutoContinue: false })),
     closeEnigmas,
     openDefesa,
     closeDefesa,

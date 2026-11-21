@@ -52,7 +52,7 @@ const INCENTIVES = [
 ];
 
 export default function Enigmas() {
-  const { data, actions } = useApp();
+  const { data, actions, ui } = useApp();
   const [screen, setScreen] = useState('home');
   const [save, setSave] = useState(readSave);
   const [rank, setRank] = useState(readRank);
@@ -81,6 +81,22 @@ export default function Enigmas() {
       .catch(() => undefined);
     return () => { alive = false; };
   }, [actions]);
+
+  // "Continuar jogo" no card dos jogos abre a partida salva diretamente.
+  useEffect(() => {
+    if (!ui.enigmasAutoContinue) return;
+    actions.clearEnigmasAutoContinue?.();
+    const stored = readSave();
+    if (!stored || stored.finished) return;
+    setSave(stored);
+    setLevel(stored.level);
+    setInput('');
+    setHintsShown(0);
+    setStatus(null);
+    setMessage('');
+    setScreen('playing');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const puzzle = levelAt(level - 1);
 
