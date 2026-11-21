@@ -307,7 +307,7 @@ export default function VoiceRecorder({
         }, 80);
       } catch { /* ondas decorativas */ }
     }
-  }, [clearPreview, finish, notify, resetAll, sendNow, stopSamplers, stopStream]);
+  }, [clearPreview, notify, resetAll, sendNow, stopSamplers, stopStream]);
 
   const finish = useCallback((forReview) => {
     if (forReview) finishForReviewRef.current = true;
