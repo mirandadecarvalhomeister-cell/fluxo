@@ -2912,6 +2912,16 @@ export function AppProvider({ children }) {
         );
         return null;
       }
+      // Voto e resposta são definitivos, com ou sem agendamento:
+      // uma pessoa participa apenas uma vez por publicação.
+      if ((kind === 'vote' || kind === 'answer' || kind === 'join') && myInteraction(post, kind)) {
+        toast(
+          kind === 'vote'
+            ? 'Você já votou nesta publicação.'
+            : 'Você já participou desta publicação.'
+        );
+        return null;
+      }
       if (schedule && myInteraction(post, kind)) {
         toast('Participação confirmada — não pode ser alterada depois de enviada.');
         return null;

@@ -858,7 +858,8 @@ body.lock{overflow:hidden}
 .msg-shell.me{justify-content:flex-end}
 .msg-shell.them{justify-content:flex-start}
 .msg-shell .b{max-width:min(72%,420px)}
-.msg-forward{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface);color:var(--muted);opacity:.65;transition:opacity .15s,color .15s;cursor:pointer}
+.msg-forward{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;border:0;background:transparent;color:var(--muted);opacity:.65;transition:opacity .15s,color .15s,transform .15s;cursor:pointer}
+.msg-forward:hover{transform:scale(1.08)}
 .msg-forward:hover{opacity:1;color:var(--accent)}
 .msg-forward .ic{width:16px;height:16px}
 .msg-shell.them .msg-forward{margin-left:2px}
@@ -2081,7 +2082,9 @@ html,body{max-width:100%;overflow-x:clip}
 .comm-react-btn:hover,.comm-react-more:hover,.comm-react-btn.on{color:var(--hot)}
 .comm-react-btn .ic,.comm-react-more .ic{width:14px;height:14px}
 .comm-react-more{width:20px;opacity:.55}
-.comm-react-picker{position:absolute;left:0;bottom:calc(100% + 6px);z-index:12;display:flex;align-items:center;gap:2px;padding:5px 6px;border-radius:999px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+.comm-react-wrap{position:relative;display:inline-flex}
+.comm-react-picker{position:absolute;left:0;bottom:calc(100% + 8px);z-index:60;display:flex;align-items:center;gap:2px;padding:6px 7px;border-radius:999px;background:var(--surface);border:1px solid var(--line);box-shadow:0 12px 34px -10px rgba(0,0,0,.55);white-space:nowrap}
+.comm-chat-msg.me .comm-react-picker{left:auto;right:0}
 .comm-react-picker button{width:30px;height:30px;border:0;background:transparent;border-radius:50%;display:grid;place-items:center;font-size:19px;cursor:pointer;line-height:1}
 .comm-react-picker button:hover{background:var(--surface2);transform:scale(1.12)}
 .comm-react-picker button.on{background:var(--accent-soft)}

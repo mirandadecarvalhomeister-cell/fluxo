@@ -581,7 +581,11 @@ export async function saveInteraction({ id, postId, userId, kind, optionId, text
         text: text || '',
         created_at: new Date().toISOString(),
       },
-      { onConflict: 'post_id,user_id,kind' }
+      {
+        onConflict: 'post_id,user_id,kind',
+        // Voto/resposta/participação são definitivos: nunca sobrescrevem.
+        ignoreDuplicates: ['vote', 'answer', 'join'].includes(kind),
+      }
     );
     if (error) warn(error);
   } catch (error) {

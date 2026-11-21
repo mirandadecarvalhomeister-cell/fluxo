@@ -602,7 +602,7 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia, onForw
             </i>
           ) : null}
         </div>
-        {(!message.attachment || message.attachment.kind === 'photo') ? (
+        {(message.attachment?.kind === 'photo' || message.attachment?.kind === 'video') ? (
           <button
             type="button"
             className="msg-forward"
