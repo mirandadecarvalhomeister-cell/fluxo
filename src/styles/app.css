@@ -2033,7 +2033,7 @@ html,body{max-width:100%;overflow-x:clip}
 .vr-center{display:flex;align-items:center;justify-content:center;gap:7px;min-width:0;flex:1}
 .vr-center b{font-variant-numeric:tabular-nums;font-size:13px}
 .vr-center small{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.vr-lock-hint{position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-size:9px;white-space:nowrap;pointer-events:none;transition:color .12s,border-color .12s,transform .12s}
+.vr-lock-hint{position:absolute;left:50%;bottom:calc(100% + 76px);transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-size:9px;white-space:nowrap;pointer-events:none;transition:color .12s,border-color .12s,transform .12s;z-index:72}
 .vr-lock-hint .ic{width:12px;height:12px}
 .vr-lock-hint.near{color:var(--accent);border-color:var(--accent);transform:translateX(-50%) scale(1.06)}
 .vr-rec-dot.paused{background:var(--muted);animation:none}
@@ -2041,8 +2041,8 @@ html,body{max-width:100%;overflow-x:clip}
 .voice-recorder .mic-btn.held .ic{width:24px;height:24px}
 .vr-emoji-slot{position:absolute;left:6px;bottom:50%;transform:translateY(50%) scale(.85);opacity:.55;transition:opacity .14s,transform .14s,background .14s}
 .vr-emoji-slot.hot{opacity:1;transform:translateY(50%) scale(1.22)}
-.vr-recording-card{border-radius:14px}
-.vr-locked-card{display:grid;gap:6px;width:100%;padding:8px 10px;border-radius:16px;background:color-mix(in srgb,var(--hot) 8%,var(--surface2));border:1px solid color-mix(in srgb,var(--hot) 28%,var(--line))}
+.vr-recording-card{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:min(340px,calc(100vw - 24px));padding:8px 10px;border-radius:14px;background:var(--surface);border:1px solid var(--line);box-shadow:0 10px 30px -12px rgba(0,0,0,.5);z-index:70}
+.vr-locked-card{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);display:grid;gap:6px;width:min(360px,calc(100vw - 24px));padding:10px 12px;border-radius:16px;background:var(--surface);border:1px solid color-mix(in srgb,var(--hot) 32%,var(--line));box-shadow:0 14px 40px -12px rgba(0,0,0,.55);z-index:70}
 .vr-locked-card.paused{background:var(--surface2);border-color:var(--line)}
 .vr-locked-head{display:flex;align-items:center;gap:7px}
 .vr-locked-head b{font-size:14px;font-variant-numeric:tabular-nums}
