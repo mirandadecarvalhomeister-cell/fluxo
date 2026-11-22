@@ -1553,14 +1553,6 @@ export default function Messages() {
   };
 
   const wallSrc = wall && typeof wall === 'object' ? wall.src : wall ? art(wall, 900, 1400) : null;
-  const wallStyle = wallSrc
-    ? {
-        backgroundImage: `linear-gradient(180deg,rgba(10,7,24,.42),rgba(10,7,24,.6)),url('${wallSrc}')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }
-    : undefined;
-
   const forwardTo = (target) => {
     if (!forward) return;
     const message = forward.message;
@@ -1739,7 +1731,7 @@ export default function Messages() {
           </div>
         </div>
 
-        <div className="cpane">
+        <div className={`cpane${wallSrc ? ' has-wall' : ''}`} style={wallSrc ? { '--wall': `url('${wallSrc}')` } : undefined}>
           {chat ? (
             <>
               <div className="chead">
@@ -1841,12 +1833,7 @@ export default function Messages() {
                 ) : null}
               </div>
 
-              <div
-                id="msgBox"
-                ref={boxRef}
-                className={wallSrc ? 'has-wall' : ''}
-                style={wallStyle}
-              >
+              <div id="msgBox" ref={boxRef}>
                 {chat.msgs.length ? (
                   chat.msgs.map((message, index) => {
                     const previous = chat.msgs[index - 1];
