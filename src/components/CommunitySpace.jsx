@@ -229,6 +229,15 @@ function CommunityChatComposer({ community, canPost, replyTarget, onCancelReply,
             }
           }}
         />
+        <button
+          className="icon-btn comm-attach"
+          type="button"
+          aria-label="Anexar fotos ou vídeos"
+          title="Anexar fotos ou vídeos"
+          onClick={() => fileRef.current?.click()}
+        >
+          <Icon name="paperclip" />
+        </button>
         {text.trim() || media.length || isPoll ? (
           <button className="icon-btn send" type="submit" aria-label="Enviar" title="Enviar">
             <Icon name="send" />
@@ -245,15 +254,6 @@ function CommunityChatComposer({ community, canPost, replyTarget, onCancelReply,
           />
         ) : null}
       </div>
-      <button
-        className="icon-btn comm-attach"
-        type="button"
-        aria-label="Anexar fotos ou vídeos"
-        title="Anexar fotos ou vídeos"
-        onClick={() => fileRef.current?.click()}
-      >
-        <Icon name="paperclip" />
-      </button>
       </div>
     </form>
   );
