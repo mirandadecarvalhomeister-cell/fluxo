@@ -1969,8 +1969,6 @@ html,body{max-width:100%;overflow-x:clip}
 .media-audio audio{flex:1;min-width:0;height:38px}
 
 /* Gravador: botão, destinos de gesto e painéis flutuantes. */
-.voice-recorder{position:relative;display:flex;align-items:flex-end;flex:none}
-.voice-recorder .mic-btn{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .vr-mic-wrap{display:flex;align-items:flex-end;transition:transform .07s linear;will-change:transform}
 .vr-mic-wrap.held{z-index:4}
 .vr-cancel-target,.vr-lock-target{position:absolute;z-index:3;pointer-events:none;transition:opacity .12s,transform .12s,color .12s,border-color .12s}
@@ -2390,4 +2388,13 @@ html,body{max-width:100%;overflow-x:clip}
 .comm-compose-row.recording > .comm-voice-slot{flex:1;width:100%}
 .msg-compose-row.recording .voice-recorder.active,
 .comm-compose-row.recording .voice-recorder.active{width:100%}
+@media (max-width:560px){
+  .msg-compose-row,.comm-compose-row{gap:5px}
+  .voice-recorder.active{padding:3px 4px;border-radius:16px}
+  .voice-recorder .mic-btn{width:34px;height:34px;min-height:34px}
+  .voice-recorder .mic-btn.held{width:48px;height:48px;min-width:48px;min-height:48px}
+  .vr-waves{max-width:44px}
+  .vr-lock-hint{bottom:calc(100% + 60px)}
+  .vr-locked-card,.vr-recording-card{width:calc(100vw - 16px);max-width:340px}
+}
 

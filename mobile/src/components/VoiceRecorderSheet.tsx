@@ -87,7 +87,7 @@ export default function VoiceRecorderSheet({ onSend, disabled = false, onError }
         return;
       }
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
-      await recorder.prepareToRecordAsync();
+      await recorder.prepareToRecordAsync({ isMeteringEnabled: true } as any);
       if (sessionRef.current !== session || !pressedRef.current || discardRef.current) return;
       recorder.record();
       startedAtRef.current = Date.now();
@@ -96,7 +96,10 @@ export default function VoiceRecorderSheet({ onSend, disabled = false, onError }
       timerRef.current = setInterval(() => {
         const elapsed = Date.now() - startedAtRef.current;
         dispatch({ type: E.TICK, elapsed: Math.floor(elapsed / 1000) });
-        const bar = 0.25 + ((Math.floor(elapsed / 120) % 7) / 7) * 0.7;
+        const level = Number((recorder as any).getStatus?.()?.metering);
+        const bar = Number.isFinite(level) && level > -60
+          ? Math.max(0.14, Math.min(1, (level + 60) / 50))
+          : 0.25 + ((Math.floor(elapsed / 120) % 7) / 7) * 0.7;
         waveRef.current = [...waveRef.current, bar].slice(-96);
         if (elapsed >= MAX_DURATION_MS && recorder.isRecording) void stopCurrent('stop');
       }, 250);
@@ -225,6 +228,21 @@ export default function VoiceRecorderSheet({ onSend, disabled = false, onError }
     }
   }, [clearTimer, recorder]);
 
+  const pause = useCallback(() => {
+    if (recorder.isRecording) {
+      recorder.pause();
+      dispatch({ type: E.PAUSE });
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch?.(() => {});
+    }
+  }, [recorder]);
+
+  const resume = useCallback(() => {
+    if (stateRef.current.status !== S.PAUSED) return;
+    recorder.record();
+    startedAtRef.current = Date.now() - durationRef.current * 1000;
+    dispatch({ type: E.RESUME });
+  }, [recorder]);
+
   const send = useCallback(async () => {
     if (sendLockRef.current || stateRef.current.status !== S.REVIEW || !uriRef.current) return;
     sendLockRef.current = true;
@@ -250,6 +268,7 @@ export default function VoiceRecorderSheet({ onSend, disabled = false, onError }
   const status = state.status;
   const held = status === S.RECORDING || status === S.CANCEL_PENDING;
   const locked = status === S.LOCKED_RECORDING;
+  const paused = status === S.PAUSED;
   const reviewing = status === S.REVIEW && reviewReady && previewUri;
   const uploading = status === S.UPLOADING || busy;
   const errored = status === S.ERROR && !busy;
@@ -287,7 +306,21 @@ export default function VoiceRecorderSheet({ onSend, disabled = false, onError }
       ) : null}
 
       {!reviewing && !uploading && !errored ? (
-        locked ? (
+        paused ? (
+          <View style={styles.locked}>
+            <View style={styles.lockBadge}><Ionicons name="pause" size={14} color="#fff" /></View>
+            <Text style={styles.lockedTime}>{clock(state.elapsed)}</Text>
+            <Pressable onPress={discard} style={[styles.miniBtn, styles.deleteBtn]} accessibilityLabel="Excluir gravação">
+              <Ionicons name="trash" size={14} color={colors.pink} />
+            </Pressable>
+            <Pressable onPress={resume} style={[styles.miniBtn, styles.stopBtn]} accessibilityLabel="Continuar gravação">
+              <Ionicons name="play" size={14} color="#fff" />
+            </Pressable>
+            <Pressable onPress={() => void stopCurrent('stop')} style={[styles.miniBtn, styles.stopBtn]} accessibilityLabel="Finalizar e ouvir">
+              <Ionicons name="checkmark" size={14} color="#fff" />
+            </Pressable>
+          </View>
+        ) : locked ? (
           <View style={styles.locked}>
             <View style={styles.lockBadge}><Ionicons name="lock-closed" size={14} color="#fff" /></View>
             <View style={styles.recDot} />
@@ -297,11 +330,14 @@ export default function VoiceRecorderSheet({ onSend, disabled = false, onError }
                 <View key={index} style={[styles.floatingBar, { height: `${Math.round(bar * 100)}%` }]} />
               ))}
             </View>
-            <Pressable onPress={() => void stopCurrent('stop')} style={[styles.miniBtn, styles.stopBtn]} accessibilityLabel="Parar gravação">
-              <Ionicons name="stop" size={14} color="#fff" />
-            </Pressable>
             <Pressable onPress={discard} style={[styles.miniBtn, styles.deleteBtn]} accessibilityLabel="Excluir gravação">
               <Ionicons name="trash" size={14} color={colors.pink} />
+            </Pressable>
+            <Pressable onPress={pause} style={[styles.miniBtn, styles.stopBtn]} accessibilityLabel="Pausar gravação">
+              <Ionicons name="pause" size={14} color="#fff" />
+            </Pressable>
+            <Pressable onPress={() => void stopCurrent('stop', true)} style={[styles.miniBtn, styles.stopBtn]} accessibilityLabel="Finalizar e enviar">
+              <Ionicons name="send" size={14} color="#fff" />
             </Pressable>
           </View>
         ) : (
@@ -323,7 +359,7 @@ export default function VoiceRecorderSheet({ onSend, disabled = false, onError }
             <Pressable onPress={discard} style={styles.action} accessibilityLabel="Apagar áudio">
               <Ionicons name="trash" size={18} color={colors.text} />
             </Pressable>
-            <Pressable onPress={() => { resetArtifacts(); sessionRef.current += 1; dispatch({ type: E.RESET }); }} style={styles.action} accessibilityLabel="Gravar novamente">
+            <Pressable onPress={resume} style={styles.action} accessibilityLabel="Continuar gravação">
               <Ionicons name="mic" size={18} color={colors.text} />
             </Pressable>
             <Pressable onPress={() => void send()} style={[styles.action, styles.sendAction]} accessibilityLabel="Enviar áudio">
