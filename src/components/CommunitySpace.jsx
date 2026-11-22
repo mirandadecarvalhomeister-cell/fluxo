@@ -238,21 +238,20 @@ function CommunityChatComposer({ community, canPost, replyTarget, onCancelReply,
         >
           <Icon name="paperclip" />
         </button>
-        {text.trim() || media.length || isPoll ? (
-          <button className="icon-btn send" type="submit" aria-label="Enviar" title="Enviar">
-            <Icon name="send" />
-          </button>
-        ) : null}
       </div>
       <div className="comm-voice-slot">
-        {!text.trim() && !media.length && !isPoll ? (
+        {text.trim() || media.length || isPoll ? (
+          <button className="icon-btn send comm-send-out" type="submit" aria-label="Enviar" title="Enviar">
+            <Icon name="send" />
+          </button>
+        ) : (
           <VoiceRecorder
             compact
             onSend={(blob, meta) => actions.sendCommunityAudio(community.id, blob, meta)}
             onError={(message) => actions.notify?.(message)}
             onActiveChange={setVoiceActive}
           />
-        ) : null}
+        )}
       </div>
       </div>
     </form>
