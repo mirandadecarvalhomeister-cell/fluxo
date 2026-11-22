@@ -44,6 +44,7 @@ export default function VoiceRecorder({
 
   const streamRef = useRef(null);
   const recorderRef = useRef(null);
+  const mimeRef = useRef('audio/webm');
   const chunksRef = useRef([]);
   const ctxRef = useRef(null);
   const analyserRef = useRef(null);
@@ -51,6 +52,7 @@ export default function VoiceRecorder({
   const clockRef = useRef(null);
   const waveRef = useRef([]);
   const elapsedRef = useRef(0);
+  const durationRef = useRef(0);
   const startedRef = useRef(0);
   const sessionRef = useRef(0);
   const originRef = useRef(null);
@@ -100,24 +102,24 @@ export default function VoiceRecorder({
     blobRef.current = null;
     setBlobReady(false);
     elapsedRef.current = 0;
+    durationRef.current = 0;
     startedRef.current = 0;
     autoSendRef.current = false;
     reviewFlagRef.current = false;
     buzzRef.current = { cancel: false, lock: false };
   }, [clearPreview, stopSamplers, stopStream]);
 
-  const buildPreview = useCallback(() => {
-    const blob = new Blob(chunksRef.current, {
-      type: recorderRef.current?.mimeType || 'audio/webm',
-    });
+  const buildPreview = useCallback((durationMs) => {
+    const blob = new Blob(chunksRef.current, { type: mimeRef.current || 'audio/webm' });
     if (!blob.size) return false;
     blobRef.current = blob;
+    durationRef.current = Math.max(1, Math.round(durationMs / 1000));
     const url = URL.createObjectURL(blob);
     if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     urlRef.current = url;
     setPreviewUrl(url);
     setBlobReady(true);
-    dispatch({ type: E.SET_DURATION, duration: Math.round(elapsedRef.current / 1000) });
+    dispatch({ type: E.SET_DURATION, duration: durationRef.current });
     return true;
   }, []);
 
@@ -126,7 +128,7 @@ export default function VoiceRecorder({
     sendLockRef.current = true;
     const blob = blobRef.current;
     const meta = {
-      duration: Math.max(1, Math.round(stateRef.current.duration || elapsedRef.current / 1000 || 0)),
+      duration: durationRef.current || Math.max(1, Math.round(elapsedRef.current / 1000)),
       waves: [...waveRef.current],
       mime: blob.type || 'audio/webm',
     };
@@ -154,6 +156,8 @@ export default function VoiceRecorder({
   const handleStop = useCallback(() => {
     const recorder = recorderRef.current;
     recorderRef.current = null;
+    const durationMs = startedRef.current ? Date.now() - startedRef.current : elapsedRef.current;
+    elapsedRef.current = durationMs;
     stopStream();
     stopSamplers();
     const stale = !recorder || sessionRef.current !== recorder.__session;
@@ -162,13 +166,13 @@ export default function VoiceRecorder({
       resetAll();
       return;
     }
-    if (elapsedRef.current < MIN_DURATION_MS) {
+    if (durationMs < MIN_DURATION_MS) {
       notify('Segure um pouco mais para gravar um áudio.');
       sessionRef.current += 1;
       dispatch({ type: E.CANCEL });
       return;
     }
-    if (!buildPreview()) return;
+    if (!buildPreview(durationMs)) return;
     if (autoSendRef.current) {
       autoSendRef.current = false;
       void sendNow();
@@ -236,6 +240,8 @@ export default function VoiceRecorder({
       }
       if (sessionRef.current !== session || !pressedRef.current || discardRef.current) {
         stream.getTracks().forEach((track) => track.stop());
+        // O usuário soltou antes do microfone responder: sai do estado RECORDING.
+        dispatch({ type: E.CANCEL });
         return;
       }
     }
@@ -255,6 +261,7 @@ export default function VoiceRecorder({
     }
     recorder.__session = session;
     recorderRef.current = recorder;
+    mimeRef.current = recorder.mimeType || mime || 'audio/webm';
     chunksRef.current = [];
     waveRef.current = [];
     setWaves([]);
