@@ -2037,7 +2037,23 @@ html,body{max-width:100%;overflow-x:clip}
 .vr-lock-hint .ic{width:12px;height:12px}
 .vr-lock-hint.near{color:var(--accent);border-color:var(--accent);transform:translateX(-50%) scale(1.06)}
 .vr-rec-dot.paused{background:var(--muted);animation:none}
-.voice-recorder .mic-btn.held{background:var(--hot);color:#fff;border-color:transparent;animation:vr-pulse 1.3s ease-in-out infinite}
+.voice-recorder .mic-btn.held{width:62px;height:62px;min-width:62px;min-height:62px;margin-bottom:-10px;background:var(--hot);color:#fff;border-color:transparent;animation:vr-pulse 1.3s ease-in-out infinite;transition:transform .08s linear,width .15s,height .15s;z-index:10}
+.voice-recorder .mic-btn.held .ic{width:24px;height:24px}
+.vr-emoji-slot{position:absolute;left:6px;bottom:50%;transform:translateY(50%) scale(.85);opacity:.55;transition:opacity .14s,transform .14s,background .14s}
+.vr-emoji-slot.hot{opacity:1;transform:translateY(50%) scale(1.22)}
+.vr-recording-card{border-radius:14px}
+.vr-locked-card{display:grid;gap:6px;width:100%;padding:8px 10px;border-radius:16px;background:color-mix(in srgb,var(--hot) 8%,var(--surface2));border:1px solid color-mix(in srgb,var(--hot) 28%,var(--line))}
+.vr-locked-card.paused{background:var(--surface2);border-color:var(--line)}
+.vr-locked-head{display:flex;align-items:center;gap:7px}
+.vr-locked-head b{font-size:14px;font-variant-numeric:tabular-nums}
+.vr-locked-head small{font-size:10px;color:var(--muted)}
+.vr-locked-waves{height:28px;width:100%;overflow:hidden}
+.vr-locked-waves .vr-waves{max-width:none;width:100%;height:100%}
+.vr-locked-actions{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.vr-review-actions{display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-start}
+.vr-pause{width:36px;height:36px;flex:none;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--accent-soft);color:var(--accent);transition:transform .12s}
+.vr-pause:hover{transform:scale(1.08)}
+.vr-pause .ic{width:17px;height:17px}
 .voice-recorder .mic-btn.cancel{background:#e11d48;animation:none}
 @media (prefers-reduced-motion:reduce){.voice-recorder .mic-btn.held{animation:none}}
 .b.bubble-free{background:transparent!important;border:0!important;box-shadow:none!important;padding:0 2px!important}
@@ -2070,7 +2086,9 @@ html,body{max-width:100%;overflow-x:clip}
   .vr-waves{max-width:52px}
   .vr-center small{display:none}
   .voice-recorder.active{padding:3px 4px;gap:4px}
-  .vr-trash,.vr-stop,.vr-resume,.vr-send,.vr-mic-active,.vr-lock{width:33px;height:33px}
+  .vr-trash,.vr-stop,.vr-resume,.vr-send,.vr-mic-active,.vr-lock,.vr-pause{width:33px;height:33px}
+  .voice-recorder .mic-btn.held{width:54px;height:54px;min-width:54px;min-height:54px}
+  .vr-lock-hint{padding:3px 7px}
 }
 @media (prefers-reduced-motion:reduce){
   .vr-waves i,.vr-mic-active,.vr-spinner{animation:none}

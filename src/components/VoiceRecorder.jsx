@@ -473,80 +473,103 @@ export default function VoiceRecorder({
 
   return (
     <div className={`voice-recorder${active ? ' active' : ''}${compact ? ' compact' : ''} ${className}`.trim()}>
+      {/* 1. Botão de microfone: cresce ao segurar e acompanha o dedo até a lixeira */}
       {!locked && !paused && !reviewing && !uploading && !errored ? (
-        <button
-          type="button"
-          className={`icon-btn mic-btn${disabled ? ' disabled' : ''}${held ? ' held' : ''}${
-            state.cancelProgress > 0.65 ? ' cancel' : ''
-          }`}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={(event) => { event.stopPropagation(); cancel(); }}
-          onLostPointerCapture={() => { if (stateRef.current.status === S.RECORDING) onPointerUp(); }}
-          onContextMenu={(event) => event.preventDefault()}
-          aria-label={held
-            ? 'Gravando: solte para enviar, arraste à esquerda para apagar ou para cima para bloquear'
-            : label}
-          title={held ? 'Solte para enviar · ← apagar · ↑ bloquear' : label}
-          disabled={disabled}
-        >
-          <Icon name={held ? 'radio' : 'mic'} />
-        </button>
-      ) : null}
-
-      {held ? (
         <>
           <button
             type="button"
-            className={`vr-trash${state.cancelProgress > 0.65 ? ' hot' : ''}`}
-            onClick={cancel}
-            aria-label="Cancelar e apagar gravação"
-            title="Arraste para a lixeira para apagar"
+            className={`icon-btn mic-btn${disabled ? ' disabled' : ''}${held ? ' held' : ''}${
+              state.cancelProgress > 0.65 ? ' cancel' : ''
+            }`}
+            style={
+              held
+                ? {
+                    transform: `translate(${Math.min(0, state.dragX)}px, ${Math.min(0, state.dragY) * 0.35}px) scale(${1 + Math.max(state.cancelProgress, state.lockProgress) * 0.25})`,
+                  }
+                : undefined
+            }
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={(event) => { event.stopPropagation(); cancel(); }}
+            onLostPointerCapture={() => { if (stateRef.current.status === S.RECORDING) onPointerUp(); }}
+            onContextMenu={(event) => event.preventDefault()}
+            aria-label={held ? 'Gravando: arraste à esquerda para apagar ou para cima para bloquear' : label}
+            title={held ? '← apagar · ↑ bloquear' : label}
+            disabled={disabled}
           >
-            <Icon name="trash" />
+            <Icon name={held ? 'radio' : 'mic'} />
           </button>
-          <span className={`vr-lock-hint${state.lockProgress > 0.4 ? ' near' : ''}`} aria-hidden="true">
-            <Icon name="lock" />
-            <span>↑ para bloquear</span>
-          </span>
-          <span className="vr-center">
-            <span className="vr-rec-dot" />
-            <b>{formatAudioTime(state.elapsed)}</b>
-            {waveNode}
-            <small>
-              {state.cancelProgress > 0.65
-                ? 'Solte na lixeira para apagar'
-                : 'Solte para enviar · ← apagar · ↑ bloquear'}
-            </small>
-          </span>
+
+          {held ? (
+            <>
+              {/* 2. O botão de emojis se transforma na lixeira */}
+              <button
+                type="button"
+                className={`vr-trash vr-emoji-slot${state.cancelProgress > 0.65 ? ' hot' : ''}`}
+                onClick={cancel}
+                aria-label="Cancelar e apagar gravação"
+                title="Arraste para a lixeira para apagar"
+              >
+                <Icon name="trash" />
+              </button>
+
+              {/* 3. Barrinha oval com cadeado acima do botão */}
+              <span className={`vr-lock-hint${state.lockProgress > 0.4 ? ' near' : ''}`} aria-hidden="true">
+                <Icon name="lock" />
+                <span>Deslize para cima</span>
+              </span>
+
+              {/* 4. Card de gravação com tempo e ondas */}
+              <span className="vr-center vr-recording-card">
+                <span className="vr-rec-dot" />
+                <b>{formatAudioTime(state.elapsed)}</b>
+                {waveNode}
+                <small>
+                  {state.cancelProgress > 0.65
+                    ? 'Solte na lixeira para apagar'
+                    : 'Gravando…'}
+                </small>
+              </span>
+            </>
+          ) : null}
         </>
       ) : null}
 
+      {/* 5. Card de gravação automática (cadeado) ou pausada */}
       {locked || paused ? (
-        <>
-          <span className="vr-lock" title={paused ? 'Pausada' : 'Bloqueada'}>
-            <Icon name={paused ? 'pause' : 'lock'} />
-          </span>
-          <span className="vr-center">
+        <span className={`vr-locked-card${paused ? ' paused' : ''}`}>
+          <span className="vr-locked-head">
+            <span className="vr-lock"><Icon name={paused ? 'pause' : 'lock'} /></span>
             <span className={`vr-rec-dot${paused ? ' paused' : ''}`} />
             <b>{formatAudioTime(state.elapsed)}</b>
-            {waveNode}
-            <small>{paused ? 'Pausada — ouça, apague ou continue' : 'Gravando — mãos livres'}</small>
+            <small>{paused ? 'Pausada' : 'Gravando'}</small>
           </span>
-          <button
-            type="button"
-            className="vr-stop"
-            onClick={paused ? done : pause}
-            aria-label={paused ? 'Finalizar e ouvir' : 'Pausar gravação'}
-            title={paused ? 'Finalizar e ouvir' : 'Pausar gravação'}
-          >
-            <Icon name={paused ? 'check' : 'pause'} />
-          </button>
-          <button type="button" className="vr-trash" onClick={cancel} aria-label="Excluir gravação" title="Excluir">
-            <Icon name="trash" />
-          </button>
-        </>
+          <span className="vr-locked-waves">{waveNode}</span>
+          <span className="vr-locked-actions">
+            <button type="button" className="vr-trash" onClick={cancel} aria-label="Excluir gravação" title="Excluir">
+              <Icon name="trash" />
+            </button>
+            <button
+              type="button"
+              className="vr-pause"
+              onClick={paused ? resume : pause}
+              aria-label={paused ? 'Continuar gravação' : 'Pausar gravação'}
+              title={paused ? 'Continuar' : 'Pausar'}
+            >
+              <Icon name={paused ? 'play' : 'pause'} className={paused ? 'fill' : ''} />
+            </button>
+            <button
+              type="button"
+              className="vr-send"
+              onClick={() => { dispatch({ type: E.STOP }); finish(true); }}
+              aria-label="Finalizar e enviar"
+              title="Finalizar e enviar"
+            >
+              <Icon name="send" />
+            </button>
+          </span>
+        </span>
       ) : null}
 
       {reviewing && blobReady && previewUrl ? (
@@ -557,21 +580,23 @@ export default function VoiceRecorder({
             waves={waveRef.current}
             className="vr-preview-player"
           />
-          <button type="button" className="vr-trash" onClick={cancel} aria-label="Apagar áudio" title="Apagar">
-            <Icon name="trash" />
-          </button>
-          <button type="button" className="vr-resume" onClick={resume} aria-label="Continuar gravação" title="Continuar gravação">
-            <Icon name="mic" />
-          </button>
-          <button
-            type="button"
-            className="vr-send"
-            onClick={() => { dispatch({ type: E.SEND }); void sendNow(); }}
-            aria-label="Enviar áudio"
-            title="Enviar"
-          >
-            <Icon name="send" />
-          </button>
+          <span className="vr-review-actions">
+            <button type="button" className="vr-trash" onClick={cancel} aria-label="Apagar áudio" title="Apagar">
+              <Icon name="trash" />
+            </button>
+            <button type="button" className="vr-pause" onClick={resume} aria-label="Continuar gravação" title="Continuar gravação">
+              <Icon name="mic" />
+            </button>
+            <button
+              type="button"
+              className="vr-send"
+              onClick={() => { dispatch({ type: E.SEND }); void sendNow(); }}
+              aria-label="Enviar áudio"
+              title="Enviar"
+            >
+              <Icon name="send" />
+            </button>
+          </span>
         </>
       ) : null}
 

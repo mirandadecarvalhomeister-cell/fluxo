@@ -551,7 +551,6 @@ function ChatMessage({ message, index, chat, author, onMenu, onOpenMedia, onForw
         }}
         onDoubleClick={() => actions.likeMessage(chat.id, index)}
       >
-        {!message.me ? <Avatar user={author} size={28} /> : null}
         <div
           className={`b ${message.me ? 'me' : 'them'} ${message.liked ? 'liked' : ''} ${
             message.attachment?.kind === 'sticker' ? 'sticker-bubble' : ''
