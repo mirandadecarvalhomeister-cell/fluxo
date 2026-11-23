@@ -1,4 +1,5 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
+import { Image } from 'expo-image';
 import {
   Animated,
   Easing,
@@ -136,7 +137,12 @@ export default function AuthScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.brand}>
-            <Text style={styles.logoWord}>Fluxo</Text>
+            <Image
+              source={require('../../assets/fluxo-wordmark.png')}
+              style={styles.wordmark}
+              contentFit="contain"
+              accessibilityLabel="Fluxo"
+            />
             <Muted style={{ textAlign: 'center', color: '#5B5478' }}>
               Conversas, comunidades e lives em um só lugar.
             </Muted>
@@ -209,13 +215,7 @@ const styles = StyleSheet.create({
   orbFill: { flex: 1 },
   content: { flexGrow: 1, justifyContent: 'center', padding: spacing.xl, gap: 20, zIndex: 1 },
   brand: { alignItems: 'center', gap: 6 },
-  logoWord: {
-    color: '#1B1633',
-    fontSize: 34,
-    fontWeight: '900',
-    letterSpacing: -1,
-    backgroundImage: undefined,
-  },
+  wordmark: { width: 240, height: 80 },
   error: { color: colors.danger, fontWeight: '600' },
   success: { color: colors.success, fontWeight: '600' },
   or: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 4 },
