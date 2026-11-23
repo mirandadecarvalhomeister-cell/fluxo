@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
   orbFill: { flex: 1 },
   content: { flexGrow: 1, justifyContent: 'center', padding: spacing.xl, gap: 20, zIndex: 1 },
   brand: { alignItems: 'center', gap: 2, marginBottom: 8 },
-  wordmark: { width: 96, height: 32, transform: [{ translateY: -26 }] },
+  wordmark: { width: 96, height: 32, transform: [{ translateY: -8 }] },
   error: { color: colors.danger, fontWeight: '600' },
   success: { color: colors.success, fontWeight: '600' },
   or: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 4 },
