@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../lib/theme';
 import { Card, GhostButton, H1, Input, Muted, PrimaryButton } from '../components/Ui';
@@ -137,9 +136,8 @@ export default function AuthScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.brand}>
-            <Image source={require('../../assets/fluxo-logo.png')} style={styles.logoImg} contentFit="contain" />
             <Text style={styles.logoWord}>Fluxo</Text>
-            <Muted style={{ textAlign: 'center', color: colors.muted }}>
+            <Muted style={{ textAlign: 'center', color: '#5B5478' }}>
               Conversas, comunidades e lives em um só lugar.
             </Muted>
           </View>
@@ -211,9 +209,8 @@ const styles = StyleSheet.create({
   orbFill: { flex: 1 },
   content: { flexGrow: 1, justifyContent: 'center', padding: spacing.xl, gap: 20, zIndex: 1 },
   brand: { alignItems: 'center', gap: 6 },
-  logoImg: { width: 72, height: 72 },
   logoWord: {
-    color: colors.text,
+    color: '#1B1633',
     fontSize: 34,
     fontWeight: '900',
     letterSpacing: -1,
